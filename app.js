@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const xml2js = require("xml2js");
 const { execFile, exec } = require("child_process");
 const util = require("util");
+const browserAgent = require("./browser-agent");
 
 const execFileAsync = util.promisify(execFile);
 const app = express();
@@ -240,6 +241,17 @@ async function routeMessage(content, userId) {
   const text = String(content || "").trim();
 
   if (!text) return "我收到了一条空消息。";
+
+  const browserOpenMatch = text.match(/^\/浏览器\s+打开\s*(https?:\/\/\S+)$/i);
+  if (browserOpenMatch) {
+    console.log("Browser command matched");
+    return browserAgent.openUrl(userId, browserOpenMatch[1]);
+  }
+
+  if (text === "/截图") {
+    console.log("Browser command matched");
+    return browserAgent.screenshot(userId);
+  }
 
   if (text === "/帮助" || text.toLowerCase() === "/help") return HELP_TEXT;
 
