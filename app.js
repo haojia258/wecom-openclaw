@@ -242,14 +242,27 @@ async function routeMessage(content, userId) {
 
   if (!text) return "我收到了一条空消息。";
 
-  const browserOpenMatch = text.match(/^\/浏览器\s+打开\s*(https?:\/\/\S+)$/i);
-  if (browserOpenMatch) {
-    console.log("Browser command matched");
-    return browserAgent.openUrl(userId, browserOpenMatch[1]);
+  console.log("RAW TEXT:", JSON.stringify(text));
+
+  if (text.startsWith("/浏览器")) {
+    if (text === "/浏览器 状态") {
+      return browserAgent.status();
+    }
+
+    const cleaned = text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+    const urlMatch = cleaned.match(/https?:\/\/\S+/i);
+    const url = urlMatch ? urlMatch[0] : "";
+
+    if (url) {
+      console.log("Browser command matched:", url);
+      return browserAgent.openUrl(userId, url);
+    }
+
+    return "请使用 /浏览器 打开 https://example.com";
   }
 
   if (text === "/截图") {
-    console.log("Browser command matched");
+    console.log("Browser command matched:", "screenshot");
     return browserAgent.screenshot(userId);
   }
 
