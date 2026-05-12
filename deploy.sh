@@ -25,6 +25,6 @@ echo "==== pm2 save ===="
 pm2 save
 
 echo "==== health check ===="
-curl -fsS http://127.0.0.1:3001/ >/dev/null
+curl -fsS http://127.0.0.1:3002/ >/dev/null
 
 echo "✅ [DEPLOY] done"

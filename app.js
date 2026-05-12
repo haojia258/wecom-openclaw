@@ -12,7 +12,7 @@ const execFileAsync = util.promisify(execFile);
 const app = express();
 app.use(express.text({ type: "*/*" }));
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 const TOKEN = (process.env.WECOM_TOKEN || "").trim();
 const AES_KEY = (process.env.WECOM_AES_KEY || "").trim();
 const CORP_ID = (process.env.WECOM_CORP_ID || "").trim();
