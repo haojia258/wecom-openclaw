@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment & Secrets
+.env
+*.pem
+
+# Logs & Data
+logs/
+storage/
+data/
+
+# Browser profiles & screenshots
+screenshots/
+*.png
+*.html
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temp
+*.bak
+*.tmp

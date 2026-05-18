@@ -1,0 +1,39 @@
+{
+  "name": "playwright-worker",
+  "version": "1.0.0",
+  "description": "Playwright-based Doudian shop metrics scraping and automation worker",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "login": "node src/login-doudian.js",
+    "login:sms": "node src/login-doudian.js --sms",
+    "check:login": "node src/check-login.js",
+    "fetch:dashboard": "node src/fetch-dashboard.js",
+    "fetch:metrics": "node src/fetch-doudian-metrics.js",
+    "check:products": "node src/check-products.js",
+    "check:activity": "node src/check-activity.js",
+    "check:risk": "node src/check-risk.js",
+    "sku:profit": "node src/sku-profit-model.js",
+    "competitor:scan": "node src/competitor-scan.js",
+    "ops:advice": "node src/generate-ops-advice.js",
+    "fetch:orders": "node src/fetch-orders.js",
+    "fetch:aftersales": "node src/fetch-aftersales.js",
+    "fetch:downloads": "node src/fetch-downloads.js",
+    "push:ops-advice": "node src/push-ops-advice.js",
+    "ops:daily:push": "npm run fetch:metrics && npm run fetch:aftersales && npm run push:ops-advice"
+  },
+  "dependencies": {
+    "playwright": "^1.40.1",
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "optionalDependencies": {
+    "exceljs": "^4.4.0",
+    "tesseract.js": "^5.0.0"
+  }
+}
