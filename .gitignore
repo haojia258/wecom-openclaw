@@ -1,29 +1,33 @@
-# Dependencies
+# === Dependencies ===
 node_modules/
 package-lock.json
 
-# Environment & Secrets
+# === Environment & Secrets ===
 .env
+.env.*
+!.env.example
 *.pem
+*.key
 
-# Logs & Data
+# === Logs & Runtime Data ===
 logs/
 storage/
 data/
-
-# Browser profiles & screenshots
+cookies/
 screenshots/
-*.png
-*.html
 
-# OS files
+# === Browser ===
+data/browser/
+
+# === OS files ===
 .DS_Store
 Thumbs.db
 
-# IDE
+# === IDE ===
 .vscode/
 .idea/
 
-# Temp
+# === Temp & Backup ===
 *.bak
 *.tmp
+*.log
