@@ -2,7 +2,7 @@
 
 /**
  * command-center.js - 统一指令注册中心
- * v1.0 - 支持 alias，自动生成帮助菜单
+ * v1.1 - 支持 alias + 参数解析（前缀匹配）
  */
 
 const path = require('path');
@@ -27,22 +27,48 @@ const REGISTRY = {
 const _cache = {};
 
 /**
- * 解析输入，返回 handler 函数或 null
+ * 解析输入，返回 { handler, args } 或 null
+ * 支持带参数的命令，例如 /ai调度 投流优化 → handler + 投流优化
  * @param {string} input 用户输入（已 trim）
- * @returns {function|null} execute 函数
+ * @returns {{ handler: function, args: string }|null}
  */
 function resolve(input) {
   const trimmed = (input || '').trim();
+  if (!trimmed) return null;
+
   // 1. 精确匹配主命令
   if (REGISTRY[trimmed]) {
-    return loadHandler(trimmed);
+    return { handler: loadHandler(trimmed), args: '' };
   }
-  // 2. 匹配别名
+
+  // 2. 精确匹配别名
   for (const [cmd, entry] of Object.entries(REGISTRY)) {
     if (entry.aliases && entry.aliases.includes(trimmed)) {
-      return loadHandler(cmd);
+      return { handler: loadHandler(cmd), args: '' };
     }
   }
+
+  // 3. 前缀匹配主命令（带参数）
+  // 按命令名长度降序排列，优先匹配更长的命令（避免 /ai 匹配 /ai调度）
+  const sortedCmds = Object.keys(REGISTRY).sort((a, b) => b.length - a.length);
+  for (const cmd of sortedCmds) {
+    if (trimmed.startsWith(cmd) && (trimmed.length === cmd.length || trimmed[cmd.length] === ' ')) {
+      const args = trimmed.slice(cmd.length).trim();
+      return { handler: loadHandler(cmd), args };
+    }
+  }
+
+  // 4. 前缀匹配别名（带参数）
+  for (const [cmd, entry] of Object.entries(REGISTRY)) {
+    if (!entry.aliases) continue;
+    for (const alias of entry.aliases) {
+      if (trimmed.startsWith(alias) && (trimmed.length === alias.length || trimmed[alias.length] === ' ')) {
+        const args = trimmed.slice(alias.length).trim();
+        return { handler: loadHandler(cmd), args };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -68,7 +94,6 @@ function listCommands() {
     '',
   ];
   for (const [cmd, entry] of Object.entries(REGISTRY)) {
-    // 尝试读取命令描述（从文件 exports.desc 或默认）
     let desc = '';
     try {
       const mod = require(entry.file);

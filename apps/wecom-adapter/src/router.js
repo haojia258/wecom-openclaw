@@ -2,7 +2,7 @@
 
 /**
  * 命令路由
- * v1.0 - 使用 command-center 统一注册 + alias
+ * v1.1 - 支持 args 解析（command-center v1.1）
  */
 
 const logger = require('./lib/logger');
@@ -18,11 +18,12 @@ async function routeCommand(content, ctx) {
   const trimmed = (content || '').trim();
   logger.cmd(trimmed);
 
-  const handler = resolve(trimmed);
-  if (handler) {
-    logger.route('matched=' + trimmed);
+  const match = resolve(trimmed);
+  if (match) {
+    const { handler, args } = match;
+    logger.route('matched=' + trimmed + (args ? ' args=' + args : ''));
     try {
-      const result = await handler(ctx);
+      const result = await handler(ctx, args);
       if (!result || typeof result !== 'string') {
         logger.error('command returned non-string: ' + typeof result);
         return '⚠️ 命令执行失败：' + trimmed + '\nerror: 返回值不是文本';
