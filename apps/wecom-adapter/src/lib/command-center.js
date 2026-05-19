@@ -20,6 +20,7 @@ const REGISTRY = {
   '/运营分析': { file: '../commands/analysis', aliases: ['/analysis', '/分析', '/运营'] },
   '/投流分析': { file: '../commands/ads-analysis', aliases: ['/ads', '/投流', '/ROI分析'] },
   '/视频建议': { file: '../commands/video-suggestion', aliases: ['/video', '/视频', '/脚本建议'] },
+  '/ai调度': { file: '../commands/ai-scheduler', aliases: ['/ai', '/调度', '/AISCHEDULER'] },
 };
 
 // 缓存已加载的 handler（懒加载）
