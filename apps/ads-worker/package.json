@@ -1,0 +1,14 @@
+{
+  "name": "ads-worker",
+  "version": "1.0.0",
+  "description": "ads data collection worker",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "once": "node index.js --once",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "node-cron": "^3.0.3"
+  }
+}
