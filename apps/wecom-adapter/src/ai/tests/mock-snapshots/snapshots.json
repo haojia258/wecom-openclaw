@@ -1,0 +1,5 @@
+[
+  {"ts":"2026-05-16T00:00:00.000Z","gmv":130000,"orders":320,"aftersaleRate":0.06,"roi":2.1,"skuMargin":0.23,"riskLevel":0.4,"totalScore":88},
+  {"ts":"2026-05-17T00:00:00.000Z","gmv":120000,"orders":300,"aftersaleRate":0.08,"roi":1.8,"skuMargin":0.20,"riskLevel":0.6,"totalScore":79},
+  {"ts":"2026-05-18T00:00:00.000Z","gmv":110000,"orders":280,"aftersaleRate":0.11,"roi":1.4,"skuMargin":0.16,"riskLevel":0.8,"totalScore":70}
+]
