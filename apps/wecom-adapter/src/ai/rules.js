@@ -1,0 +1,10 @@
+'use strict';
+
+module.exports = {
+  GMV_LOW_THRESHOLD: 0.7,
+  RISK_HIGH_THRESHOLD: 0.7,
+  AFTERSALE_WARNING: 0.12,
+  ROI_WARNING: 1.5,
+  SKU_PROFIT_WARNING: 0.15,
+  SCORE_BASE: 100,
+};
