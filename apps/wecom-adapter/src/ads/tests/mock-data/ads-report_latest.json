@@ -1,0 +1,23 @@
+{
+  "data": {
+    "spend": 3200.5,
+    "roi": 2.8,
+    "ctr": 0.022,
+    "cvr": 0.035,
+    "impressions": 150000,
+    "clicks": 3300,
+    "orders": 115,
+    "gmv": 8960.0,
+    "topSku": "夏季冰丝凉席三件套",
+    "skuPerformance": [
+      {
+        "name": "夏季冰丝凉席三件套",
+        "roi": 3.2
+      },
+      {
+        "name": "防紫外线冰袖",
+        "roi": 1.9
+      }
+    ]
+  }
+}
