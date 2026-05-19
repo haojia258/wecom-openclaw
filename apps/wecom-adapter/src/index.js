@@ -189,7 +189,7 @@ app.post('/wecom/callback', async function(req, res) {
 
   // 异步处理命令并发送回复
   try {
-    const parsed = await new xml2js.Parser().ParseStringPromise(xmlMsg);
+    const parsed = await new xml2js.Parser().parseStringPromise(xmlMsg);
     const msgType = (parsed.xml.MsgType && parsed.xml.MsgType[0]) || '';
     const content = (parsed.xml.Content && parsed.xml.Content[0]) || '';
     const fromUser = (parsed.xml.FromUserName && parsed.xml.FromUserName[0]) || '';
@@ -227,7 +227,7 @@ app.post('/wecom/callback', async function(req, res) {
     logger.error('Async processing FAIL: ' + e.message);
     // fallback：通知用户系统繁忙
     try {
-      const parsed2 = xmlMsg ? await new xml2js.Parser().ParseStringPromise(xmlMsg) : null;
+      const parsed2 = xmlMsg ? await new xml2js.Parser().parseStringPromise(xmlMsg) : null;
       const fromUser2 = parsed2 && parsed2.xml && parsed2.xml.FromUserName && parsed2.xml.FromUserName[0];
       if (fromUser2) {
         sendWeComMessage(fromUser2, '系统繁忙，请稍后再试', '1000006');

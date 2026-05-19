@@ -10,14 +10,16 @@ const path = require('path');
 // 指令注册表
 // 每个条目: { file: 'commands/xxx', aliases: ['/别名1', '/别名2'] }
 const REGISTRY = {
-  '/帮助':   { file: './commands/help',   aliases: ['/help', '/菜单', '/HELP'] },
-  '/状态':   { file: './commands/status',  aliases: ['/status', '/STATUS'] },
-  '/今日GMV':{ file: './commands/gmv',     aliases: ['/gmv', '/GMV', '/今日gmv'] },
-  '/订单':   { file: './commands/orders',  aliases: ['/orders', '/订单概况'] },
-  '/利润':   { file: './commands/profit',  aliases: ['/profit', '/利润分析'] },
-  '/风险':   { file: './commands/risk',    aliases: ['/risk', '/风险预警'] },
-  '/ping':   { file: './commands/ping',    aliases: ['/ Ping', '/诊断'] },
-  '/运营分析': { file: './commands/analysis', aliases: ['/analysis', '/分析', '/运营'] },
+  '/帮助':   { file: '../commands/help',   aliases: ['/help', '/菜单', '/HELP'] },
+  '/状态':   { file: '../commands/status',  aliases: ['/status', '/STATUS'] },
+  '/今日GMV':{ file: '../commands/gmv',     aliases: ['/gmv', '/GMV', '/今日gmv'] },
+  '/订单':   { file: '../commands/orders',  aliases: ['/orders', '/订单概况'] },
+  '/利润':   { file: '../commands/profit',  aliases: ['/profit', '/利润分析'] },
+  '/风险':   { file: '../commands/risk',    aliases: ['/risk', '/风险预警'] },
+  '/ping':   { file: '../commands/ping',    aliases: ['/ Ping', '/诊断'] },
+  '/运营分析': { file: '../commands/analysis', aliases: ['/analysis', '/分析', '/运营'] },
+  '/投流分析': { file: '../commands/ads-analysis', aliases: ['/ads', '/投流', '/ROI分析'] },
+  '/视频建议': { file: '../commands/video-suggestion', aliases: ['/video', '/视频', '/脚本建议'] },
 };
 
 // 缓存已加载的 handler（懒加载）
