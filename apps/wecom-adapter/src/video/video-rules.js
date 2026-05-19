@@ -1,0 +1,12 @@
+// 短视频内容规则配置（集中管理，可动态调参）
+module.exports = {
+  HOOK_MAX_SECONDS: 3,
+  TITLE_MAX_LENGTH: 20,
+  SCRIPT_MAX_WORDS: 400,
+  CTA_REQUIRED: true,
+  COMMENT_GUIDE_REQUIRED: true,
+  TOTAL_MAX_WORDS: 600,
+  TITLE_COUNT: 3,
+  HOOK_COUNT: 3,
+  NEED_FALLBACK: true
+};
