@@ -2,7 +2,7 @@
 
 /**
  * command-center.js - 统一指令注册中心
- * v1.1 - 支持 alias + 参数解析（前缀匹配）
+ * v1.2 - 支持不带空格的粘连写法（/ai调度帮助 等同于 /ai调度 帮助）
  */
 
 const path = require('path');
@@ -27,8 +27,29 @@ const REGISTRY = {
 const _cache = {};
 
 /**
+ * 从前缀中提取 args
+ * 同时支持：
+ *   /ai调度 帮助  → args = '帮助'  （有空格）
+ *   /ai调度帮助   → args = '帮助'  （无空格）
+ */
+function extractArgs(trimmed, prefix) {
+  const rest = trimmed.slice(prefix.length);
+  // 有空格分隔
+  if (rest.startsWith(' ')) {
+    return rest.trim();
+  }
+  // 无空格粘连（仍然有内容）
+  if (rest.length > 0) {
+    return rest.trim();
+  }
+  return '';
+}
+
+/**
  * 解析输入，返回 { handler, args } 或 null
- * 支持带参数的命令，例如 /ai调度 投流优化 → handler + 投流优化
+ * 支持带参数的命令，例如：
+ *   /ai调度 投流优化 → handler + '投流优化'
+ *   /ai调度投流优化  → handler + '投流优化'  ← 新增
  * @param {string} input 用户输入（已 trim）
  * @returns {{ handler: function, args: string }|null}
  */
@@ -52,8 +73,8 @@ function resolve(input) {
   // 按命令名长度降序排列，优先匹配更长的命令（避免 /ai 匹配 /ai调度）
   const sortedCmds = Object.keys(REGISTRY).sort((a, b) => b.length - a.length);
   for (const cmd of sortedCmds) {
-    if (trimmed.startsWith(cmd) && (trimmed.length === cmd.length || trimmed[cmd.length] === ' ')) {
-      const args = trimmed.slice(cmd.length).trim();
+    if (trimmed.startsWith(cmd) && trimmed.length > cmd.length) {
+      const args = extractArgs(trimmed, cmd);
       return { handler: loadHandler(cmd), args };
     }
   }
@@ -61,9 +82,11 @@ function resolve(input) {
   // 4. 前缀匹配别名（带参数）
   for (const [cmd, entry] of Object.entries(REGISTRY)) {
     if (!entry.aliases) continue;
-    for (const alias of entry.aliases) {
-      if (trimmed.startsWith(alias) && (trimmed.length === alias.length || trimmed[alias.length] === ' ')) {
-        const args = trimmed.slice(alias.length).trim();
+    // 别名也按长度降序
+    const sortedAliases = [...entry.aliases].sort((a, b) => b.length - a.length);
+    for (const alias of sortedAliases) {
+      if (trimmed.startsWith(alias) && trimmed.length > alias.length) {
+        const args = extractArgs(trimmed, alias);
         return { handler: loadHandler(cmd), args };
       }
     }
