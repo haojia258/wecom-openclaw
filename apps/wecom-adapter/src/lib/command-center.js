@@ -5,10 +5,10 @@
  * v1.2 - 支持不带空格的粘连写法（/ai调度帮助 等同于 /ai调度 帮助）
  */
 
-const path = require('path');
-
 // 指令注册表
 // 每个条目: { file: 'commands/xxx', aliases: ['/别名1', '/别名2'] }
+const skillAgent = require('../agents/skill-agent');
+
 const REGISTRY = {
   '/帮助':   { file: '../commands/help',   aliases: ['/help', '/菜单', '/HELP'] },
   '/状态':   { file: '../commands/status',  aliases: ['/status', '/STATUS'] },
@@ -94,6 +94,16 @@ function resolve(input) {
     if (trimmed.startsWith(alias) && trimmed.length > alias.length) {
       const args = extractArgs(trimmed, alias);
       return { handler: loadHandler(cmd), args };
+    }
+  }
+
+
+  // 5. Skill Layer 回退（非 REGISTRY 命令，作为 resolve 的最后一级回退）
+  if (skillAgent && typeof skillAgent.execute === 'function') {
+    const { resolveSkill } = require('../skills');
+    const skillResult = resolveSkill(trimmed);
+    if (skillResult) {
+      return { handler: skillAgent.execute.bind(null, trimmed), args: '' };
     }
   }
 
