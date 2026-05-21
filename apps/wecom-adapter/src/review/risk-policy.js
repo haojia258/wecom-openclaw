@@ -96,4 +96,111 @@ function analyzeRisk(files) {
   };
 }
 
-module.exports = { analyzeRisk, RULES, LEVELS, BASE_CHECKLIST };
+// ═══════════════════════════════════════════
+// 新 API (供 AI Orchestrator 等新调用方)
+// ═══════════════════════════════════════════
+
+// 增强版规则（独立于旧 RULES，不互相影响）
+const ENHANCED_RULES = [
+  { pattern: /\.env$/, score: 35, type: 'env', description: '环境变量文件' },
+  { pattern: /\.pem$/, score: 25, type: 'pem', description: '私钥文件(.pem)' },
+  { pattern: /\.key$/, score: 25, type: 'key', description: '密钥文件(.key)' },
+  { pattern: /nginx/, score: 20, type: 'nginx', description: 'Nginx配置文件' },
+  { pattern: /deploy/, score: 20, type: 'deploy', description: '部署脚本或配置' },
+  { pattern: /PM2/i, score: 15, type: 'pm2', description: 'PM2配置文件' },
+  { pattern: /wecom.*callback|encrypt|decrypt|wecom.*crypto/i, score: 25, type: 'wecom_crypto', description: '企业微信加密/解密主链路' },
+  { pattern: /force.*push|git.*push.*-f|main.*develop.*force/i, score: 20, type: 'force_push', description: '包含 force push 操作的脚本' },
+  { pattern: /logs|node_modules|storage|cookies|screenshots/, score: 10, type: 'misc', description: '运行时/缓存/存储目录' },
+];
+
+const NO_TEST_PENALTY = 25;
+
+/**
+ * 新评分引擎（增强规则，带上下文感知）
+ * @param {object} input - { files: string[], testCommandsRun?: string[], patchSize?: number }
+ * @returns {object} { riskScore, forbiddenHits }
+ */
+function scoreRisk(input) {
+  if (!input || !Array.isArray(input.files)) {
+    throw new Error('input.files 必须为数组');
+  }
+
+  const files = input.files;
+  const testCommandsRun = input.testCommandsRun;
+  const patchSize = input.patchSize;
+
+  // 空 patch → 最高风险
+  if (patchSize === 0) {
+    return { riskScore: 100, forbiddenHits: [] };
+  }
+
+  const hits = [];
+
+  for (const file of files) {
+    for (const rule of ENHANCED_RULES) {
+      if (rule.pattern.test(file)) {
+        hits.push({ file, score: rule.score });
+      }
+    }
+  }
+
+  let riskScore = hits.reduce((sum, h) => sum + h.score, 0);
+
+  // 缺少测试执行记录 → 附加扣分
+  if (Array.isArray(testCommandsRun) && testCommandsRun.length === 0) {
+    riskScore += NO_TEST_PENALTY;
+  }
+
+  riskScore = Math.min(riskScore, 100);
+
+  // 违禁文件列表（去重）
+  const forbiddenHits = [...new Set(hits.map(h => h.file))];
+
+  return { riskScore, forbiddenHits };
+}
+
+/**
+ * 分数 → 风险等级映射
+ * @param {number} score - 风险评分 (0-100)
+ * @returns {string} 'high' | 'medium' | 'low'
+ */
+function classifyRisk(score) {
+  if (score >= 80) return 'high';
+  if (score >= 40) return 'medium';
+  return 'low';
+}
+
+/**
+ * 从结构化输入构建完整审查结果
+ * @param {object} input - { files: string[], testCommandsRun?: string[], patchSize?: number }
+ * @returns {object} { riskScore, level, forbiddenHits, mergeAdvice, checklist }
+ */
+function buildRiskReview(input) {
+  const { riskScore, forbiddenHits } = scoreRisk(input);
+  const level = classifyRisk(riskScore);
+
+  let mergeAdvice;
+  if (level === 'high') mergeAdvice = '禁止合并，需移除敏感文件';
+  else if (level === 'medium') mergeAdvice = '谨慎合并，需人工复核敏感项';
+  else mergeAdvice = '可合并，建议清理非必要文件';
+
+  return {
+    riskScore,
+    level,
+    forbiddenHits,
+    mergeAdvice,
+    checklist: [...BASE_CHECKLIST],
+  };
+}
+
+module.exports = {
+  // 旧兼容 API
+  analyzeRisk,
+  RULES,
+  LEVELS,
+  BASE_CHECKLIST,
+  // 新 API
+  scoreRisk,
+  classifyRisk,
+  buildRiskReview,
+};

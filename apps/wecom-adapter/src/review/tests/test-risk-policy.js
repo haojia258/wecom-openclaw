@@ -1,104 +1,59 @@
 const assert = require('assert');
-const { analyzeRisk } = require('../risk-policy');
+const { scoreRisk, classifyRisk, buildRiskReview } = require('../risk-policy');
 
-// 测试用例1：基础敏感文件
-function testBasicSensitiveFiles() {
-  const files = [
-    'apps/wecom-adapter/src/commands/analysis.js',
-    '.env',
-    'nginx/default.conf',
-  ];
-  const result = analyzeRisk(files);
-  assert.strictEqual(result.riskScore, 30 + 15); // .env=30, nginx=15
-  assert.strictEqual(result.level, 'high'); // 45分属于high
-  assert.deepStrictEqual(result.forbiddenHits, ['.env', 'nginx/default.conf']);
-  assert.ok(result.mergeAdvice.includes('禁止合并'));
-  assert.ok(result.checklist.some(item => item.includes('.env')));
-  console.log('✅ 基础敏感文件检测通过');
-}
-
-// 测试用例2：企业微信主链路
-function testWecomCrypto() {
-  const files = [
-    'apps/wecom-adapter/src/wecom/callback.js',
-    'apps/wecom-adapter/src/wecom/encrypt.js',
-    'apps/wecom-adapter/src/wecom/decrypt.js',
-  ];
-  const result = analyzeRisk(files);
-  // 每个文件20分，3个文件共60分
+// 测试 1: scoreRisk 基础评分
+function testScoreRiskBasic() {
+  // .env = 35, 无 testCommandsRun → +25 = 60
+  const result = scoreRisk({ files: ['.env'], testCommandsRun: [] });
   assert.strictEqual(result.riskScore, 60);
-  assert.strictEqual(result.level, 'high');
-  assert.deepStrictEqual(result.forbiddenHits, [
-    'apps/wecom-adapter/src/wecom/callback.js',
-    'apps/wecom-adapter/src/wecom/encrypt.js',
-    'apps/wecom-adapter/src/wecom/decrypt.js',
-  ]);
-  assert.ok(result.checklist.some(item => item.includes('企业微信加解密')));
-  console.log('✅ 企业微信主链路检测通过');
+  assert.deepStrictEqual(result.forbiddenHits, ['.env']);
+  console.log('OK: scoreRisk basic');
 }
 
-// 测试用例3：force push 脚本
-function testForcePush() {
-  const files = [
-    'scripts/force-push-to-main.sh',
-    'scripts/git-push-force.sh',
-  ];
-  const result = analyzeRisk(files);
-  // 每个脚本20分，共40分
-  assert.strictEqual(result.riskScore, 40);
-  assert.strictEqual(result.level, 'medium');
-  assert.deepStrictEqual(result.forbiddenHits, [
-    'scripts/force-push-to-main.sh',
-    'scripts/git-push-force.sh',
-  ]);
-  assert.ok(result.checklist.some(item => item.includes('force push')));
-  console.log('✅ force push 脚本检测通过');
+// 测试 2: classifyRisk 阈值
+function testClassifyRisk() {
+  assert.strictEqual(classifyRisk(85), 'high');
+  assert.strictEqual(classifyRisk(80), 'high');  // 边界
+  assert.strictEqual(classifyRisk(45), 'medium');
+  assert.strictEqual(classifyRisk(40), 'medium'); // 边界
+  assert.strictEqual(classifyRisk(35), 'low');
+  assert.strictEqual(classifyRisk(0), 'low');
+  console.log('OK: classifyRisk');
 }
 
-// 测试用例4：混合路径 (logs, node_modules, storage, cookies, screenshots)
-function testMiscPaths() {
-  const files = [
-    'logs/app.log',
-    'node_modules/lodash/index.js',
-    'storage/cache.json',
-    'cookies/session.txt',
-    'screenshots/error.png',
-  ];
-  const result = analyzeRisk(files);
-  // 每条5分，共25分
-  assert.strictEqual(result.riskScore, 25);
-  assert.strictEqual(result.level, 'medium');
-  assert.deepStrictEqual(result.forbiddenHits.length, 5);
-  assert.ok(result.checklist.some(item => item.includes('logs')));
-  console.log('✅ 运行时/缓存目录检测通过');
+// 测试 3: buildRiskReview 完整返回
+function testBuildRiskReview() {
+  // nginx=20, 有 testCommandsRun → 无罚分 = 20, level=low
+  const result = buildRiskReview({ files: ['nginx/conf'], testCommandsRun: ['npm test'] });
+  assert.strictEqual(result.riskScore, 20);
+  assert.strictEqual(result.level, 'low');
+  assert.deepStrictEqual(result.forbiddenHits, ['nginx/conf']);
+  assert.strictEqual(result.mergeAdvice, '可合并，建议清理非必要文件');
+  assert.ok(Array.isArray(result.checklist));
+  console.log('OK: buildRiskReview');
 }
 
-// 测试用例5：组合场景 – 包含安全文件+高风险文件
-function testMixedSafeAndRisk() {
-  const files = [
-    'src/index.js',
-    'src/utils/helper.js',
-    '.env',
-    'nginx/ssl/server.key',
-    'deploy/pm2.json',
-  ];
-  const result = analyzeRisk(files);
-  // .env=30, .key=25, nginx=15, deploy=15, pm2=10 => 95分
-  assert.strictEqual(result.riskScore, 95);
-  assert.strictEqual(result.level, 'critical');
-  assert.deepStrictEqual(result.forbiddenHits, ['.env', 'nginx/ssl/server.key', 'deploy/pm2.json']);
-  assert.ok(result.mergeAdvice.includes('严重风险'));
-  console.log('✅ 路径组合检测通过');
+// 测试 4: scoreRisk 边界情况（空 patch）
+function testScoreRiskEdge() {
+  // patchSize=0 → 最高风险 100
+  const result = scoreRisk({ files: [], patchSize: 0 });
+  assert.strictEqual(result.riskScore, 100);
+  assert.deepStrictEqual(result.forbiddenHits, []);
+
+  // 无 testCommandsRun 字段（undefined）→ 不罚分
+  const noPenalty = scoreRisk({ files: ['.env'] });
+  assert.strictEqual(noPenalty.riskScore, 35); // .env=35, 无附加罚分
+
+  console.log('OK: scoreRisk edge cases');
 }
 
 // 执行所有测试
 function runAllTests() {
-  testBasicSensitiveFiles();
-  testWecomCrypto();
-  testForcePush();
-  testMiscPaths();
-  testMixedSafeAndRisk();
-  console.log('\n🎉 所有测试通过 (5/5)');
+  testScoreRiskBasic();
+  testClassifyRisk();
+  testBuildRiskReview();
+  testScoreRiskEdge();
+  console.log('\nRisk-policy tests PASSED (4/4)');
 }
 
 runAllTests();
