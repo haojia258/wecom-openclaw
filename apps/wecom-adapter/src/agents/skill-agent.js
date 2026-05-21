@@ -18,17 +18,33 @@ function normalizeInput(input) {
   return '';
 }
 
+/**
+ * 从执行结果中提取纯文本
+ * 优先级：text → message → reply → data.summaryText → JSON.stringify → 兜底
+ */
+function extractText(result) {
+  if (typeof result === 'string') return result;
+  if (!result || typeof result !== 'object') return '技能执行完成';
+  if (typeof result.text === 'string') return result.text;
+  if (typeof result.message === 'string') return result.message;
+  if (typeof result.reply === 'string') return result.reply;
+  if (result.data && typeof result.data.summaryText === 'string') return result.data.summaryText;
+  try { return JSON.stringify(result, null, 2); } catch (_) { return '技能执行完成'; }
+}
+
 async function execute(input, ctx) {
   const skillName = normalizeInput(input);
   const skill = resolveSkill(skillName);
   if (!skill) {
-    return { reply: '未知技能。输入 /技能 查看可用技能', success: false };
+    return '未知技能。输入 /技能 查看可用技能';
   }
   switch (skill.id) {
-    case 'ops-summary':
-      return require('../commands/ops-summary').execute(ctx);
+    case 'ops-summary': {
+      const result = await require('../commands/ops-summary').execute(ctx);
+      return extractText(result);
+    }
     default:
-      return { reply: `技能 ${skill.id} 未实现`, success: false };
+      return `技能 ${skill.id} 未实现`;
   }
 }
 

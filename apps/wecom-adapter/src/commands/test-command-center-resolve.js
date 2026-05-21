@@ -122,5 +122,52 @@ test('getCommandList includes /技能', () => {
   assert(list.includes('/帮助'), 'should still include /帮助');
 });
 
+// === handler 返回类型必须是 string ===
+test('resolve("/技能").handler() returns string', async () => {
+  const r = resolve('/技能');
+  assert(r && typeof r.handler === 'function');
+  const result = await r.handler();
+  assert(typeof result === 'string', `should return string, got ${typeof result}`);
+});
+
+test('resolve("/技能 列表").handler("列表") returns string', async () => {
+  const r = resolve('/技能 列表');
+  assert(r && typeof r.handler === 'function');
+  const result = await r.handler('列表');
+  assert(typeof result === 'string', `should return string, got ${typeof result}`);
+});
+
+test('resolve("/技能 ops-summary").handler("ops-summary") returns string', async () => {
+  const r = resolve('/技能 ops-summary');
+  assert(r && typeof r.handler === 'function');
+  // handler 收到的 args 来自 command-center 调用方，此处模拟传入
+  const result = await r.handler('ops-summary');
+  assert(typeof result === 'string', `should return string, got ${typeof result}`);
+});
+
+test('skills.execute("") returns string', async () => {
+  const { execute } = require('../commands/skills');
+  const result = await execute('');
+  assert(typeof result === 'string', `should return string, got ${typeof result}`);
+});
+
+test('skills.execute("列表") returns string', async () => {
+  const { execute } = require('../commands/skills');
+  const result = await execute('列表');
+  assert(typeof result === 'string', `should return string, got ${typeof result}`);
+});
+
+test('skills.execute({ args: "列表" }) returns string', async () => {
+  const { execute } = require('../commands/skills');
+  const result = await execute({ args: '列表' });
+  assert(typeof result === 'string', `should return string, got ${typeof result}`);
+});
+
+test('skills.execute({ text: "ops-summary" }) returns string', async () => {
+  const { execute } = require('../commands/skills');
+  const result = await execute({ text: 'ops-summary' });
+  assert(typeof result === 'string', `should return string, got ${typeof result}`);
+});
+
 console.log(`\n共 ${passed + failed} 个测试，${passed} 通过，${failed} 失败`);
 if (failed > 0) process.exit(1);
