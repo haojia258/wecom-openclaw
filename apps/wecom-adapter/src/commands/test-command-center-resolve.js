@@ -137,12 +137,13 @@ test('resolve("/技能 列表").handler("列表") returns string', async () => {
   assert(typeof result === 'string', `should return string, got ${typeof result}`);
 });
 
-test('resolve("/技能 ops-summary").handler("ops-summary") returns string', async () => {
+test('resolve("/技能 ops-summary").handler("ops-summary") returns string with keyword', async () => {
   const r = resolve('/技能 ops-summary');
   assert(r && typeof r.handler === 'function');
-  // handler 收到的 args 来自 command-center 调用方，此处模拟传入
   const result = await r.handler('ops-summary');
   assert(typeof result === 'string', `should return string, got ${typeof result}`);
+  const hasKeyword = result.includes('运营摘要') || result.includes('GMV');
+  assert(hasKeyword, `result should contain "运营摘要" or "GMV", got: ${result.slice(0, 60)}`);
 });
 
 test('skills.execute("") returns string', async () => {

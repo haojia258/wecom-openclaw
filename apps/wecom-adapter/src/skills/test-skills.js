@@ -29,11 +29,36 @@ function testUnknownSkillReturnsNull() {
   console.log('OK: unknown skill returns null');
 }
 
-const tests = [testSkillRegistry, testResolveSkillById, testResolveSkillByAlias, testUnknownSkillReturnsNull];
+async function testSkillsExecuteOpsSummary() {
+  const { execute } = require('../commands/skills');
+  const result = await execute('ops-summary');
+  assert.ok(typeof result === 'string', 'execute("ops-summary") should return string');
+  const hasKeyword = result.includes('运营摘要') || result.includes('GMV');
+  assert.ok(hasKeyword, `result should contain "运营摘要" or "GMV", got: ${result.slice(0, 50)}`);
+  console.log('OK: skills.execute("ops-summary") returns expected string');
+}
+
+const tests = [
+  testSkillRegistry,
+  testResolveSkillById,
+  testResolveSkillByAlias,
+  testUnknownSkillReturnsNull,
+  testSkillsExecuteOpsSummary,
+];
+
 let passed = 0;
 let failed = 0;
-for (const fn of tests) {
-  try { fn(); passed++; } catch (e) { console.error('FAIL:', e.message); failed++; }
-}
-console.log('\nSkills tests: ' + passed + '/' + tests.length + ' passed');
-process.exit(failed > 0 ? 1 : 0);
+
+(async () => {
+  for (const fn of tests) {
+    try {
+      await fn();
+      passed++;
+    } catch (e) {
+      console.error('FAIL:', e.message);
+      failed++;
+    }
+  }
+  console.log('\nSkills tests: ' + passed + '/' + tests.length + ' passed');
+  process.exit(failed > 0 ? 1 : 0);
+})();
