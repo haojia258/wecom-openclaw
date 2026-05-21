@@ -21,7 +21,7 @@ const REGISTRY = {
   '/投流分析': { file: '../commands/ads-analysis', aliases: ['/ads', '/投流', '/ROI分析'] },
   '/视频建议': { file: '../commands/video-suggestion', aliases: ['/video', '/视频', '/脚本建议'] },
   '/ai调度': { file: '../commands/ai-scheduler', aliases: ['/ai', '/调度', '/AISCHEDULER'] },
-  '/审查': { file: '../commands/ai-review', aliases: ['/ai-review', '/review', '/代码审查'] },
+  '/审查': { file: '../commands/ai-review', aliases: ['/审', '/ai-review', '/review', '/代码审查'] },
 };
 
 // 缓存已加载的 handler（懒加载）
@@ -81,15 +81,19 @@ function resolve(input) {
   }
 
   // 4. 前缀匹配别名（带参数）
+  // 全局排序避免短别名抢前缀（如 /ai 抢先匹配 /ai-review）
+  const allAliases = [];
   for (const [cmd, entry] of Object.entries(REGISTRY)) {
     if (!entry.aliases) continue;
-    // 别名也按长度降序
-    const sortedAliases = [...entry.aliases].sort((a, b) => b.length - a.length);
-    for (const alias of sortedAliases) {
-      if (trimmed.startsWith(alias) && trimmed.length > alias.length) {
-        const args = extractArgs(trimmed, alias);
-        return { handler: loadHandler(cmd), args };
-      }
+    for (const alias of entry.aliases) {
+      allAliases.push({ cmd, alias });
+    }
+  }
+  allAliases.sort((a, b) => b.alias.length - a.alias.length);
+  for (const { cmd, alias } of allAliases) {
+    if (trimmed.startsWith(alias) && trimmed.length > alias.length) {
+      const args = extractArgs(trimmed, alias);
+      return { handler: loadHandler(cmd), args };
     }
   }
 
