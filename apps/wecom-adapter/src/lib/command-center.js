@@ -2,7 +2,7 @@
 
 /**
  * command-center.js - 统一指令注册中心
- * v1.2 - 支持不带空格的粘连写法（/ai调度帮助 等同于 /ai调度 帮助）
+ * v1.3 - 新增 /活动 命令 + NLP 自由文本回退
  */
 
 // 指令注册表
@@ -23,6 +23,7 @@ const REGISTRY = {
   '/ai调度': { file: '../commands/ai-scheduler', aliases: ['/ai', '/调度', '/AISCHEDULER'] },
   '/审查': { file: '../commands/ai-review', aliases: ['/审', '/ai-review', '/review', '/代码审查'] },
   '/技能': { file: '../commands/skills',  aliases: ['/skill', '/技能列表', '/skills'] },
+  '/活动': { file: '../commands/activity', aliases: ['/activity', '/推广活动', '/活动查询', '/大促'] },
 };
 
 // 缓存已加载的 handler（懒加载）
@@ -105,6 +106,27 @@ function resolve(input) {
     const skillResult = resolveSkill(trimmed);
     if (skillResult) {
       return { handler: skillAgent.execute.bind(null, trimmed), args: '' };
+    }
+  }
+
+  // 6. NLP 自由文本回退：关键词触发活动查询
+  // 无需 / 前缀，自然语言描述也能触发
+  const ACTIVITY_KEYWORDS = [
+    '推广活动', '官方活动', '平台活动', '618', '大促',
+    '节盟', '抖音商城活动', '报名活动', '促销活动',
+    '优惠活动', '补贴活动', '有什么活动', '活动参加'
+  ];
+  const hasActivityKW = ACTIVITY_KEYWORDS.some(function(kw) {
+    return trimmed.includes(kw);
+  });
+  if (hasActivityKW && trimmed.length > 2) {
+    try {
+      const activityMod = require('../commands/activity');
+      if (activityMod && typeof activityMod.execute === 'function') {
+        return { handler: activityMod.execute, args: trimmed };
+      }
+    } catch (_) {
+      // 如果 activity 模块不存在，静默回退
     }
   }
 
