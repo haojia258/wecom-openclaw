@@ -140,7 +140,8 @@ test('resolve("/技能 列表").handler("列表") returns string', async () => {
 test('resolve("/技能 ops-summary").handler("ops-summary") returns string without skill list', async () => {
   const r = resolve('/技能 ops-summary');
   assert(r && typeof r.handler === 'function');
-  const result = await r.handler('ops-summary');
+  // 传 { mock: true } 作为 ctx，让 ops-summary 走 mock 模式
+  const result = await r.handler({ mock: true }, 'ops-summary');
   assert(typeof result === 'string', `should return string, got ${typeof result}`);
   assert(!result.includes('可用技能'), 'should NOT contain "可用技能" (must not be list)');
   const hasKeyword = result.includes('运营摘要') || result.includes('GMV');

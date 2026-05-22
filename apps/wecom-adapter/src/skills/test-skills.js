@@ -31,7 +31,8 @@ function testUnknownSkillReturnsNull() {
 
 async function testSkillsExecuteOpsSummary() {
   const { execute } = require('../commands/skills');
-  const result = await execute('ops-summary');
+  // 传 { mock: true } 让 ops-summary 走 mock 模式，不依赖真实数据文件
+  const result = await execute({ mock: true }, 'ops-summary');
   assert.ok(typeof result === 'string', 'execute("ops-summary") should return string');
   assert.ok(!result.includes('可用技能'), 'should NOT contain "可用技能" (must not be list)');
   const hasKeyword = result.includes('运营摘要') || result.includes('GMV');

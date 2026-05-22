@@ -70,7 +70,7 @@ async function execute(ctx, args) {
     if (!skillAgent || typeof skillAgent.execute !== 'function') {
       return `技能执行器不可用，无法执行：${normalized}`;
     }
-    const result = await skillAgent.execute(normalized);
+    const result = await skillAgent.execute(ctx, normalized);
     return extractText(result);
   } catch (err) {
     return `技能执行失败（${normalized}）：${err.message}`;
