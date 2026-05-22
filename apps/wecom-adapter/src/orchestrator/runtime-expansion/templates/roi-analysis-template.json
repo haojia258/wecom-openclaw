@@ -1,0 +1,20 @@
+{
+  "name": "roi-analysis-template",
+  "description": "ROI 投放分析模板：分析广告投放效果，输出优化建议",
+  "version": "1.0",
+  "inputs": [
+    { "name": "campaignName", "type": "string", "required": true, "description": "投放计划名称" },
+    { "name": "spend", "type": "number", "required": true, "description": "投放花费" },
+    { "name": "revenue", "type": "number", "required": true, "description": "投放带来的 GMV" },
+    { "name": "conversions", "type": "number", "required": false, "description": "转化数" },
+    { "name": "platform", "type": "string", "required": false, "description": "投放平台（千川/巨量/其他）" }
+  ],
+  "outputs": {
+    "title": "ROI 分析报告 - {{campaignName}}",
+    "roi": null,
+    "status": "",
+    "insights": [],
+    "recommendations": []
+  },
+  "promptTemplate": "请分析以下投放计划的 ROI：\n- 计划名称: {{campaignName}}\n- 投放平台: {{platform}}\n- 花费: ¥{{spend}}\n- 带来 GMV: ¥{{revenue}}\n- 转化数: {{conversions}}\n\n请计算 ROI，判断投放效果，并给出优化建议。"
+}

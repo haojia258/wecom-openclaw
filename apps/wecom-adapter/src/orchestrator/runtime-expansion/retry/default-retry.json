@@ -1,0 +1,11 @@
+{
+  "name": "default-retry",
+  "version": "1.0",
+  "description": "默认重试配置（配置化）",
+  "enabled": true,
+  "maxAttempts": 3,
+  "delayMs": 500,
+  "exponentialBackoff": true,
+  "retryableStatuses": ["dispatch_failed", "artifact_failed", "review_failed"],
+  "notes": "任务执行失败时，按此配置决定是否自动重试。"
+}

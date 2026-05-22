@@ -1,0 +1,10 @@
+{
+  "name": "default-approval",
+  "type": "approval_strategy",
+  "version": "1.0",
+  "description": "默认审批策略：安全任务自动审批，危险任务人工审查",
+  "autoApproveSafeTasks": true,
+  "safeTaskPatterns": ["ops_analysis", "daily_report", "data_analysis", "roi_analysis"],
+  "alwaysManualReview": ["code_change", "patch_generation", "deploy", "modify_nginx", "modify_env"],
+  "notes": "safeTaskPatterns 匹配的任务可自动审批；alwaysManualReview 中的任务必须人工审查。"
+}
