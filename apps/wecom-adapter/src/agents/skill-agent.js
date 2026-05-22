@@ -32,7 +32,12 @@ function extractText(result) {
   try { return JSON.stringify(result, null, 2); } catch (_) { return '技能执行完成'; }
 }
 
-async function execute(input, ctx) {
+async function execute(ctx, input) {
+  // 兼容直接调用 execute('ops-summary') 的测试写法
+  if (typeof ctx === 'string' && input === undefined) {
+    input = ctx;
+    ctx = {};
+  }
   const skillName = normalizeInput(input);
   const skill = resolveSkill(skillName);
   if (!skill) {

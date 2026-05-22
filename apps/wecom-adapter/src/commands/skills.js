@@ -52,7 +52,12 @@ function listSkills() {
   return lines.join('\n');
 }
 
-async function execute(args) {
+async function execute(ctx, args) {
+  // 兼容直接调用 execute('ops-summary') 的测试写法
+  if (typeof ctx === 'string' && args === undefined) {
+    args = ctx;
+    ctx = {};
+  }
   const normalized = normalizeArgs(args);
 
   // 情况 1 & 2：空参数 或 列表关键词 → 返回列表
