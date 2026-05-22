@@ -3,7 +3,7 @@
  * orchestrator 基础功能测试
  */
 
-const { scheduleAI, getStatus, reviewPatch } = require("../orchestrator")
+const { scheduleAI, getStatus, reviewPatch, getHistory } = require("../orchestrator")
 const { planTasks, validatePlan } = require("../task-planner")
 const { generateBranchName, planBranchOrder } = require("../branch-planner")
 const { validatePatch, checkScope } = require("../patch-policy")
@@ -88,15 +88,35 @@ test("task-planner: validatePlan 全部合规", () => {
 test("orchestrator: scheduleAI 返回 report", async () => {
   const result = await scheduleAI({ userRequest: "测试" })
   assert(result.report, "应该返回 report")
-  assert(result.version === "0.1")
+  assert(result.version === "0.2", `期望 0.2，实际 ${result.version}`)
   assert(result.plan, "应该返回 plan")
+})
+
+test("orchestrator: scheduleAI v0.2 动态模式 → 意图识别", async () => {
+  const result = await scheduleAI({ userRequest: "帮我做自动日报" })
+  assert(result.plan, "应该返回 plan")
+  assert(result.plan.recommendedAssignee === "workbuddy", "日报应分配给 WorkBuddy")
+  assert(result.plan.intent === "daily_report", `期望 daily_report，实际 ${result.plan.intent}`)
+  assert(result.auditId, "v0.2 应返回 auditId")
+})
+
+test("orchestrator: scheduleAI v0.1 兼容模式 → 固定 4 角色", async () => {
+  const result = await scheduleAI({ userRequest: "测试", legacyMode: true })
+  assert(result.plan, "应该返回 plan")
+  assert(Array.isArray(result.plan), "v0.1 模式 plan 应为数组")
+  assert(result.plan.length === 4, `v0.1 模式应有 4 个角色，实际 ${result.plan.length}`)
 })
 
 test("orchestrator: getStatus 返回版本和模式", () => {
   const status = getStatus()
-  assert(status.version === "0.1")
+  assert(status.version === "0.2", `期望 0.2，实际 ${status.version}`)
   assert(status.mode === "plan-only")
-  assert(status.supportedRoles.includes("workbuddy"))
+  assert(status.supportedAssignees.includes("workbuddy"), "应包含 workbuddy")
+})
+
+test("orchestrator: getHistory 返回历史", () => {
+  const history = getHistory(5)
+  assert(typeof history === "string", "历史应为字符串")
 })
 
 test("orchestrator: reviewPatch 拒绝 main 分支", () => {

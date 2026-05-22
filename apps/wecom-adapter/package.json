@@ -11,7 +11,18 @@
     "test:agents": "node src/agents/test-agent.js",
     "test:ops-summary": "node src/commands/test-ops-summary.js",
     "test:commands": "node src/commands/test-command-center-resolve.js",
-    "test:scheduler": "node src/scheduler/test-scheduler.js"
+    "test:activity-enroll": "node src/skills/tests/test-activity-enroll.js",
+    "test:patch": "node src/commands/test-patch.js",
+    "test:monitor": "node src/commands/test-monitor.js",
+    "test:orchestrator-core": "node src/orchestrator/tests/test-orchestrator-core.js",
+    "test:orchestrator-audit": "node src/orchestrator/tests/test-audit-recorder.js",
+    "test:orchestrator-rollback": "node src/orchestrator/tests/test-rollback-planner.js",
+    "test:orchestrator-all": "node src/orchestrator/tests/test-orchestrator.js && node src/orchestrator/tests/test-orchestrator-core.js && node src/orchestrator/tests/test-audit-recorder.js && node src/orchestrator/tests/test-rollback-planner.js",
+    "test:risk-alert": "node src/skills/tests/test-risk-alert.js",
+    "test:ops-memory": "node src/ai/memory/test-ops-memory.js",
+    "test:ads-analysis": "node src/skills/tests/test-ads-analysis.js",
+    "test:scheduler": "node src/scheduler/test-scheduler.js",
+    "test:patch": "node src/commands/test-patch.js"
   },
   "dependencies": {
     "express": "^4.18.2",
