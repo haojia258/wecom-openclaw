@@ -33,8 +33,9 @@ async function testSkillsExecuteOpsSummary() {
   const { execute } = require('../commands/skills');
   const result = await execute('ops-summary');
   assert.ok(typeof result === 'string', 'execute("ops-summary") should return string');
+  assert.ok(!result.includes('可用技能'), 'should NOT contain "可用技能" (must not be list)');
   const hasKeyword = result.includes('运营摘要') || result.includes('GMV');
-  assert.ok(hasKeyword, `result should contain "运营摘要" or "GMV", got: ${result.slice(0, 50)}`);
+  assert.ok(hasKeyword, `result should contain "运营摘要" or "GMV", got: ${result.slice(0, 80)}`);
   console.log('OK: skills.execute("ops-summary") returns expected string');
 }
 

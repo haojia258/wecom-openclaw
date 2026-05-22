@@ -3,6 +3,8 @@
 const { SKILLS } = require('../skills');
 const skillAgent = require('../agents/skill-agent');
 
+const LIST_ALIASES = new Set(['列表', 'list', 'help', '帮助']);
+
 /**
  * 标准化 args 为字符串
  */
@@ -21,7 +23,6 @@ function normalizeArgs(args) {
 
 /**
  * 从执行结果中提取纯文本
- * 优先级：text → message → reply → data.summaryText → JSON.stringify → 兜底
  */
 function extractText(result) {
   if (typeof result === 'string') return result;
@@ -33,22 +34,12 @@ function extractText(result) {
   try { return JSON.stringify(result, null, 2); } catch (_) { return '技能执行完成'; }
 }
 
-async function execute(args) {
-  const normalized = normalizeArgs(args);
-  // 有参数但不是"列表" → 执行对应技能
-  if (normalized && normalized !== '列表') {
-    if (skillAgent && typeof skillAgent.execute === 'function') {
-      const result = await skillAgent.execute(normalized);
-      return extractText(result);
-    }
-    return `技能执行器不可用，无法执行：${normalized}`;
-  }
-
-  // 无参数或"列表" → 列出所有可用技能
+/**
+ * 列出所有可用技能
+ */
+function listSkills() {
   const entries = Object.entries(SKILLS);
-  if (entries.length === 0) {
-    return '暂无可用技能';
-  }
+  if (entries.length === 0) return '暂无可用技能';
   const lines = ['可用技能：', ''];
   for (const [, skill] of entries) {
     const aliasStr = skill.aliases && skill.aliases.length > 0
@@ -59,6 +50,26 @@ async function execute(args) {
   lines.push('');
   lines.push('💡 用法：/技能 <技能名>');
   return lines.join('\n');
+}
+
+async function execute(args) {
+  const normalized = normalizeArgs(args);
+
+  // 情况 1 & 2：空参数 或 列表关键词 → 返回列表
+  if (!normalized || LIST_ALIASES.has(normalized)) {
+    return listSkills();
+  }
+
+  // 情况 3：任何其它非空参数 → 调用 skill-agent 执行
+  try {
+    if (!skillAgent || typeof skillAgent.execute !== 'function') {
+      return `技能执行器不可用，无法执行：${normalized}`;
+    }
+    const result = await skillAgent.execute(normalized);
+    return extractText(result);
+  } catch (err) {
+    return `技能执行失败（${normalized}）：${err.message}`;
+  }
 }
 
 module.exports = { execute, desc: '列出或执行技能' };
