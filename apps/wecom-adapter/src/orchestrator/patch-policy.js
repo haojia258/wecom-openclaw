@@ -99,7 +99,8 @@ function checkScope(role, requestedScopes) {
   }
 
   const allowed = SCOPE_MAP[role] || []
-  const outOfScope = requestedScopes.filter(s => !allowed.includes(s))
+  const scopes = Array.isArray(requestedScopes) ? requestedScopes : []
+  const outOfScope = scopes.filter(s => !allowed.includes(s))
 
   return {
     inScope: outOfScope.length === 0,
