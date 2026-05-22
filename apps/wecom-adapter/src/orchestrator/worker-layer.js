@@ -211,10 +211,12 @@ function executeRiskWorker(task) {
       if (typeof riskPolicy.classifyRisk === 'function') {
         level = riskPolicy.classifyRisk(score);
       }
-      result.riskScore = { score: score, level: level };
+      result.riskScore = score;
+      result.riskLevel = level;
     }
   } catch (e) {
-    result.riskScore = { error: e.message };
+    result.riskScore = null;
+    result.riskError = e.message;
   }
 
   // 3. 回滚建议（需要 auditId）
