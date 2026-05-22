@@ -10,7 +10,8 @@
     "test:skills:index": "node src/skills/test-skills-index.js",
     "test:agents": "node src/agents/test-agent.js",
     "test:ops-summary": "node src/commands/test-ops-summary.js",
-    "test:commands": "node src/commands/test-command-center-resolve.js"
+    "test:commands": "node src/commands/test-command-center-resolve.js",
+    "test:scheduler": "node src/scheduler/test-scheduler.js"
   },
   "dependencies": {
     "express": "^4.18.2",

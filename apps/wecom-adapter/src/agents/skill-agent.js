@@ -48,6 +48,10 @@ async function execute(ctx, input) {
       const result = await require('../commands/ops-summary').execute(ctx);
       return extractText(result);
     }
+    case 'push-summary': {
+      const result = await require('../commands/push-summary').execute(ctx);
+      return extractText(result);
+    }
     default:
       return `技能 ${skill.id} 未实现`;
   }

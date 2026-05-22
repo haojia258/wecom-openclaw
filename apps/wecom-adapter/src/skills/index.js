@@ -6,6 +6,11 @@ const SKILLS = {
     aliases: ['运营摘要', 'summary', '今日摘要', '日报'],
     description: '生成今日运营摘要报告',
   },
+  'push-summary': {
+    id: 'push-summary',
+    aliases: ['推送摘要', 'push-summary'],
+    description: '推送运营摘要到企业微信',
+  },
 };
 
 function resolveSkill(input) {
