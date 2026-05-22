@@ -1,0 +1,37 @@
+{
+  "name": "review-rules",
+  "version": "1.0",
+  "description": "Review 规则配置（配置化，不硬编码）",
+  "rules": [
+    {
+      "id": "risk-score-high",
+      "description": "风险分 >=80 自动拒绝",
+      "condition": { "field": "riskScore", "operator": ">=", "value": 80 },
+      "action": "reject",
+      "priority": 100
+    },
+    {
+      "id": "risk-score-medium",
+      "description": "风险分 >=40 需人工审查",
+      "condition": { "field": "riskScore", "operator": ">=", "value": 40 },
+      "action": "review_required",
+      "priority": 90
+    },
+    {
+      "id": "forbidden-scope-hit",
+      "description": "命中禁用范围自动拒绝",
+      "condition": { "field": "forbiddenHits", "operator": "length>", "value": 0 },
+      "action": "reject",
+      "priority": 100
+    },
+    {
+      "id": "no-patch-safe",
+      "description": "无代码变更可自动批准",
+      "condition": { "field": "hasPatch", "operator": "==", "value": false },
+      "action": "approve",
+      "priority": 50
+    }
+  ],
+  "defaultAction": "review_required",
+  "notes": "优先级数字越大越优先。无规则匹配时执行 defaultAction。"
+}

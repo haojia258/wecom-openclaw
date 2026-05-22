@@ -1,0 +1,20 @@
+{
+  "name": "video-script-template",
+  "description": "视频脚本生成模板：根据产品和受众生成视频脚本",
+  "version": "1.0",
+  "inputs": [
+    { "name": "productName", "type": "string", "required": true, "description": "产品名称" },
+    { "name": "targetAudience", "type": "string", "required": false, "description": "目标受众" },
+    { "name": "videoDuration", "type": "number", "required": false, "description": "视频时长（秒）" },
+    { "name": "platform", "type": "string", "required": false, "description": "发布平台（抖音/快手/视频号）" },
+    { "name": "style", "type": "string", "required": false, "description": "风格（种草/带货/品牌）" }
+  ],
+  "outputs": {
+    "title": "视频脚本 - {{productName}}",
+    "duration": null,
+    "scenes": [],
+    "narration": [],
+    "cta": ""
+  },
+  "promptTemplate": "请为以下产品生成视频脚本：\n- 产品: {{productName}}\n- 目标受众: {{targetAudience}}\n- 视频时长: {{videoDuration}}秒\n- 发布平台: {{platform}}\n- 风格: {{style}}\n\n请输出：视频标题、场景划分（含时间轴）、旁白文案、CTA。"
+}

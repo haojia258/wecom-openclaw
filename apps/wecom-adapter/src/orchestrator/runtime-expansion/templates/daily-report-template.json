@@ -1,0 +1,23 @@
+{
+  "name": "daily-report-template",
+  "description": "每日运营报告模板：读取数据 → 填充变量 → 输出报告",
+  "version": "1.0",
+  "inputs": [
+    { "name": "date", "type": "string", "required": true, "description": "报告日期 YYYY-MM-DD" },
+    { "name": "gmv", "type": "number", "required": true, "description": "当日 GMV" },
+    { "name": "orders", "type": "number", "required": true, "description": "当日订单数" },
+    { "name": "conversionRate", "type": "number", "required": false, "description": "转化率（小数）" },
+    { "name": "topProduct", "type": "string", "required": false, "description": "TOP 商品" }
+  ],
+  "outputs": {
+    "title": "每日运营报告 - {{date}}",
+    "summary": "GMV: ¥{{gmv}} | 订单: {{orders}} | 转化率: {{conversionRate}}",
+    "sections": [
+      { "heading": "核心指标", "content": "GMV: ¥{{gmv}}\n订单数: {{orders}}\nTOP商品: {{topProduct}}" },
+      { "heading": "趋势分析", "content": "（由 AI 根据历史数据填充）" },
+      { "heading": "风险告警", "content": "（由 Risk Worker 填充）" }
+    ],
+    "recommendations": [ "（由 AI 生成）" ]
+  },
+  "promptTemplate": "请基于以下数据生成 {{date}} 的每日运营报告：\n- GMV: ¥{{gmv}}\n- 订单数: {{orders}}\n- 转化率: {{conversionRate}}\n- TOP商品: {{topProduct}}\n\n请输出：核心指标分析、趋势分析、风险告警、优化建议。"
+}

@@ -1,0 +1,19 @@
+{
+  "name": "risk-review-template",
+  "description": "风险审查模板：对代码/Patch 进行风险评分和审查",
+  "version": "1.0",
+  "inputs": [
+    { "name": "patchFile", "type": "string", "required": true, "description": "Patch 文件路径" },
+    { "name": "filesChanged", "type": "array", "required": false, "description": "变更文件列表" },
+    { "name": "scopeCheck", "type": "object", "required": false, "description": "范围检查结果" }
+  ],
+  "outputs": {
+    "taskId": "",
+    "riskScore": null,
+    "riskLevel": "",
+    "violations": [],
+    "recommendation": "",
+    "details": []
+  },
+  "promptTemplate": "请对以下 Patch 进行风险审查：\n- Patch 文件: {{patchFile}}\n- 变更文件: {{filesChanged}}\n- 范围检查: {{scopeCheck}}\n\n请输出：风险评分（0-100）、风险等级（low/medium/high）、违规项列表、审批建议（approve/review_required/reject）。"
+}

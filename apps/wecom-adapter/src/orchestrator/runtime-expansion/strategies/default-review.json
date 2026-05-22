@@ -1,0 +1,10 @@
+{
+  "name": "default-review",
+  "type": "review_strategy",
+  "version": "1.0",
+  "description": "默认审查策略",
+  "autoApprove": false,
+  "riskThreshold": 40,
+  "requireManualReview": true,
+  "notes": "风险分 >= riskThreshold 需人工审查。autoApprove=false 表示默认不自动批准。"
+}
