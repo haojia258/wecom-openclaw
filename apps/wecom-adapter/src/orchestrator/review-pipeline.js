@@ -71,7 +71,8 @@ function reviewTask(task) {
         patchSize: 0,
       };
       try {
-        const score = riskPolicy.scoreRisk(riskInput);
+        const scoreResult = riskPolicy.scoreRisk(riskInput);
+        const score = scoreResult.riskScore;
         const level = riskPolicy.classifyRisk ? riskPolicy.classifyRisk(score) : 'unknown';
         results.push({
           source: 'risk-policy',
