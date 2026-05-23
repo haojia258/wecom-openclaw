@@ -7,8 +7,12 @@
  * 不改变 Runtime Core，不自动 apply，不自动 merge
  *
  * 环境变量:
- *   OPENAI_API_KEY          — OpenAI API Key (从 .env 读取)
+ *   OPENAI_API_KEY          — OpenAI API Key (从 .env / Vault 读取)
  *   OPENAI_WORKER_ENABLED   — 灰度开关 (默认 false, Phase2-B)
+ *   OPENAI_PROXY_HOST       — HTTP 代理主机 (Phase2-D: 日本中转)
+ *   OPENAI_PROXY_PORT       — HTTP 代理端口 (默认 18080)
+ *   OPENAI_PROXY_USER       — 代理认证用户名
+ *   OPENAI_PROXY_PASS       — 代理认证密码
  *
  * 安全层 (Phase2-B):
  *   - worker-feature-gate: 灰度开关
@@ -23,7 +27,9 @@
  */
 
 const crypto = require('crypto');
+const http = require('http');
 const https = require('https');
+const tls = require('tls');
 const path = require('path');
 const fs = require('fs');
 
@@ -110,6 +116,79 @@ function sanitizeError(msg) {
 }
 
 /**
+ * Phase2-D: 获取 HTTP 代理配置
+ * @returns {object|null} { host, port, user, pass } 或 null (不启用代理)
+ */
+function getProxyConfig() {
+  const host = process.env.OPENAI_PROXY_HOST;
+  if (!host) return null;
+  return {
+    host: host,
+    port: parseInt(process.env.OPENAI_PROXY_PORT, 10) || 18080,
+    user: process.env.OPENAI_PROXY_USER || '',
+    pass: process.env.OPENAI_PROXY_PASS || '',
+  };
+}
+
+/**
+ * Phase2-D: 创建路由到 HTTP 代理的 https.Agent
+ *
+ * 使用 Node.js 原生 http.CONNECT 方法建立隧道，然后 TLS 升级。
+ * 不引入外部依赖 (如 https-proxy-agent)。
+ *
+ * @param {object} proxyCfg - { host, port, user, pass }
+ * @returns {https.Agent}
+ */
+function createProxyAgent(proxyCfg) {
+  return new https.Agent({
+    keepAlive: true,
+    createConnection: function (options, callback) {
+      const connectOpts = {
+        host: proxyCfg.host,
+        port: proxyCfg.port,
+        method: 'CONNECT',
+        path: options.hostname + ':' + (options.port || 443),
+        headers: { 'Host': options.hostname },
+      };
+
+      // 代理认证
+      if (proxyCfg.user) {
+        const auth = Buffer.from(proxyCfg.user + ':' + proxyCfg.pass).toString('base64');
+        connectOpts.headers['Proxy-Authorization'] = 'Basic ' + auth;
+      }
+
+      const req = http.request(connectOpts);
+
+      req.on('connect', function (res, socket) {
+        if (res.statusCode !== 200) {
+          socket.destroy();
+          return callback(new Error('代理 CONNECT 失败: HTTP ' + res.statusCode));
+        }
+
+        // TLS 升级
+        const tlsSocket = tls.connect({
+          socket: socket,
+          servername: options.hostname,
+          rejectUnauthorized: true,
+        }, function () {
+          callback(null, tlsSocket);
+        });
+
+        tlsSocket.on('error', function (err) {
+          callback(err);
+        });
+      });
+
+      req.on('error', function (err) {
+        callback(err);
+      });
+
+      req.end();
+    },
+  });
+}
+
+/**
  * 调用 OpenAI Chat Completions API
  *
  * @param {object}  opts
@@ -149,7 +228,8 @@ function callOpenAI(opts) {
       max_tokens: maxTokens,
     });
 
-    // 3. 构建请求选项
+    // 3. 构建请求选项 (Phase2-D: 支持 HTTP 代理)
+    const proxyCfg = getProxyConfig();
     const options = {
       hostname: API_HOST,
       path: '/' + API_VERSION + '/chat/completions',
@@ -161,6 +241,15 @@ function callOpenAI(opts) {
       },
       timeout: API_TIMEOUT_MS,
     };
+
+    // Phase2-D: 如果配置了代理，注入 agent
+    if (proxyCfg) {
+      try {
+        options.agent = createProxyAgent(proxyCfg);
+      } catch (e) {
+        return reject(new Error('代理初始化失败: ' + e.message));
+      }
+    }
 
     // 4. 发起 HTTPS 请求
     const req = https.request(options, function (res) {
