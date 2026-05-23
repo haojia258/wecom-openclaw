@@ -27,7 +27,17 @@ const https = require('https');
 const path = require('path');
 const fs = require('fs');
 
-// 延迟加载 dotenv (如果可用)
+// 从 Vault 读取 OPENAI_API_KEY（非直接读取 .env）
+// 延迟加载 vault-client（首次 require 时初始化）
+let _vault = null;
+function getVault() {
+  if (!_vault) {
+    try { _vault = require('../../lib/vault-client'); } catch (e) { _vault = null; }
+  }
+  return _vault;
+}
+
+// 延迟加载 dotenv (如果可用，仅用于非敏感配置)
 try {
   const dotenv = require('dotenv');
   dotenv.config({ path: path.join(__dirname, '..', '..', '..', '.env') });
@@ -120,7 +130,8 @@ function callOpenAI(opts) {
   const promptHash = hashText(prompt);
 
   return new Promise(function (resolve, reject) {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const vault = getVault();
+    const apiKey = vault ? vault.get('OPENAI_API_KEY') : (process.env.OPENAI_API_KEY || '');
 
     // 1. 检查 API Key
     if (!apiKey) {
