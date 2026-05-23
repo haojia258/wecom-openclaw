@@ -22,8 +22,12 @@
 
 const runtimeCore = require('../orchestrator/runtime-core');
 const { listTasks, listAllTasks } = require('../orchestrator/task-queue');
-const { readArtifact, listArtifacts } = require('../orchestrator/artifact-store');
+const { readArtifact, listArtifacts, saveArtifact } = require('../orchestrator/artifact-store');
 const { listAssignees } = require('../orchestrator/worker-dispatcher');
+
+// 延迟加载 openai-worker (Phase2-A)
+let openaiWorker = null;
+try { openaiWorker = require('../orchestrator/workers/openai-worker'); } catch (e) { /* 可选依赖 */ }
 
 const desc = 'AI任务管理: 创建/派发/审查/批准任务';
 
@@ -173,27 +177,89 @@ function handleCreate(userRequest) {
 // 派发任务
 // ────────────────────────────────────────────
 function handleDispatch(taskId) {
+  // Dispatch is now handled asynchronously via handleDispatchAsync
+  return handleDispatchAsync(taskId);
+}
+
+async function handleDispatchAsync(taskId) {
   if (!taskId) {
     return '❌ 请提供 taskId\n\n示例: /ai任务 派发 task-xxx';
   }
 
   try {
-    // 派发前先规划
+    // 1. 派发前先规划
     let task;
     try {
       const planned = runtimeCore.planTask(taskId);
       task = planned;
     } catch (e) {
-      // 如果已经 planned，跳过规划阶段
       if (!e.message.includes('Cannot plan')) throw e;
     }
 
+    // 2. 派发任务（状态 → dispatched）
     const result = runtimeCore.dispatchTask(taskId);
+    task = result.task;
+
+    // 3. 如果 assignee 是 codex，调用真实 OpenAI Worker
+    if (task.assignee === 'codex' && openaiWorker) {
+      try {
+        const artifact = await openaiWorker.executeOpenAIWorker(task);
+
+        if (artifact.error) {
+          return [
+            '🚀 任务已派发（Codex/OpenAI）',
+            '',
+            'Task ID:  ' + taskId,
+            '⚠️ AI Worker 调用失败：' + artifact.error,
+            '',
+            '任务保持 dispatched 状态，可重试：/ai任务 派发 ' + taskId,
+          ].join('\n');
+        }
+
+        // 4. 将产物写入 artifact-store
+        if (artifact.outputText) {
+          saveArtifact(taskId, 'output.txt', artifact.outputText);
+        }
+        if (artifact.model) {
+          saveArtifact(taskId, 'model.txt', artifact.model);
+        }
+
+        // 5. 接收产物（状态 → artifact_received → review_pending）
+        runtimeCore.receiveArtifact(taskId, {
+          review: artifact.outputText
+            ? artifact.outputText.substring(0, 200) + '...'
+            : 'AI Worker 已完成任务，等待审查',
+          model: artifact.model,
+          safetyNote: artifact.safetyNote || '',
+        });
+
+        return [
+          '✅ 任务已派发（Codex/OpenAI 真实调用）',
+          '',
+          'Task ID:  ' + taskId,
+          'Model:    ' + (artifact.model || 'gpt-4o'),
+          '产物:    output.txt 已写入 artifact-store',
+          '',
+          '📌 下一步: /ai任务 审查 ' + taskId,
+        ].join('\n');
+      } catch (e) {
+        return [
+          '🚀 任务已派发（Codex/OpenAI）',
+          '',
+          'Task ID:  ' + taskId,
+          '⚠️ AI Worker 异常：' + e.message,
+          '',
+          '任务保持 dispatched 状态，可重试：/ai任务 派发 ' + taskId,
+        ].join('\n');
+      }
+    }
+
+    // 7. 其他 assignee（workbuddy/deepseek/doubao）→ 保持 mock 行为
     const dispatch = result.dispatch;
     const payload = dispatch.payload;
 
     const lines = [
-      '🚀 任务已派发',
+      '🚀 任务已派发（Mock）',
       '',
       'Task ID:   ' + taskId,
       'Assignee:  ' + dispatch.assigneeName + ' (' + payload.provider + ')',
