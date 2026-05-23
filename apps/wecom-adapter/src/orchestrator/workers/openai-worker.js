@@ -7,7 +7,14 @@
  * 不改变 Runtime Core，不自动 apply，不自动 merge
  *
  * 环境变量:
- *   OPENAI_API_KEY — OpenAI API Key (从 .env 读取)
+ *   OPENAI_API_KEY          — OpenAI API Key (从 .env 读取)
+ *   OPENAI_WORKER_ENABLED   — 灰度开关 (默认 false, Phase2-B)
+ *
+ * 安全层 (Phase2-B):
+ *   - worker-feature-gate: 灰度开关
+ *   - worker-allowlist:    白名单任务限制
+ *   - worker-rate-limit:   调用限流
+ *   - worker-audit:        调用审计
  *
  * 安全约束:
  *   - 禁止打印/日志 API Key
@@ -26,6 +33,40 @@ try {
   dotenv.config({ path: path.join(__dirname, '..', '..', '..', '.env') });
 } catch (e) {
   // dotenv 未安装，依赖外部已加载的环境变量
+}
+
+// Phase2-B 安全层模块 (延迟加载，测试友好)
+var _featureGate = null;
+var _allowlist = null;
+var _rateLimit = null;
+var _workerAudit = null;
+
+function getFeatureGate() {
+  if (!_featureGate) {
+    try { _featureGate = require('../worker-feature-gate'); } catch (e) { _featureGate = null; }
+  }
+  return _featureGate;
+}
+
+function getAllowlist() {
+  if (!_allowlist) {
+    try { _allowlist = require('../worker-allowlist'); } catch (e) { _allowlist = null; }
+  }
+  return _allowlist;
+}
+
+function getRateLimit() {
+  if (!_rateLimit) {
+    try { _rateLimit = require('../worker-rate-limit'); } catch (e) { _rateLimit = null; }
+  }
+  return _rateLimit;
+}
+
+function getWorkerAudit() {
+  if (!_workerAudit) {
+    try { _workerAudit = require('../worker-audit'); } catch (e) { _workerAudit = null; }
+  }
+  return _workerAudit;
 }
 
 const DEFAULT_MODEL = 'gpt-4o';
@@ -171,19 +212,68 @@ function callOpenAI(opts) {
 /**
  * 执行 OpenAI Worker
  *
+ * Phase2-B: 集成安全层检查
+ *   1. Feature Gate (灰度开关)
+ *   2. Allowlist   (白名单任务)
+ *   3. Rate Limit  (调用限流)
+ *   4. Audit       (调用审计)
+ *
  * @param {object} task - 任务对象 { taskId, userRequest, assignee, ... }
  * @returns {Promise<object>} artifact 或 { error, taskId }
  */
 function executeOpenAIWorker(task) {
   const taskId = task.taskId || 'unknown';
+  const startTime = Date.now();
+
+  // ======== Phase2-B 安全层 ========
+
+  // 1. 灰度开关检查
+  const featureGate = getFeatureGate();
+  if (featureGate) {
+    const gateResult = featureGate.check({ taskId: taskId, assignee: 'codex' });
+    if (gateResult && !gateResult.allowed) {
+      return Promise.resolve(makeRejection(task, 'gate_disabled', gateResult.reason, startTime));
+    }
+  }
+
+  // 2. 白名单检查
+  const allowlist = getAllowlist();
+  if (allowlist) {
+    const allowResult = allowlist.check(task);
+    if (!allowResult.allowed) {
+      return Promise.resolve(makeRejection(task, 'blocked', allowResult.reason, startTime));
+    }
+  }
+
+  // 3. 限流检查
+  const rateLimit = getRateLimit();
+  if (rateLimit) {
+    const rateResult = rateLimit.check(taskId);
+    if (!rateResult.allowed) {
+      return Promise.resolve(makeRejection(task, 'rate_limited', rateResult.reason, startTime));
+    }
+  }
+
+  // ======== 执行真实调用 ========
 
   return callOpenAI({
     taskId: taskId,
     prompt: buildPrompt(task),
     model: getModelForTask(task),
   }).then(function (artifact) {
+    // 释放限流并发槽位
+    if (rateLimit) rateLimit.release();
+
+    // 审计: 成功
+    recordAudit(task, 'success', startTime, artifact.outputText);
     return artifact;
   }).catch(function (e) {
+    // 释放限流并发槽位
+    if (rateLimit) rateLimit.release();
+
+    // 审计: 错误
+    recordAudit(task, 'error', startTime, '', e.message);
+
     // 优雅错误处理：不泄露 key，返回错误摘要
     var sanitized = sanitizeError(e.message);
     return {
@@ -196,6 +286,56 @@ function executeOpenAIWorker(task) {
       createdAt: new Date().toISOString(),
       safetyNote: 'ERROR__NO_OUTPUT',
     };
+  });
+}
+
+/**
+ * 构建安全层拒绝响应
+ *
+ * @param {object} task
+ * @param {string} rejectType  - gate_disabled | blocked | rate_limited
+ * @param {string} reason
+ * @param {number} startTime
+ * @returns {object} 拒绝 artifact
+ */
+function makeRejection(task, rejectType, reason, startTime) {
+  var taskId = task.taskId || 'unknown';
+  recordAudit(task, 'rejected', startTime, '', reason);
+  return {
+    error: reason,
+    taskId: taskId,
+    assignee: 'codex',
+    model: getModelForTask(task),
+    promptHash: hashText(buildPrompt(task)),
+    outputText: '',
+    createdAt: new Date().toISOString(),
+    safetyNote: 'REJECTED__SAFETY_LAYER: ' + rejectType,
+  };
+}
+
+/**
+ * 记录审计日志
+ *
+ * @param {object} task
+ * @param {string} resultStatus - success | error | rejected
+ * @param {number} startTime     - 调用开始时间 (Date.now())
+ * @param {string} outputText    - 输出文本 (仅用于 token 估算)
+ * @param {string} errorMessage  - 错误/拒绝原因
+ */
+function recordAudit(task, resultStatus, startTime, outputText, errorMessage) {
+  var workerAudit = getWorkerAudit();
+  if (!workerAudit) return;
+
+  var latency = startTime ? (Date.now() - startTime) : -1;
+  workerAudit.record({
+    worker: 'codex',
+    model: getModelForTask(task),
+    taskId: task.taskId || 'unknown',
+    latency: latency,
+    resultStatus: resultStatus,
+    outputText: outputText || '',
+    errorMessage: errorMessage || '',
+    promptHash: hashText(buildPrompt(task)),
   });
 }
 
@@ -252,4 +392,7 @@ module.exports = {
   callOpenAI: callOpenAI,
   buildPrompt: buildPrompt,
   hashText: hashText,
+  // Phase2-B 安全层
+  makeRejection: makeRejection,
+  recordAudit: recordAudit,
 };
