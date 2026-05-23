@@ -202,11 +202,12 @@ function executeRiskWorker(task) {
     try { riskPolicy = require('../review/risk-policy'); } catch (e) { /* ignore */ }
 
     if (riskPolicy && typeof riskPolicy.scoreRisk === 'function') {
-      var score = riskPolicy.scoreRisk({
+      var scoreResult = riskPolicy.scoreRisk({
         files: [task.patchFile || ''],
         testCommandsRun: false,
         patchSize: 0,
       });
+      var score = scoreResult.riskScore;
       var level = 'unknown';
       if (typeof riskPolicy.classifyRisk === 'function') {
         level = riskPolicy.classifyRisk(score);
