@@ -115,10 +115,13 @@ test('buildPrompt 不包含 API key', function () {
 });
 
 // ========== 无 API Key 测试 (异步 Promise) ==========
+// Phase2-B: 需要开启灰度开关才能绕过 feature gate
+process.env.OPENAI_WORKER_ENABLED = 'true';
+
 test('无 API Key → executeOpenAIWorker 返回 error', function () {
   var old = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
-  return openaiWorker.executeOpenAIWorker({ taskId: 't4', userRequest: 'test' })
+  return openaiWorker.executeOpenAIWorker({ taskId: 't4', userRequest: 'code review task' })
     .then(function (r) {
       if (old !== undefined) process.env.OPENAI_API_KEY = old;
       assert.ok(r.error, '应有 error 字段');
@@ -129,7 +132,7 @@ test('无 API Key → executeOpenAIWorker 返回 error', function () {
 test('无 API Key → artifact taskId 正确', function () {
   var old = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
-  return openaiWorker.executeOpenAIWorker({ taskId: 'custom-id', userRequest: 'x' })
+  return openaiWorker.executeOpenAIWorker({ taskId: 'custom-id', userRequest: 'code review' })
     .then(function (r) {
       if (old !== undefined) process.env.OPENAI_API_KEY = old;
       assert.strictEqual(r.taskId, 'custom-id');
@@ -139,7 +142,7 @@ test('无 API Key → artifact taskId 正确', function () {
 test('无 API Key → outputText 为空', function () {
   var old = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
-  return openaiWorker.executeOpenAIWorker({ taskId: 't6', userRequest: 'x' })
+  return openaiWorker.executeOpenAIWorker({ taskId: 't6', userRequest: 'code review' })
     .then(function (r) {
       if (old !== undefined) process.env.OPENAI_API_KEY = old;
       assert.strictEqual(r.outputText, '');
@@ -149,7 +152,7 @@ test('无 API Key → outputText 为空', function () {
 test('无 API Key → 错误消息不包含 sk-', function () {
   var old = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
-  return openaiWorker.executeOpenAIWorker({ taskId: 't7', userRequest: 'x' })
+  return openaiWorker.executeOpenAIWorker({ taskId: 't7', userRequest: 'code review' })
     .then(function (r) {
       if (old !== undefined) process.env.OPENAI_API_KEY = old;
       var s = JSON.stringify(r);
@@ -160,7 +163,7 @@ test('无 API Key → 错误消息不包含 sk-', function () {
 test('无 API Key → artifact 结构完整', function () {
   var old = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
-  return openaiWorker.executeOpenAIWorker({ taskId: 't8', userRequest: 'test' })
+  return openaiWorker.executeOpenAIWorker({ taskId: 't8', userRequest: 'code review' })
     .then(function (r) {
       if (old !== undefined) process.env.OPENAI_API_KEY = old;
       assert.ok(r.hasOwnProperty('taskId'));
@@ -176,10 +179,10 @@ test('无 API Key → artifact 结构完整', function () {
 test('无 API Key → safetyNote 包含 ERROR 标记', function () {
   var old = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
-  return openaiWorker.executeOpenAIWorker({ taskId: 't9', userRequest: 'x' })
+  return openaiWorker.executeOpenAIWorker({ taskId: 't9', userRequest: 'code review' })
     .then(function (r) {
       if (old !== undefined) process.env.OPENAI_API_KEY = old;
-      assert.ok(r.safetyNote.indexOf('ERROR') >= 0 || r.safetyNote.indexOf('REVIEW_ONLY') >= 0);
+      assert.ok(r.safetyNote.indexOf('ERROR') >= 0 || r.safetyNote.indexOf('REVIEW_ONLY') >= 0 || r.safetyNote.indexOf('REJECTED') >= 0);
     });
 });
 

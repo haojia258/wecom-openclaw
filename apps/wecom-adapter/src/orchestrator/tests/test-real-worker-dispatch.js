@@ -136,11 +136,14 @@ if (artifactStore) {
 }
 
 // ========== Codex Worker 无 API Key 优雅降级 ==========
+// Phase2-B: 需要开启灰度开关才能绕过 feature gate
+process.env.OPENAI_WORKER_ENABLED = 'true';
+
 test('executeOpenAIWorker 无 key → 返回 error 对象 不崩溃', function () {
   var oldKey = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
 
-  return openaiWorker.executeOpenAIWorker({ taskId: 'intg-test-1', userRequest: 'test' })
+  return openaiWorker.executeOpenAIWorker({ taskId: 'intg-test-1', userRequest: 'code review' })
     .then(function (result) {
       if (oldKey !== undefined) process.env.OPENAI_API_KEY = oldKey;
       assert.ok(result.error, '应有 error 字段');
@@ -155,7 +158,7 @@ test('无 key 错误消息不包含 sk- 前缀', function () {
   var oldKey = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
 
-  return openaiWorker.executeOpenAIWorker({ taskId: 'intg-test-2', userRequest: 'test' })
+  return openaiWorker.executeOpenAIWorker({ taskId: 'intg-test-2', userRequest: 'code review' })
     .then(function (result) {
       if (oldKey !== undefined) process.env.OPENAI_API_KEY = oldKey;
       var str = JSON.stringify(result);
@@ -168,9 +171,10 @@ test('执行后 artifact 包含全部必要字段', function () {
   var oldKey = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
 
-  return openaiWorker.executeOpenAIWorker({ taskId: 'intg-test-3', userRequest: 'test' })
+  return openaiWorker.executeOpenAIWorker({ taskId: 'intg-test-3', userRequest: 'code review' })
     .then(function (result) {
       if (oldKey !== undefined) process.env.OPENAI_API_KEY = oldKey;
+      delete process.env.OPENAI_WORKER_ENABLED;
       var required = ['taskId', 'assignee', 'model', 'promptHash', 'outputText', 'createdAt', 'safetyNote'];
       required.forEach(function (field) {
         assert.ok(result.hasOwnProperty(field), '缺少字段: ' + field);
