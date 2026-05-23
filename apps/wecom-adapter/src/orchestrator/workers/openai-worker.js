@@ -46,6 +46,19 @@ function hashText(text) {
 }
 
 /**
+ * 清理错误消息中的敏感信息（API Key / Token / Authorization Header）
+ * @param {string} msg
+ * @returns {string}
+ */
+function sanitizeError(msg) {
+  if (!msg) return '';
+  return msg
+    .replace(/sk-[a-zA-Z0-9]{20,}/g, '[REDACTED_KEY]')
+    .replace(/Bearer\s+[a-zA-Z0-9_\-\.]{10,}/gi, 'Bearer [REDACTED]')
+    .replace(/Authorization:\s*[^\s]+/gi, 'Authorization: [REDACTED]');
+}
+
+/**
  * 调用 OpenAI Chat Completions API
  *
  * @param {object}  opts
@@ -172,8 +185,9 @@ function executeOpenAIWorker(task) {
     return artifact;
   }).catch(function (e) {
     // 优雅错误处理：不泄露 key，返回错误摘要
+    var sanitized = sanitizeError(e.message);
     return {
-      error: e.message,
+      error: sanitized,
       taskId: taskId,
       assignee: 'codex',
       model: getModelForTask(task),

@@ -20,9 +20,11 @@
  * v0.4 限制: 只生成 dispatch payload，不真实调用 AI API。
  */
 
+const path = require('path');
+const fs = require('fs');
 const runtimeCore = require('../orchestrator/runtime-core');
 const { listTasks, listAllTasks } = require('../orchestrator/task-queue');
-const { readArtifact, listArtifacts, saveArtifact } = require('../orchestrator/artifact-store');
+const { readArtifact, listArtifacts, saveArtifact, getArtifactDir } = require('../orchestrator/artifact-store');
 const { listAssignees } = require('../orchestrator/worker-dispatcher');
 
 // 延迟加载 openai-worker (Phase2-A)
@@ -216,12 +218,13 @@ async function handleDispatchAsync(taskId) {
           ].join('\n');
         }
 
-        // 4. 将产物写入 artifact-store
+        // 4. 将产物直接写入 artifact 目录（bypass saveArtifact type 限制）
+        var artifactDir = getArtifactDir(taskId);
         if (artifact.outputText) {
-          saveArtifact(taskId, 'output.txt', artifact.outputText);
+          fs.writeFileSync(path.join(artifactDir, 'output.txt'), artifact.outputText, 'utf-8');
         }
         if (artifact.model) {
-          saveArtifact(taskId, 'model.txt', artifact.model);
+          fs.writeFileSync(path.join(artifactDir, 'model.txt'), artifact.model, 'utf-8');
         }
 
         // 5. 接收产物（状态 → artifact_received → review_pending）
