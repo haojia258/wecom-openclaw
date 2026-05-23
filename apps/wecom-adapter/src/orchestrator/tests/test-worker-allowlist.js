@@ -122,6 +122,75 @@ assert(Array.isArray(lists.blocked), 'blocked should be array');
 assert(lists.allowed.indexOf('review') !== -1, 'allowed should include review');
 assert(lists.blocked.indexOf('patch') !== -1, 'blocked should include patch');
 
+// Test 19: 中文危险词绕过 - review 部署到生产环境 → blocked
+console.log('\nTest 19: Chinese bypass - review 部署到生产环境 → blocked');
+var r19 = allowlist.check({ userRequest: 'review 部署到生产环境' });
+assert(r19.allowed === false, 'review + 部署到生产环境 should be blocked by Chinese keyword');
+assert(r19.reason.indexOf('BLOCKED_KEYWORD') !== -1, 'reason should be BLOCKED_KEYWORD');
+
+// Test 20: 中文危险词绕过 - analysis 回滚方案 → blocked
+console.log('\nTest 20: Chinese bypass - analysis 回滚方案 → blocked');
+var r20 = allowlist.check({ userRequest: 'analysis 回滚方案' });
+assert(r20.allowed === false, 'analysis + 回滚方案 should be blocked by Chinese keyword');
+assert(r20.matchedKeyword !== 'analysis', 'matchedKeyword should NOT be analysis');
+
+// Test 21: 中文危险词绕过 - summary 应用补丁 → blocked
+console.log('\nTest 21: Chinese bypass - summary 应用补丁 → blocked');
+var r21 = allowlist.check({ userRequest: 'summary 应用补丁' });
+assert(r21.allowed === false, 'summary + 应用补丁 should be blocked by Chinese keyword');
+
+// Test 22: 中文危险词绕过 - planner 修改环境变量 → blocked
+console.log('\nTest 22: Chinese bypass - planner 修改环境变量 → blocked');
+var r22 = allowlist.check({ userRequest: 'planner 修改环境变量' });
+assert(r22.allowed === false, 'planner + 修改环境变量 should be blocked by Chinese keyword');
+
+// Test 23: 中文危险词绕过 - review nginx配置修改 → blocked
+console.log('\nTest 23: Chinese bypass - review nginx配置修改 → blocked');
+var r23 = allowlist.check({ userRequest: 'review nginx配置修改' });
+assert(r23.allowed === false, 'review + nginx配置 should be blocked by Chinese keyword');
+
+// Test 24: 混合绕过 - analysis deploy方案 → blocked
+console.log('\nTest 24: Mixed bypass - analysis deploy方案 → blocked');
+var r24 = allowlist.check({ userRequest: 'analysis deploy方案' });
+assert(r24.allowed === false, 'analysis + deploy should be blocked');
+
+// Test 25: 纯中文危险词 → blocked
+console.log('\nTest 25: Pure Chinese dangerous keywords → blocked');
+var r25 = allowlist.check({ userRequest: '部署到生产环境' });
+assert(r25.allowed === false, 'pure Chinese 部署 should be blocked');
+
+// Test 26: 企业微信主链路 → blocked
+console.log('\nTest 26: 企业微信主链路 → blocked');
+var r26 = allowlist.check({ userRequest: 'review 企业微信主链路 优化' });
+assert(r26.allowed === false, '企业微信主链路 should be blocked');
+
+// Test 27: 加密解密 → blocked
+console.log('\nTest 27: 加密解密 → blocked');
+var r27 = allowlist.check({ userRequest: 'analysis 加密解密 方案' });
+assert(r27.allowed === false, '加密解密 should be blocked');
+
+// Test 28: 配置文件 → blocked
+console.log('\nTest 28: 配置文件 → blocked');
+var r28 = allowlist.check({ userRequest: 'planner 修改配置文件' });
+assert(r28.allowed === false, '配置文件 should be blocked');
+
+// Test 29: isAllowedText 中文绕过防护
+console.log('\nTest 29: isAllowedText() Chinese bypass protection');
+assert(allowlist.isAllowedText('review 部署到生产环境') === false, 'isAllowedText should block Chinese 部署');
+assert(allowlist.isAllowedText('analysis 回滚方案') === false, 'isAllowedText should block Chinese 回滚');
+assert(allowlist.isAllowedText('summary 应用补丁') === false, 'isAllowedText should block Chinese 应用补丁');
+assert(allowlist.isAllowedText('planner 修改环境变量') === false, 'isAllowedText should block Chinese 修改环境变量');
+
+// Test 30: getKeywordLists 包含中文关键词
+console.log('\nTest 30: getKeywordLists() includes Chinese keywords');
+var lists2 = allowlist.getKeywordLists();
+assert(lists2.blocked.indexOf('部署') !== -1, 'blocked should include 部署');
+assert(lists2.blocked.indexOf('回滚') !== -1, 'blocked should include 回滚');
+assert(lists2.blocked.indexOf('应用补丁') !== -1, 'blocked should include 应用补丁');
+assert(lists2.blocked.indexOf('修改环境变量') !== -1, 'blocked should include 修改环境变量');
+assert(lists2.blocked.indexOf('nginx配置') !== -1, 'blocked should include nginx配置');
+assert(lists2.blocked.indexOf('.env') !== -1, 'blocked should include .env');
+
 // Summary
 console.log('\n=== Results: ' + passed + ' passed, ' + failed + ' failed ===\n');
 process.exit(failed > 0 ? 1 : 0);

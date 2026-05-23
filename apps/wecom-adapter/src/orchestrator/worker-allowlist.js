@@ -26,7 +26,31 @@
 
 var ALLOWED_KEYWORDS = ['review', 'summary', 'analysis', 'planner'];
 
-var BLOCKED_KEYWORDS = ['patch', 'apply', 'deploy', 'rollback', 'nginx', 'env'];
+var BLOCKED_KEYWORDS = [
+  'patch',
+  'apply',
+  'deploy',
+  'rollback',
+  'nginx',
+  'env',
+  '.env',
+  '部署',
+  '上线',
+  '发布到生产',
+  '生产环境',
+  '回滚',
+  '撤回',
+  '补丁',
+  '应用补丁',
+  'apply补丁',
+  '修改环境变量',
+  '环境变量',
+  '配置文件',
+  '企业微信主链路',
+  '加密解密',
+  '解密',
+  'nginx配置'
+];
 
 /**
  * 从任务文本中提取关键词
