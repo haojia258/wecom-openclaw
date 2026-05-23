@@ -81,7 +81,7 @@ function generateDispatchPayload(task) {
     capabilities: config.capabilities,
     generatedAt: new Date().toISOString(),
     status: 'pending', // pending | accepted | running | done | failed
-    _note: 'v0.4 — dispatch payload only. No real AI API call.',
+    _note: 'v0.5 — Codex/OpenAI supports real AI API call. Other workers remain mock.',
   };
 
   return {

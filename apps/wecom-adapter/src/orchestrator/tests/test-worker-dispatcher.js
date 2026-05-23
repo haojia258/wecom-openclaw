@@ -99,10 +99,10 @@ const defaultTask = { taskId: 'task-default', userRequest: 'test' };
 const defaultResult = generateDispatchPayload(defaultTask);
 assert(defaultResult.assignee === 'workbuddy', 'default assignee should be workbuddy');
 
-// ── Test 9: generateDispatchPayload — v0.4 note ──
-console.log('\n── Test 9: generateDispatchPayload — v0.4 note ──');
-assert(codexResult.payload._note.includes('v0.4'), 'payload should have v0.4 note');
-assert(codexResult.payload._note.includes('dispatch payload only'), 'should note no real API call');
+// ── Test 9: generateDispatchPayload — v0.5 note ──
+console.log('\n── Test 9: generateDispatchPayload — v0.5 note ──');
+assert(codexResult.payload._note.includes('v0.5'), 'payload should have v0.5 note');
+assert(codexResult.payload._note.includes('real AI API call'), 'should note real AI API call');
 
 // ── Test 10: listAssignees ──
 console.log('\n── Test 10: listAssignees ──');
