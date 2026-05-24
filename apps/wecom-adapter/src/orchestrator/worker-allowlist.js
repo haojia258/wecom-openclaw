@@ -24,6 +24,11 @@
  * Phase2-B: Worker Safety Layer
  */
 
+/** 系统安全标记 — 这些字符串是系统注解，不应被 blocklist 误伤扫描 */
+var SYSTEM_SAFETY_MARKERS = [
+  'REVIEW_ONLY__NO_AUTO_APPLY',
+];
+
 var ALLOWED_KEYWORDS = ['review', 'summary', 'analysis', 'planner'];
 
 var BLOCKED_KEYWORDS = [
@@ -73,7 +78,14 @@ function extractTaskText(task) {
   if (task.description) {
     parts.push(task.description);
   }
-  return parts.join(' ').toLowerCase();
+  var text = parts.join(' ').toLowerCase();
+
+  // 剥离系统安全标记，避免对安全标记本身进行关键词误伤
+  for (var k = 0; k < SYSTEM_SAFETY_MARKERS.length; k++) {
+    text = text.split(SYSTEM_SAFETY_MARKERS[k].toLowerCase()).join('');
+  }
+
+  return text;
 }
 
 /**
@@ -130,6 +142,11 @@ function isAllowedText(text) {
   if (!text) return false;
   var lower = text.toLowerCase();
 
+  // 剥离系统安全标记，避免误伤
+  for (var k = 0; k < SYSTEM_SAFETY_MARKERS.length; k++) {
+    lower = lower.split(SYSTEM_SAFETY_MARKERS[k].toLowerCase()).join('');
+  }
+
   // 先查禁止
   for (var i = 0; i < BLOCKED_KEYWORDS.length; i++) {
     if (lower.indexOf(BLOCKED_KEYWORDS[i]) !== -1) {
@@ -164,4 +181,5 @@ module.exports = {
   // 常量
   ALLOWED_KEYWORDS: ALLOWED_KEYWORDS,
   BLOCKED_KEYWORDS: BLOCKED_KEYWORDS,
+  SYSTEM_SAFETY_MARKERS: SYSTEM_SAFETY_MARKERS,
 };

@@ -191,6 +191,24 @@ assert(lists2.blocked.indexOf('修改环境变量') !== -1, 'blocked should incl
 assert(lists2.blocked.indexOf('nginx配置') !== -1, 'blocked should include nginx配置');
 assert(lists2.blocked.indexOf('.env') !== -1, 'blocked should include .env');
 
+// Test 31: 系统安全标记 REVIEW_ONLY__NO_AUTO_APPLY 不触发 block（Phase B 灰度修复）
+console.log('\nTest 31: System safety marker REVIEW_ONLY__NO_AUTO_APPLY should NOT trigger block');
+var r31 = allowlist.check({ userRequest: '运营 summary 分析', description: 'REVIEW_ONLY__NO_AUTO_APPLY' });
+assert(r31.allowed === true, 'REVIEW_ONLY__NO_AUTO_APPLY in description should NOT be blocked');
+assert(r31.matchedKeyword === 'summary', 'matchedKeyword should be summary (not blocked by safety marker)');
+
+// Test 32: "请 apply patch" 仍触发 block（Phase B 灰度修复 — 用户意图须拦截）
+console.log('\nTest 32: "请 apply patch" should still trigger block');
+var r32 = allowlist.check({ userRequest: '请 apply patch 到 review 分支', description: 'REVIEW_ONLY__NO_AUTO_APPLY' });
+assert(r32.allowed === false, '"请 apply patch" should still be blocked even with safety marker');
+assert(r32.reason.indexOf('BLOCKED_KEYWORD') !== -1, 'reason should be BLOCKED_KEYWORD for apply');
+
+// Test 33: "应用补丁到生产" 仍触发 block（Phase B 灰度修复 — 中文用户意图须拦截）
+console.log('\nTest 33: "应用补丁到生产" should still trigger block');
+var r33 = allowlist.check({ userRequest: '应用补丁到生产 review 分析', description: 'REVIEW_ONLY__NO_AUTO_APPLY' });
+assert(r33.allowed === false, '"应用补丁到生产" should still be blocked even with safety marker');
+assert(r33.reason.indexOf('BLOCKED_KEYWORD') !== -1, 'reason should be BLOCKED_KEYWORD for 应用补丁');
+
 // Summary
 console.log('\n=== Results: ' + passed + ' passed, ' + failed + ' failed ===\n');
 process.exit(failed > 0 ? 1 : 0);

@@ -32,6 +32,21 @@ var loader = require('./workers/worker-registry-loader');
 /** 生产数据目录 */
 var PRODUCTION_DATA_DIR = '/opt/wecom-openclaw/logs/doudian';
 
+/** 本地回退路径（生产路径不可用时自动回退到项目相对路径） */
+var LOCAL_DATA_DIR = path.resolve(__dirname, '../../../../logs/doudian');
+
+/**
+ * 解析有效的数据目录（兼容本地开发与生产环境）
+ * 优先使用生产路径，不存在时回退到项目本地路径
+ * @returns {string} 有效的数据目录路径
+ */
+function resolveDataDir() {
+  if (fs.existsSync(PRODUCTION_DATA_DIR)) {
+    return PRODUCTION_DATA_DIR;
+  }
+  return LOCAL_DATA_DIR;
+}
+
 /** 编排 Worker ID 列表（按固定顺序） */
 var ORCHESTRATION_WORKER_IDS = Object.freeze([
   'planner-summary-worker',
@@ -82,7 +97,7 @@ function readJson(filePath) {
  * @returns {{ success: boolean, data: object, missing: string[] }}
  */
 function loadOpsData(dataDir) {
-  var dir = dataDir || PRODUCTION_DATA_DIR;
+  var dir = dataDir || resolveDataDir();
   var data = {};
   var missing = [];
 
@@ -862,4 +877,6 @@ module.exports = {
   SECTION_MAP: SECTION_MAP,
   SAFETY_NOTE: SAFETY_NOTE,
   PRODUCTION_DATA_DIR: PRODUCTION_DATA_DIR,
+  LOCAL_DATA_DIR: LOCAL_DATA_DIR,
+  resolveDataDir: resolveDataDir,
 };
