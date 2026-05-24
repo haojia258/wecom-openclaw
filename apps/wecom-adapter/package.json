@@ -11,7 +11,9 @@
     "test:agents": "node src/agents/test-agent.js",
     "test:ops-summary": "node src/commands/test-ops-summary.js",
     "test:commands": "node src/commands/test-command-center-resolve.js",
-    "test:scheduler": "node src/scheduler/test-scheduler.js"
+    "test:scheduler": "node src/scheduler/test-scheduler.js",
+    "test:worker-spec-parser": "node src/orchestrator/tests/test-worker-spec-parser.js",
+    "test:worker-spec-validator": "node src/orchestrator/tests/test-worker-spec-validator.js"
   },
   "dependencies": {
     "express": "^4.18.2",
