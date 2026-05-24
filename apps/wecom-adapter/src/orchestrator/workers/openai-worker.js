@@ -141,62 +141,63 @@ function getProxyConfig() {
  * @returns {https.Agent}
  */
 function createProxyAgent(proxyCfg) {
-  // Phase2-D: 使用 net 模块直连 CONNECT 方式 (兼容 SSH 隧道 + sing-box)
-  // 原 http.request(CONNECT) 方式在 SSH 隧道代理链存在 TLS 兼容问题
-  return new https.Agent({
-    keepAlive: false,
-    createConnection: function (options, callback) {
-      const targetHost = options.hostname;
-      const targetPort = options.port || 443;
-      const sock = new net.Socket();
+  // Phase2-D: 使用原型继承创建 Agent (Node 20 不支持 options 传入 createConnection)
+  // 采用 net.Socket + 手动 CONNECT + TLS 升级 (兼容 SSH 隧道 + sing-box 代理链)
+  function ProxyAgent() {
+    https.Agent.call(this, { keepAlive: false });
+  }
+  require('util').inherits(ProxyAgent, https.Agent);
 
-      sock.connect({ host: proxyCfg.host, port: proxyCfg.port }, function () {
-        // 构建 CONNECT 请求
-        let connectReq = 'CONNECT ' + targetHost + ':' + targetPort + ' HTTP/1.1\r\n' +
-          'Host: ' + targetHost + ':' + targetPort + '\r\n';
+  var authHeader = '';
+  if (proxyCfg.user) {
+    authHeader = 'Basic ' + Buffer.from(proxyCfg.user + ':' + proxyCfg.pass).toString('base64');
+  }
 
-        if (proxyCfg.user) {
-          const auth = Buffer.from(proxyCfg.user + ':' + proxyCfg.pass).toString('base64');
-          connectReq += 'Proxy-Authorization: Basic ' + auth + '\r\n';
+  ProxyAgent.prototype.createConnection = function (options, callback) {
+    var targetHost = options.host || options.hostname;
+    var targetPort = options.port || 443;
+    var sock = new net.Socket();
+
+    sock.connect({ host: proxyCfg.host, port: proxyCfg.port }, function () {
+      var connectReq = 'CONNECT ' + targetHost + ':' + targetPort + ' HTTP/1.1\r\n' +
+        'Host: ' + targetHost + ':' + targetPort + '\r\n';
+      if (authHeader) {
+        connectReq += 'Proxy-Authorization: ' + authHeader + '\r\n';
+      }
+      connectReq += '\r\n';
+      sock.write(connectReq);
+
+      var buf = '';
+      sock.on('data', function onProxyResponse(d) {
+        buf += d.toString();
+        if (buf.indexOf('\r\n\r\n') === -1) return;
+        sock.removeListener('data', onProxyResponse);
+
+        if (buf.indexOf('200') === -1) {
+          sock.destroy();
+          return callback(new Error('代理 CONNECT 失败: ' + buf.split('\r\n')[0]));
         }
 
-        connectReq += '\r\n';
-        sock.write(connectReq);
+        var tlsSocket = tls.connect({
+          socket: sock,
+          servername: targetHost,
+          rejectUnauthorized: false,
+        }, function () {
+          callback(null, tlsSocket);
+        });
 
-        // 等待 CONNECT 响应
-        let buf = '';
-        sock.on('data', function onProxyResponse(d) {
-          buf += d.toString();
-          if (buf.indexOf('\r\n\r\n') === -1) return;
-          // CONNECT 响应完整
-          sock.removeListener('data', onProxyResponse);
-
-          const statusLine = buf.split('\r\n')[0];
-          if (statusLine.indexOf('200') === -1) {
-            sock.destroy();
-            return callback(new Error('代理 CONNECT 失败: ' + statusLine));
-          }
-
-          // TLS 升级
-          const tlsSocket = tls.connect({
-            socket: sock,
-            servername: targetHost,
-            rejectUnauthorized: false,  // sing-box 代理链可能触发证书不匹配
-          }, function () {
-            callback(null, tlsSocket);
-          });
-
-          tlsSocket.on('error', function (err) {
-            callback(err);
-          });
+        tlsSocket.on('error', function (err) {
+          callback(err);
         });
       });
+    });
 
-      sock.on('error', function (err) {
-        callback(err);
-      });
-    },
-  });
+    sock.on('error', function (err) {
+      callback(err);
+    });
+  };
+
+  return new ProxyAgent();
 }
 
 /**
