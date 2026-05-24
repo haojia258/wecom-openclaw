@@ -172,17 +172,24 @@ echo "$(date): restarted sing-box, result: $?" >> logs/relay-ops.log
 
 所有涉及企微回调逻辑的修改（包括 `command-center.js`、`router.js`、`index.js`、`skills.js`），**必须** 先在 staging 环境验证。
 
-当前 staging 环境状态：🚧 **尚未搭建**
+当前 staging 环境状态：📋 **已设计，待搭建** — 详见 `docs/deploy/staging-architecture.md`
 
-**临时方案**（staging 搭建前）：
+**Staging 环境架构**：
+- 日本服务器（43.163.229.96）作为 staging 承载节点
+- 独立目录 `/opt/wecom-openclaw-staging/`，端口 `3101`
+- 独立企业微信测试应用（AgentID / Token / EncodingAESKey）
+- PM2 进程名 `wecom-adapter-staging`
+- 不修改 relay/OpenAI 链路，不重启 `sing-box` / `autossh`
+- 详见 `docs/deploy/staging-architecture.md` 和 `docs/workflows/staging-release-flow.md`
+
+**Staging 搭建前的临时方案**：
 - 修改 `command-center.js` 后，先 `npm run test:commands` 全通过
 - 部署到生产后，立即用企微发送 `/帮助` `/状态` 验证回调正常
 - 如果回调失败：**立即 rollback**（规则 5）
 
 **Staging 环境搭建后**：
-- [ ] 北京服务器搭建 staging（不同端口，如 3002）
-- [ ] 企微创建测试应用（独立 AgentID）
-- [ ] 所有回调修改先到 staging 验证，再 deploy 生产
+- [ ] 所有回调修改先 deploy staging，验证通过后再 deploy production
+- [ ] 企微回调变更必须通过 staging 测试应用验证
 
 ---
 
