@@ -172,5 +172,40 @@ test('skills.execute({ text: "ops-summary" }) returns string', async () => {
   assert(typeof result === 'string', `should return string, got ${typeof result}`);
 });
 
+// === /今日运营 相关 ===
+test('resolve /今日运营 returns handler', () => {
+  const r = resolve('/今日运营');
+  assert(r && typeof r.handler === 'function', '/今日运营 should return { handler }');
+  assert(r.args === '', 'args should be empty for exact match');
+});
+
+test('resolve /todayops returns handler', () => {
+  const r = resolve('/todayops');
+  assert(r && typeof r.handler === 'function', '/todayops alias should work');
+});
+
+test('resolve /运营日报 returns handler', () => {
+  const r = resolve('/运营日报');
+  assert(r && typeof r.handler === 'function', '/运营日报 alias should work');
+});
+
+test('resolve /日报 returns handler', () => {
+  const r = resolve('/日报');
+  assert(r && typeof r.handler === 'function', '/日报 alias should work');
+});
+
+test('getCommandList includes /今日运营', () => {
+  const list = getCommandList();
+  assert(list.includes('/今日运营'), 'getCommandList should include /今日运营');
+});
+
+test('resolve("/今日运营").handler() returns string', () => {
+  const r = resolve('/今日运营');
+  assert(r && typeof r.handler === 'function');
+  const result = r.handler({ mock: true });
+  assert(typeof result === 'string', 'should return string');
+  assert(result.length > 0, 'should not be empty');
+});
+
 console.log(`\n共 ${passed + failed} 个测试，${passed} 通过，${failed} 失败`);
 if (failed > 0) process.exit(1);
