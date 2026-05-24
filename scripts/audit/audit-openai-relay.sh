@@ -60,12 +60,19 @@ ssh -q "$TOKYO" "ss -tlnp 2>/dev/null | grep -E '1080|1087|50000|18080' || echo 
 # ─── 5. 本地连通性测试（通过 relay）─────
 echo ""
 echo "── Relay Connectivity Test ──"
-# 测试 Tokyo 的 HTTP proxy（假设本地有 SSH tunnel 到 Tokyo）
-TOKYO_HTTP_PORT=18080  # 从 memory 得知
-if curl -s --max-time 5 -x "socks5://127.0.0.1:$TOKYO_HTTP_PORT" "https://api.openai.com/v1/models" -H "Authorization: Bearer test" 2>&1 | grep -q "invalid_api_key\|Incorrect API key"; then
-  echo "  [OK] OpenAI API reachable via relay (got auth error = connection OK)"
+SOCKS5_PROXY="socks5://127.0.0.1:1087"
+HTTP_PROXY="http://127.0.0.1:18080"
+
+if curl -s --max-time 5 -x "$SOCKS5_PROXY" "https://api.openai.com/v1/models" -H "Authorization: Bearer test" 2>&1 | grep -q "invalid_api_key\|Incorrect API key"; then
+  echo "  [OK] OpenAI API reachable via SOCKS5 relay ($SOCKS5_PROXY)"
 else
-  echo "  [WARN] OpenAI API not reachable via relay (or different error)"
+  echo "  [WARN] OpenAI API not reachable via SOCKS5 relay ($SOCKS5_PROXY), or returned a different error"
+fi
+
+if curl -s --max-time 5 -x "$HTTP_PROXY" "https://api.openai.com/v1/models" -H "Authorization: Bearer test" 2>&1 | grep -q "invalid_api_key\|Incorrect API key"; then
+  echo "  [OK] OpenAI API reachable via HTTP proxy ($HTTP_PROXY)"
+else
+  echo "  [WARN] OpenAI API not reachable via HTTP proxy ($HTTP_PROXY), or returned a different error"
 fi
 
 # ─── 6. 北京 → 东京 隧道状态 ──────────
@@ -96,5 +103,6 @@ echo "=== OpenAI Relay Audit Done ==="
 echo ""
 echo "📋 Manual follow-up:"
 echo "  1. Verify autossh systemd is enabled (for reboot persistence)"
-echo "  2. Test actual API call: curl -x socks5://127.0.0.1:1087 https://api.openai.com/v1/models -H 'Authorization: Bearer sk-...'"
-echo "  3. Check sing-box logs: journalctl -u sing-box -n 50"
+echo "  2. Test SOCKS5: curl -x socks5://127.0.0.1:1087 https://api.openai.com/v1/models -H 'Authorization: Bearer sk-...'"
+echo "  3. Test HTTP proxy: curl -x http://127.0.0.1:18080 https://api.openai.com/v1/models -H 'Authorization: Bearer sk-...'"
+echo "  4. Check sing-box logs: journalctl -u sing-box -n 50"

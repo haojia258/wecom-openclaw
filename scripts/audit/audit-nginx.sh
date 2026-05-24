@@ -42,7 +42,7 @@ ss -tlnp 2>/dev/null | grep nginx || netstat -tlnp 2>/dev/null | grep nginx || e
 # ─── 5. SSL 证书过期检查 ───────────────
 echo ""
 echo "── SSL Cert Expiry Check ──"
-SSL_CERTS=$(grep -r "ssl_certificate" /etc/nginx/ 2>/dev/null | grep -v "#" | awk '{print $2}' | tr -d ';' | sort -u)
+SSL_CERTS=$(grep -r "ssl_certificate" /etc/nginx/ 2>/dev/null | grep -v "#" | awk '{print $2}' | tr -d ';' | sort -u || true)
 if [ -z "$SSL_CERTS" ]; then
   echo "  [INFO] No SSL certificates found in /etc/nginx/"
 else
@@ -68,7 +68,7 @@ fi
 # ─── 6. wecom 相关配置检查 ─────────────
 echo ""
 echo "── Wecom Adapter Proxy Check ──"
-WG_CONF=$(find /etc/nginx/sites-enabled /etc/nginx/conf.d -name "*.conf" 2>/dev/null | head -5)
+WG_CONF=$(find /etc/nginx/sites-enabled /etc/nginx/conf.d -name "*.conf" 2>/dev/null | head -5 || true)
 if [ -z "$WG_CONF" ]; then
   echo "  [INFO] No nginx site configs found"
 else
@@ -82,7 +82,7 @@ else
         echo "  [OK] gzip appears OFF for Wecom"
       fi
       # 检查 proxy_pass
-      grep "proxy_pass" "$conf" 2>/dev/null | sed 's/^/    /'
+      grep "proxy_pass" "$conf" 2>/dev/null | sed 's/^/    /' || true
     fi
   done
 fi
@@ -94,10 +94,10 @@ NGINX_LOG="/var/log/nginx/"
 if [ -d "$NGINX_LOG" ]; then
   find "$NGINX_LOG" -name "*.log" | while read log; do
     if [ -r "$log" ]; then
-      errs=$(tail -50 "$log" 2>/dev/null | grep -E " 4[0-9]{2} | 5[0-9]{2} " | wc -l)
+      errs=$(tail -50 "$log" 2>/dev/null | grep -E " 4[0-9]{2} | 5[0-9]{2} " | wc -l || true)
       if [ "$errs" -gt 0 ]; then
         echo "  [WARN] $log: $errs errors in last 50 lines"
-        tail -50 "$log" | grep -E " 4[0-9]{2} | 5[0-9]{2} " | tail -3 | sed 's/^/    /'
+        tail -50 "$log" | grep -E " 4[0-9]{2} | 5[0-9]{2} " | tail -3 | sed 's/^/    /' || true
       else
         echo "  [OK] $log: no recent 4xx/5xx"
       fi

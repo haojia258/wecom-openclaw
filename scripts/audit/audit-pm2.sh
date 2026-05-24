@@ -23,7 +23,7 @@ echo "[INFO] PM2 version: $(pm2 -v)"
 echo ""
 echo "── Process List ──"
 pm2 jlist | python3 -c "
-import sys, json
+import sys, json, time
 try:
     data = json.load(sys.stdin)
     for p in data:
@@ -32,9 +32,6 @@ try:
         pm_id  = p.get('pm_id', '?')
         status = p.get('pm2_env', {}).get('status', '?')
         restart = p.get('pm2_env', {}).get('restart_time', '?')
-        uptime  = p.get('pm2_env', {}).get('pm_uptime', 0)
-        if uptime:
-            uptime = int(time.time() * 1000 - uptime) // 60000 if 'time' in dir(__import__('time')) else '?'
         print(f'  [{pm_id}] {name} | pid={pid} | status={status} | restarts={restart}')
 except Exception as e:
     print(f'  [WARN] parse error: {e}')
@@ -62,26 +59,15 @@ except Exception as e:
 echo ""
 echo "── Node.js Heap Usage ──"
 pm2 jlist | python3 -c "
-import sys, json, subprocess
+import sys, json
 try:
     data = json.load(sys.stdin)
     for p in data:
         pid = p.get('pid')
         name = p.get('name', '?')
-        if not pid or pid == 0: continue
-        try:
-            out = subprocess.check_output(
-                ['node', '--no-warnings', '-e',
-                 \"process.on('warning',()=>{}); const v=process.memoryUsage(); console.log(JSON.stringify({r:v.heapUsed/1024/1024,t:v.heapTotal/1024/1024}))\"],
-                timeout=5
-            )
-            import re
-            m = re.search(r'\{.*\}', out.decode())
-            if m:
-                h = json.loads(m.group())
-                pct = round(h['r'] / h['t'] * 100, 1) if h['t'] else 0
-                print(f'  {name} (pid={pid}): Heap {round(h[\"r\"],1)}/{round(h[\"t\"],1)}MB = {pct}%')
-        except Exception: pass
+        mem = p.get('monit', {}).get('memory', 0)
+        mem_mb = round(mem / 1024 / 1024, 1)
+        print(f'  {name} (pid={pid}): heap unavailable; PM2 RSS={mem_mb}MB')
 except Exception as e:
     print(f'  [WARN] {e}')
 " 2>/dev/null

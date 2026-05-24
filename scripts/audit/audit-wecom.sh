@@ -62,7 +62,7 @@ except Exception as e:
 # ─── 4. Health Endpoint ───────────────────
 echo ""
 echo "── Health Endpoint Check ──"
-HEALTH=$(curl -s --max-time 5 http://127.0.0.1:3001/health 2>/dev/null)
+HEALTH=$(curl -s --max-time 5 http://127.0.0.1:3001/health 2>/dev/null || true)
 if [ -z "$HEALTH" ]; then
   echo "  [ERROR] /health endpoint not responding on port 3001"
 else
@@ -94,7 +94,7 @@ echo "── Vault Connectivity ──"
 VAULT_ADDR=$(grep "VAULT_ADDR" "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d ' ' || echo "http://127.0.0.1:8200")
 if [ -z "$VAULT_ADDR" ]; then VAULT_ADDR="http://127.0.0.1:8200"; fi
 
-VAULT_STATUS=$(curl -s --max-time 5 "$VAULT_ADDR/v1/sys/health" 2>/dev/null)
+VAULT_STATUS=$(curl -s --max-time 5 "$VAULT_ADDR/v1/sys/health" 2>/dev/null || true)
 if [ -z "$VAULT_STATUS" ]; then
   echo "  [ERROR] Vault not reachable at $VAULT_ADDR"
 else
@@ -111,7 +111,7 @@ if [ ! -d "$LOG_DIR" ]; then
   echo "  [INFO] $LOG_DIR not found"
 else
   find "$LOG_DIR" -name "*.log" -mtime -1 2>/dev/null | while read f; do
-    errs=$(grep -i "error\|fatal\|exception" "$f" 2>/dev/null | tail -3)
+    errs=$(grep -i "error\|fatal\|exception" "$f" 2>/dev/null | tail -3 || true)
     if [ -n "$errs" ]; then
       echo "  --- $f ---"
       echo "$errs" | sed 's/^/    /'
