@@ -42,8 +42,8 @@ const WORKER_REGISTRY = Object.freeze({
     workerId: 'planner-summary-worker',
     role: 'planner_summary',
     name: '计划总结 Worker',
-    provider: 'DeepSeek',
-    model: 'deepseek-chat',
+    provider: 'openai',
+    model: 'gpt-4o',
     promptFile: 'apps/wecom-adapter/src/orchestrator/prompts/planner-summary.prompt.md',
     promptVersion: 'v1',
     allowedIntents: Object.freeze([
@@ -76,7 +76,7 @@ const WORKER_REGISTRY = Object.freeze({
     reviewOnly: true,
     requiresHumanApproval: true,
     llmEnabled: true,
-    description: '运营日报/周报汇总、任务规划、意图分析 — DeepSeek Chat',
+    description: '运营日报/周报汇总、任务规划、意图分析 — OpenAI GPT-4o',
   }),
 
   'roi-analysis-worker': Object.freeze({
