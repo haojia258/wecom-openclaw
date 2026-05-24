@@ -210,7 +210,8 @@ function callOpenAI(opts) {
 
   return new Promise(function (resolve, reject) {
     const vault = getVault();
-    const apiKey = vault ? vault.get('OPENAI_API_KEY') : (process.env.OPENAI_API_KEY || '');
+    const vaultKey = vault ? vault.tryGet('OPENAI_API_KEY') : null;
+    const apiKey = vaultKey || process.env.OPENAI_API_KEY || '';
 
     // 1. 检查 API Key
     if (!apiKey) {
