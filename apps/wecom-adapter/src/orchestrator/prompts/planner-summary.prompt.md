@@ -2,6 +2,7 @@
 
 > Worker ID: `planner-summary-worker`
 > Mode: `REVIEW_ONLY`
+> Safety Marker: `REVIEW_ONLY__NO_AUTO_APPLY`
 > requiresHumanApproval: `true`
 > Output: JSON only
 
