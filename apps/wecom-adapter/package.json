@@ -11,7 +11,10 @@
     "test:agents": "node src/agents/test-agent.js",
     "test:ops-summary": "node src/commands/test-ops-summary.js",
     "test:commands": "node src/commands/test-command-center-resolve.js",
-    "test:scheduler": "node src/scheduler/test-scheduler.js"
+    "test:scheduler": "node src/scheduler/test-scheduler.js",
+    "test:v2": "node tests/test-agent-task.cjs",
+    "test:v2:skills": "node tests/test-agent-task.cjs",
+    "test:v2:agents": "node tests/test-agent-task.cjs"
   },
   "dependencies": {
     "express": "^4.18.2",
