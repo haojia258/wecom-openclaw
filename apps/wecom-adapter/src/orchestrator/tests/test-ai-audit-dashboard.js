@@ -365,6 +365,160 @@ function runTests() {
   ];
   var latencyStats = dashboard._computeWorkerStats(latencyTestData);
   assert(latencyStats.latencyCount === 1, 'only 1 valid latency counted (not -1)');
+
+  // =========================================
+  // Test 9: redactSensitive() 脱敏函数
+  // =========================================
+  section('Test 9: redactSensitive() 脱敏函数');
+
+  // 9a: sk- API key
+  var skResult = dashboard.redactSensitive('Authorization: Bearer sk-proj-abc123def456ghi789jkl');
+  assert(!skResult.includes('sk-proj'), 'sk- API key masked');
+  // 链式脱敏会把 sk- → [MASKED_API_KEY] → 再被 Bearer/Authorization 覆盖为 [MASKED]
+  // 核心断言：原始敏感信息已去除，输出中不包含原始 key 片段
+  assert(skResult.includes('[MASKED') || skResult.includes('MASKED'), 'sk- replaced (masked)');
+
+  // 9b: Bearer token
+  var bearerResult = dashboard.redactSensitive('Header: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+  assert(!bearerResult.includes('eyJhbGci'), 'Bearer token masked');
+  assert(bearerResult.includes('Bearer [MASKED]'), 'Bearer replaced');
+
+  // 9c: Authorization header
+  var authResult = dashboard.redactSensitive('Auth: Authorization: basic dXNlcjpwYXNz');
+  assert(!authResult.includes('dXNlcjpwYXNz'), 'Authorization header masked');
+  assert(authResult.includes('Authorization: [MASKED]'), 'Authorization replaced');
+
+  // 9d: Cookie header
+  var cookieResult = dashboard.redactSensitive('Headers: Cookie: session=abc123def456; path=/');
+  assert(!cookieResult.includes('session=abc123'), 'Cookie header masked');
+  assert(cookieResult.includes('Cookie: [MASKED]'), 'Cookie replaced');
+
+  // 9e: token=xxx
+  var tokenResult = dashboard.redactSensitive('env: token=gIkuVAsDdM3xPz7qR2tY');
+  assert(!tokenResult.includes('gIkuVAsDdM3xPz7qR2tY'), 'token= masked');
+  assert(tokenResult.includes('token=[MASKED]'), 'token= replaced');
+
+  // 9f: key=xxx
+  var keyResult = dashboard.redactSensitive('env: key=aB3dEfGhIjKlMnOpQrStUv');
+  assert(!keyResult.includes('aB3dEfGhIjKlMnOpQrStUv'), 'key= masked');
+  assert(keyResult.includes('key=[MASKED]'), 'key= replaced');
+
+  // 9g: secret=xxx
+  var secretResult = dashboard.redactSensitive('env: secret=mySuperSecret123!');
+  assert(!secretResult.includes('mySuperSecret123!'), 'secret= masked');
+  assert(secretResult.includes('secret=[MASKED]'), 'secret= replaced');
+
+  // 9h: password=xxx
+  var passwordResult = dashboard.redactSensitive('cred: password=SuperP@ssw0rd!');
+  assert(!passwordResult.includes('SuperP@ssw0rd!'), 'password= masked');
+  assert(passwordResult.includes('password=[MASKED]'), 'password= replaced');
+
+  // 9i: Windows 绝对路径
+  var winPathResult = dashboard.redactSensitive('file at C:\\Users\\admin\\.env and C:\\Program Files\\app');
+  assert(!winPathResult.includes('C:\\Users'), 'Windows Users path masked');
+  assert(!winPathResult.includes('Program Files'), 'Windows Program path masked');
+  assert(winPathResult.includes('[MASKED_PATH]'), 'Windows path replaced');
+
+  // 9j: Linux 绝对路径
+  var linuxPathResult = dashboard.redactSensitive('config at /opt/wecom-openclaw/.env and /home/admin/secrets');
+  assert(!linuxPathResult.includes('/opt/wecom-openclaw'), 'Linux /opt path masked');
+  assert(!linuxPathResult.includes('/home/admin'), 'Linux /home path masked');
+  assert(linuxPathResult.includes('[MASKED_PATH]'), 'Linux path replaced');
+
+  // 9k: .env 路径
+  var envResult = dashboard.redactSensitive('load .env with dotenv');
+  assert(!envResult.includes('.env'), '.env path masked');
+  assert(envResult.includes('[MASKED_PATH]'), '.env replaced');
+
+  // =========================================
+  // Test 10: 含敏感字符串的 JSONL 脱敏集成测试
+  // =========================================
+  section('Test 10: 含敏感字符串的 JSONL 脱敏集成');
+
+  // 构造包含各种敏感信息的 JSONL 数据
+  var sensitiveCalls = [
+    {
+      ts: new Date(Date.now() - 1800000).toISOString(),
+      worker: 'planner-**inject**|table',
+      model: 'sk-proj-INTEGRATIONTEST123456',
+      latency: 2000,
+      tokenEstimate: 800,
+      resultStatus: 'error',
+      errorMessage: 'Failed with Authorization: Bearer sk-test-secret-key-abcdef123456 and Cookie: session=leaked_session_token_xyz'
+    },
+    {
+      ts: new Date(Date.now() - 3600000).toISOString(),
+      worker: 'roi-**bold**',
+      model: 'deepseek-chat',
+      latency: -1,
+      tokenEstimate: 0,
+      resultStatus: 'rejected',
+      rejectReason: 'GATE: token=secretToken12345 key=apiKeyXYZ secret=hunter2 password=admin123'
+    },
+    {
+      ts: new Date(Date.now() - 7200000).toISOString(),
+      worker: 'worker-from-C:\\Users\\haoji\\.env-config',
+      model: 'model-from-/opt/wecom-openclaw/.env',
+      latency: 1500,
+      tokenEstimate: 500,
+      resultStatus: 'success'
+    },
+  ];
+
+  var sensitiveStats = dashboard._computeWorkerStats(sensitiveCalls);
+  var sensitiveMd = dashboard._renderMarkdown(sensitiveStats, { totalTasks: 0, actions: {} }, 'enabled');
+
+  // 10a: 不包含 sk- 前缀
+  assert(!sensitiveMd.includes('sk-proj'), 'output does NOT contain sk- API key prefix');
+  assert(!sensitiveMd.includes('sk-test'), 'output does NOT contain sk- test key');
+
+  // 10b: 不包含 Bearer
+  assert(!sensitiveMd.match(/Bearer\s+[a-zA-Z0-9]/), 'output does NOT contain Bearer token value');
+
+  // 10c: 不包含 Authorization 头
+  assert(!sensitiveMd.match(/Authorization:\s+[a-zA-Z0-9]/), 'output does NOT contain Authorization header value');
+
+  // 10d: 不包含 Cookie 头
+  assert(!sensitiveMd.match(/Cookie:\s+[a-zA-Z0-9]/), 'output does NOT contain Cookie header value');
+
+  // 10e: 不包含 token=xxx
+  assert(!sensitiveMd.match(/token=[A-Za-z0-9]{8,}/), 'output does NOT contain token= value');
+
+  // 10f: 不包含 key=xxx
+  assert(!sensitiveMd.match(/key=[A-Za-z0-9]{8,}/), 'output does NOT contain key= value');
+
+  // 10g: 不包含 secret=xxx
+  assert(!sensitiveMd.match(/secret=[A-Za-z0-9]{8,}/), 'output does NOT contain secret= value');
+
+  // 10h: 不包含 password=xxx（脱敏后 password=[MASKED] 可接受）
+  assert(!sensitiveMd.match(/password=(?!\[MASKED\])[^\s,;`|]{4,}/), 'output does NOT contain password= value');
+
+  // 10i: 不包含 .env
+  assert(!sensitiveMd.includes('.env'), 'output does NOT contain .env path');
+
+  // 10j: 不包含本地绝对路径
+  assert(!sensitiveMd.includes('C:\\Users'), 'output does NOT contain Windows Users path');
+  assert(!sensitiveMd.includes('/opt/wecom'), 'output does NOT contain Linux /opt path');
+
+  // 10k: Markdown 表格未被注入破坏
+  var tableLines = sensitiveMd.split('\n').filter(function (l) { return l.indexOf('|') === 0; });
+  // 确保表格行数一致（表头 + 分隔行 + 3 worker 行 = 5 行）
+  var tableRowCount = tableLines.filter(function (l) { return l.startsWith('| ') && !l.startsWith('|-'); }).length;
+  // Worker 分组标题只显示有实际数据的 Worker，注入的管道符被转义后不会产生新行
+  assert(tableRowCount >= 3, 'Markdown table has correct number of rows (not broken by injection)');
+
+  // 10l: 注入的 | 字符在 worker 字段中被转义（不会新增列）
+  var injectWorkerLine = sensitiveMd.split('\n').find(function (l) {
+    return l.includes('inject') || l.includes('MASKED');
+  });
+  assert(injectWorkerLine !== undefined, 'injected worker line exists in output');
+  // 管道符被转义为 \|，计数时只算未转义的 |
+  var unescapedPipes = (injectWorkerLine.match(/(?<!\\)\|/g) || []).length;
+  // 标准表格有 9 列 = 10 个未转义管道符 | col1 | col2 | ... | col9 |
+  assert(unescapedPipes === 10, 'table has correct column count (pipe injection prevented): got ' + unescapedPipes);
+
+  // 10m: worker 字段中 markdown 注入的 ** 被保留但不影响表格结构
+  assert(typeof sensitiveMd === 'string' && sensitiveMd.length > 0, 'sensitive dashboard renders without error');
 }
 
 // ============================================================

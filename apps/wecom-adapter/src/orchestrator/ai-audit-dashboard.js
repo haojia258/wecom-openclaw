@@ -330,6 +330,93 @@ function formatTime(ts) {
 }
 
 /**
+ * 统一脱敏函数 — 对所有输出到企业微信 Markdown 的字段做安全处理
+ *
+ * 覆盖:
+ *   - sk- 开头 API key
+ *   - Bearer token / Authorization header
+ *   - Cookie header
+ *   - token= / key= / secret= / password= 键值对
+ *   - Windows 绝对路径 (C:\, D:\ 等)
+ *   - Linux 绝对路径 (/home, /opt, /etc, /root 等)
+ *   - .env 路径片段
+ *
+ * @param {*} value - 任意值（字符串/数字/对象等）
+ * @returns {string} 脱敏后的安全字符串
+ */
+function redactSensitive(value) {
+  if (value == null) return '';
+  if (typeof value !== 'string') value = String(value);
+
+  // 1. sk- 开头的 API key（OpenAI 格式）
+  value = value.replace(/\bsk-[a-zA-Z0-9\-_]{10,}\b/g, '[MASKED_API_KEY]');
+
+  // 2. Bearer token（独立或跟在 Authorization: 后面）
+  value = value.replace(/\bBearer\s+[^,\s\n\r|]{10,}/gi, 'Bearer [MASKED]');
+
+  // 3. Authorization: xxx 完整 header（允许空格，匹配多词值如 Bearer xxx）
+  value = value.replace(/\bAuthorization\s*:\s*[^,\n\r|]{10,}/gi, 'Authorization: [MASKED]');
+
+  // 4. Cookie header
+  value = value.replace(/\bCookie\s*:\s*[^\s;`]{10,}/gi, 'Cookie: [MASKED]');
+
+  // 5. token=xxx 键值对
+  value = value.replace(/\btoken\s*=\s*['"]?[a-zA-Z0-9\-_\.\+]{6,}['"]?/gi, 'token=[MASKED]');
+
+  // 6. key=xxx 键值对
+  value = value.replace(/\bkey\s*=\s*['"]?[a-zA-Z0-9\-_\.\+]{6,}['"]?/gi, 'key=[MASKED]');
+
+  // 7. secret=xxx 键值对
+  value = value.replace(/\bsecret\s*=\s*['"]?[a-zA-Z0-9\-_\.\+]{6,}['"]?/gi, 'secret=[MASKED]');
+
+  // 8. password=xxx 键值对
+  value = value.replace(/\bpassword\s*=\s*['"]?[^\s,'";`|]{4,}['"]?/gi, 'password=[MASKED]');
+
+  // 9. Windows 绝对路径 (C:\Users\xxx, D:\path\xxx 等)
+  value = value.replace(/[A-Za-z]:\\(?:Users|Program|Windows|WINDOWS|ProgramData)[^,;\s]*/gi, '[MASKED_PATH]');
+
+  // 10. Linux 绝对路径 (/home, /opt, /etc, /root, /var, /usr, /tmp 开头)
+  value = value.replace(/\/(?:home|opt|etc|root|var|usr|tmp)\/[^,\s;|]*/g, '[MASKED_PATH]');
+
+  // 11. .env 路径片段（含独立 .env 词）
+  value = value.replace(/[^\s,;|]*\\\.env[^\s,;|]*/gi, '[MASKED_PATH]');
+  value = value.replace(/[^\s,;|]*\/\.env[^\s,;|]*/g, '[MASKED_PATH]');
+  // 独立 .env 词（不被字母数字包围）
+  value = value.replace(/(^|\s)\.env(?=\s|$)/g, '$1[MASKED_PATH]');
+
+  return value;
+}
+
+/**
+ * Markdown 转义 — 防止表格注入和格式破坏
+ *
+ * 在 Markdown 表格单元格中：
+ *   - | 会被解析为列分隔符，需要转义为 \|
+ *   - 反引号、星号等可安全保留（WeChat Work 支持）
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+function escapeMarkdown(value) {
+  if (value == null) return '';
+  if (typeof value !== 'string') value = String(value);
+  // 对 Markdown 表格有特殊含义的字符做转义
+  value = value.replace(/\|/g, '\\|');
+  return value;
+}
+
+/**
+ * 安全字段处理 — 脱敏 + Markdown 转义
+ * 所有输出到企业微信 Markdown 的字段都必须经过此函数
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+function sanitizeField(value) {
+  return escapeMarkdown(redactSensitive(value));
+}
+
+/**
  * 状态徽章
  */
 function statusBadge(status) {
@@ -380,9 +467,10 @@ function renderMarkdown(workerStats, taskStats, featureGateStatus) {
   var workerNames = Object.keys(workerStats.byWorker);
   if (workerNames.length > 0) {
     lines.push('## 👷 Worker 分组');
+    lines.push('> failure = error + rejected（失败包含错误和拒绝）');
     lines.push('');
-    lines.push('| Worker | Provider | Model | 调用 | 成功 | 失败 | 延迟(avg) | Token |');
-    lines.push('|--------|----------|-------|------|------|------|-----------|-------|');
+    lines.push('| Worker | Provider | Model | 调用 | 成功 | 失败 | 拒绝 | 延迟(avg) | Token |');
+    lines.push('|--------|----------|-------|------|------|------|------|-----------|-------|');
 
     workerNames.forEach(function (name) {
       var ws = workerStats.byWorker[name];
@@ -392,12 +480,13 @@ function renderMarkdown(workerStats, taskStats, featureGateStatus) {
         : 0;
 
       lines.push(
-        '| ' + name +
-        ' | ' + info.provider +
-        ' | ' + info.model +
+        '| ' + sanitizeField(name) +
+        ' | ' + sanitizeField(info.provider) +
+        ' | ' + sanitizeField(info.model) +
         ' | ' + ws.total +
         ' | ' + ws.success +
         ' | ' + ws.error +
+        ' | ' + ws.rejected +
         ' | ' + formatLatency(wAvgLat) +
         ' | ~' + formatTokens(ws.tokens) +
         ' |'
@@ -416,17 +505,18 @@ function renderMarkdown(workerStats, taskStats, featureGateStatus) {
       var badge = statusBadge(f.resultStatus);
       var reason = '';
       if (f.resultStatus === 'rejected' && f.rejectReason) {
-        reason = f.rejectReason;
+        reason = sanitizeField(f.rejectReason);
       } else if (f.resultStatus === 'error' && f.errorMessage) {
-        // sanitize: 最多显示 80 字符
-        reason = f.errorMessage.length > 80
-          ? f.errorMessage.substring(0, 80) + '...'
-          : f.errorMessage;
+        // sanitize: 脱敏后截断到 80 字符
+        var sanitized = sanitizeField(f.errorMessage);
+        reason = sanitized.length > 80
+          ? sanitized.substring(0, 80) + '...'
+          : sanitized;
       } else {
         reason = '(无详细信息)';
       }
 
-      lines.push((i + 1) + '. ' + badge + ' `' + time + '` **' + (f.worker || 'unknown') + '** (' + (f.model || '?') + ')');
+      lines.push((i + 1) + '. ' + badge + ' `' + time + '` **' + sanitizeField(f.worker || 'unknown') + '** (' + sanitizeField(f.model || '?') + ')');
       lines.push('   > ' + reason);
     });
     lines.push('');
@@ -444,7 +534,7 @@ function renderMarkdown(workerStats, taskStats, featureGateStatus) {
     if (actionNames.length > 0) {
       lines.push('');
       actionNames.forEach(function (action) {
-        lines.push('- ' + action + ': ' + taskStats.actions[action] + ' 次');
+        lines.push('- ' + sanitizeField(action) + ': ' + taskStats.actions[action] + ' 次');
       });
     }
     lines.push('');
@@ -535,6 +625,10 @@ function generateMock() {
 module.exports = {
   generate: generate,
   generateMock: generateMock,
+  // 安全函数（对外导出供测试用）
+  redactSensitive: redactSensitive,
+  escapeMarkdown: escapeMarkdown,
+  sanitizeField: sanitizeField,
   // 内部函数导出（供测试使用）
   _loadWorkerCalls: loadWorkerCalls,
   _loadTaskAudits: loadTaskAudits,
