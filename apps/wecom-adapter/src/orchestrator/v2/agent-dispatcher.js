@@ -14,6 +14,7 @@
 const { securityCheck, sanitizeOutput, generateTaskId } = require('./commander-policy');
 const { createTask, updateTask } = require('./task-store');
 const reporter = require('../../wecom/progress-reporter');
+const { STATES } = require('./task-state-machine');
 
 const SUPPORTED_AGENTS = ['codex', 'workbuddy', 'deepseek', 'doubao'];
 
@@ -131,56 +132,69 @@ async function dispatch(params) {
 
   // P6.2: workbuddy + confirm:audit → 委托 workbuddy-agent (真实只读审计)
   if (normalizedAgent === 'workbuddy' && content.indexOf('confirm:audit') !== -1) {
-    // P6.4: 报告状态变更
-    var auditTask = Object.assign({}, task, { status: 'in_progress', updated_at: new Date().toISOString() });
-    safeReport(function() { reporter.reportStatusChange(auditTask, 'pending'); });
+    // P6.6.2: PENDING → PLANNING → RUNNING
+    updateTask(taskId, { status: STATES.PLANNING });
+    updateTask(taskId, { status: STATES.RUNNING });
+
+    var auditTask = Object.assign({}, task, { status: STATES.RUNNING, updated_at: new Date().toISOString() });
+    safeReport(function() { reporter.reportStatusChange(auditTask, STATES.PENDING); });
 
     var auditResult = await workbuddyExecute(content, taskId, command);
 
     // P6.4: 根据结果报告
     if (auditResult.success) {
-      safeReport(function() { reporter.reportTaskCompleted(Object.assign({}, task, { status: 'completed', updated_at: new Date().toISOString(), agent: 'workbuddy' })); });
+      safeReport(function() { reporter.reportTaskCompleted(Object.assign({}, task, { status: STATES.COMPLETED, updated_at: new Date().toISOString(), agent: 'workbuddy' })); });
     } else {
-      safeReport(function() { reporter.reportTaskFailed(Object.assign({}, task, { status: 'failed', updated_at: new Date().toISOString(), agent: 'workbuddy' }), auditResult.error || 'unknown'); });
+      safeReport(function() { reporter.reportTaskFailed(Object.assign({}, task, { status: STATES.FAILED, updated_at: new Date().toISOString(), agent: 'workbuddy' }), auditResult.error || 'unknown'); });
     }
     return auditResult;
   }
 
   // P6.1: codex + confirm:create-pr → 委托 codex-agent (真实 PR 创建)
   if (normalizedAgent === 'codex' && content.indexOf('confirm:create-pr') !== -1) {
-    var codexTask = Object.assign({}, task, { status: 'in_progress', updated_at: new Date().toISOString() });
-    safeReport(function() { reporter.reportStatusChange(codexTask, 'pending'); });
+    // P6.6.2: PENDING → PLANNING → RUNNING
+    updateTask(taskId, { status: STATES.PLANNING });
+    updateTask(taskId, { status: STATES.RUNNING });
+
+    var codexTask = Object.assign({}, task, { status: STATES.RUNNING, updated_at: new Date().toISOString() });
+    safeReport(function() { reporter.reportStatusChange(codexTask, STATES.PENDING); });
 
     var codexResult = await codexExecute(content, taskId, command);
 
     if (codexResult.success) {
-      safeReport(function() { reporter.reportTaskCompleted(Object.assign({}, task, { status: 'completed', updated_at: new Date().toISOString(), agent: 'codex' })); });
+      safeReport(function() { reporter.reportTaskCompleted(Object.assign({}, task, { status: STATES.COMPLETED, updated_at: new Date().toISOString(), agent: 'codex' })); });
     } else {
-      safeReport(function() { reporter.reportTaskFailed(Object.assign({}, task, { status: 'failed', updated_at: new Date().toISOString(), agent: 'codex' }), codexResult.error || 'unknown'); });
+      safeReport(function() { reporter.reportTaskFailed(Object.assign({}, task, { status: STATES.FAILED, updated_at: new Date().toISOString(), agent: 'codex' }), codexResult.error || 'unknown'); });
     }
     return codexResult;
   }
 
   // P6.3: deepseek + confirm:review → 委托 deepseek-agent (真实 PR 审查)
   if (normalizedAgent === 'deepseek' && content.indexOf('confirm:review') !== -1) {
-    var deepseekTask = Object.assign({}, task, { status: 'in_progress', updated_at: new Date().toISOString() });
-    safeReport(function() { reporter.reportStatusChange(deepseekTask, 'pending'); });
+    // P6.6.2: PENDING → PLANNING → RUNNING
+    updateTask(taskId, { status: STATES.PLANNING });
+    updateTask(taskId, { status: STATES.RUNNING });
+
+    var deepseekTask = Object.assign({}, task, { status: STATES.RUNNING, updated_at: new Date().toISOString() });
+    safeReport(function() { reporter.reportStatusChange(deepseekTask, STATES.PENDING); });
 
     var deepseekResult = await deepseekExecute(content, taskId, command);
 
     if (deepseekResult.success) {
-      safeReport(function() { reporter.reportTaskCompleted(Object.assign({}, task, { status: 'completed', updated_at: new Date().toISOString(), agent: 'deepseek' })); });
+      safeReport(function() { reporter.reportTaskCompleted(Object.assign({}, task, { status: STATES.COMPLETED, updated_at: new Date().toISOString(), agent: 'deepseek' })); });
     } else {
-      safeReport(function() { reporter.reportTaskFailed(Object.assign({}, task, { status: 'failed', updated_at: new Date().toISOString(), agent: 'deepseek' }), deepseekResult.error || 'unknown'); });
+      safeReport(function() { reporter.reportTaskFailed(Object.assign({}, task, { status: STATES.FAILED, updated_at: new Date().toISOString(), agent: 'deepseek' }), deepseekResult.error || 'unknown'); });
     }
     return deepseekResult;
   }
 
-  updateTask(taskId, { status: 'in_progress' });
-  var inProgressTask = Object.assign({}, task, { status: 'in_progress', updated_at: new Date().toISOString() });
+  // P6.6.2: PENDING → PLANNING → RUNNING
+  updateTask(taskId, { status: STATES.PLANNING });
+  updateTask(taskId, { status: STATES.RUNNING });
+  var inProgressTask = Object.assign({}, task, { status: STATES.RUNNING, updated_at: new Date().toISOString() });
 
   // P6.4: 状态变更通知
-  safeReport(function() { reporter.reportStatusChange(inProgressTask, 'pending'); });
+  safeReport(function() { reporter.reportStatusChange(inProgressTask, STATES.PENDING); });
 
   const responseFn = AGENT_RESPONSES[normalizedAgent];
   const mockResponse = responseFn ? responseFn(content) : {
@@ -201,12 +215,12 @@ async function dispatch(params) {
   };
 
   updateTask(taskId, {
-    status: 'completed',
+    status: STATES.COMPLETED,
     result: JSON.stringify(result)
   });
 
   var completedTask = Object.assign({}, task, {
-    status: 'completed',
+    status: STATES.COMPLETED,
     updated_at: new Date().toISOString(),
     result: JSON.stringify(result)
   });

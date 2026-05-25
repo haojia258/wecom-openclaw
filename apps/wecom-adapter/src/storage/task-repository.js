@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const taskDb = require('./task-db');
+const sm = require('../orchestrator/v2/task-state-machine');
 
 // ─── JSONL 辅助（与旧 task-store.js 逻辑一致）────────────
 
@@ -72,7 +73,7 @@ function now() {
  */
 function rowToTask(row) {
   if (!row) return null;
-  return {
+  var task = {
     task_id: row.task_id,
     type: row.type,
     agent: row.agent,
@@ -84,6 +85,9 @@ function rowToTask(row) {
     created_at: row.created_at,
     updated_at: row.updated_at
   };
+  // P6.6.2: 标准化旧状态为统一大写状态
+  sm.normalizeTask(task);
+  return task;
 }
 
 function tryParseJSON(str) {
@@ -109,7 +113,7 @@ function createTask(params) {
     type: type,
     agent: agent,
     content: content,
-    status: 'pending',
+    status: sm.STATES.PENDING,
     priority: priority,
     result: null,
     error: null,
@@ -154,6 +158,11 @@ function createTask(params) {
  */
 function updateTask(taskId, updates) {
   updates = updates || {};
+
+  // P6.6.2: 状态字段验证
+  if (updates.status !== undefined) {
+    sm.validateStatus(updates.status);
+  }
 
   if (taskDb.isAvailable()) {
     var db = taskDb.getDb();
@@ -284,8 +293,28 @@ function listTasks(filter) {
       var params = {};
 
       if (filter.status) {
-        conditions.push('status = @status');
-        params.status = filter.status;
+        // P6.6.2: 同时匹配新旧状态以兼容历史数据
+        var normalizedStatus = sm.normalizeState(filter.status);
+        if (filter.status !== normalizedStatus) {
+          // 旧小写 filter → 同时查询大写和小写
+          conditions.push('(status = @status OR status = @status_old)');
+          params.status = normalizedStatus;
+          params.status_old = filter.status;
+        } else {
+          // 已经是标准状态 → 同时查询大写和小写（兼容历史数据）
+          conditions.push('(status = @status OR status = @status_old)');
+          params.status = normalizedStatus;
+          // 生成对应的旧小写版本
+          var oldKeys = Object.keys(sm.STATE_NORMALIZE_MAP);
+          var oldStatus = null;
+          for (var oi = 0; oi < oldKeys.length; oi++) {
+            if (sm.STATE_NORMALIZE_MAP[oldKeys[oi]] === normalizedStatus) {
+              oldStatus = oldKeys[oi];
+              break;
+            }
+          }
+          params.status_old = oldStatus || normalizedStatus;
+        }
       }
       if (filter.agent) {
         conditions.push('agent = @agent');
@@ -320,12 +349,12 @@ function listTasks(filter) {
  * @returns {object[]}
  */
 function getBlockers() {
-  return listTasks({ status: 'blocked' });
+  return listTasks({ status: sm.STATES.BLOCKED });
 }
 
 /**
  * 获取统计信息
- * @returns {{ total: number, pending: number, in_progress: number, completed: number, blocked: number, failed: number }}
+ * @returns {{ total: number, pending: number, in_progress: number, completed: number, blocked: number, failed: number, PENDING: number, PLANNING: number, RUNNING: number, REVIEWING: number, COMPLETED: number, FAILED: number, BLOCKED: number }}
  */
 function getStats() {
   if (taskDb.isAvailable()) {
@@ -338,13 +367,23 @@ function getStats() {
         counts[rows[i].status] = rows[i].count;
         total += rows[i].count;
       }
+      // P6.6.2: 聚合新旧状态计数
       return {
         total: total,
-        pending: counts.pending || 0,
-        in_progress: counts.in_progress || 0,
-        completed: counts.completed || 0,
-        blocked: counts.blocked || 0,
-        failed: counts.failed || 0
+        // 旧小写 key（向后兼容现有消费者）
+        pending: (counts.pending || 0) + (counts.PENDING || 0),
+        in_progress: (counts.in_progress || 0) + (counts.RUNNING || 0),
+        completed: (counts.completed || 0) + (counts.COMPLETED || 0),
+        blocked: (counts.blocked || 0) + (counts.BLOCKED || 0),
+        failed: (counts.failed || 0) + (counts.FAILED || 0),
+        // 新大写 key（P6.6.2 新增）
+        PENDING: (counts.pending || 0) + (counts.PENDING || 0),
+        PLANNING: counts.PLANNING || 0,
+        RUNNING: (counts.in_progress || 0) + (counts.RUNNING || 0),
+        REVIEWING: counts.REVIEWING || 0,
+        COMPLETED: (counts.completed || 0) + (counts.COMPLETED || 0),
+        FAILED: (counts.failed || 0) + (counts.FAILED || 0),
+        BLOCKED: (counts.blocked || 0) + (counts.BLOCKED || 0)
       };
     } catch (_e) {
       // 降级 JSONL
@@ -356,16 +395,26 @@ function getStats() {
   var total2 = tasks.length;
   var byStatus = {};
   for (var j2 = 0; j2 < tasks.length; j2++) {
-    var s = tasks[j2].status;
+    // P6.6.2: 标准化状态后再计数
+    var s = sm.normalizeState(tasks[j2].status);
     byStatus[s] = (byStatus[s] || 0) + 1;
   }
   return {
     total: total2,
-    pending: byStatus.pending || 0,
-    in_progress: byStatus.in_progress || 0,
-    completed: byStatus.completed || 0,
-    blocked: byStatus.blocked || 0,
-    failed: byStatus.failed || 0
+    // 旧小写 key（向后兼容）
+    pending: (byStatus.PENDING || 0),
+    in_progress: (byStatus.RUNNING || 0),
+    completed: (byStatus.COMPLETED || 0),
+    blocked: (byStatus.BLOCKED || 0),
+    failed: (byStatus.FAILED || 0),
+    // 新大写 key（P6.6.2）
+    PENDING: (byStatus.PENDING || 0),
+    PLANNING: (byStatus.PLANNING || 0),
+    RUNNING: (byStatus.RUNNING || 0),
+    REVIEWING: (byStatus.REVIEWING || 0),
+    COMPLETED: (byStatus.COMPLETED || 0),
+    FAILED: (byStatus.FAILED || 0),
+    BLOCKED: (byStatus.BLOCKED || 0)
   };
 }
 
@@ -381,4 +430,6 @@ module.exports = {
   // 导出辅助函数供测试
   _getLogFilePath: getLogFilePath,
   _getLogDir: function() { return LOG_DIR; },
+  // P6.6.2: 暴露状态机供验证
+  _sm: sm,
 };

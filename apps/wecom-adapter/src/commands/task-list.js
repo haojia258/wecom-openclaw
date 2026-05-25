@@ -9,6 +9,15 @@ const desc = '查看所有任务列表 /任务列表';
 
 function formatTaskLine(task) {
   const statusIcons = {
+    // P6.6.2: 统一大写状态 + 旧小写兼容
+    PENDING: '⏳',
+    PLANNING: '📋',
+    RUNNING: '🔄',
+    REVIEWING: '🔍',
+    COMPLETED: '✅',
+    FAILED: '❌',
+    BLOCKED: '🚫',
+    // 旧小写兼容
     pending: '⏳',
     in_progress: '🔄',
     completed: '✅',

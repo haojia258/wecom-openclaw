@@ -20,7 +20,8 @@
     "test:deepseek-agent": "node tests/test-deepseek-agent.cjs",
     "test:progress-reporter": "node tests/test-progress-reporter.cjs",
     "test:planner-agent": "node tests/test-planner-agent.cjs",
-    "test:task-db": "node tests/test-task-db.cjs"
+    "test:task-db": "node tests/test-task-db.cjs",
+    "test:task-state-machine": "node tests/test-task-state-machine.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",
