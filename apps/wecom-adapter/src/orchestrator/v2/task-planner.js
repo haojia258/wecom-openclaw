@@ -1,13 +1,18 @@
 'use strict';
 
 /**
- * task-planner.js - 任务拆解模块 (P6.5 Planner Agent)
+ * task-planner.js - 任务拆解模块 (P6.5 Planner Agent + P6.6.3 Queue)
  *
  * 基于解析后的目标对象，生成任务分解：
  * - 优先级排序 (P1/P2)
  * - Agent 分配
  * - 命令推荐
+ *
+ * P6.6.3 新增: planTasks / previewPlan / getGoalCatalog (基于 agent-queue-builder)
  */
+
+// P6.6.3 依赖 (lazy require plannerAgent 打破循环依赖)
+const { buildQueue, validateGoal, listGoals } = require('./agent-queue-builder');
 
 // ─── 任务模板库 ─────────────────────────────────────────────
 
@@ -218,7 +223,154 @@ function plan(parsedGoal) {
   };
 }
 
+// ============================================================
+//  P6.6.3 Planner Queue — 任务级封装
+// ============================================================
+
+/**
+ * 规划任务执行队列 — P6.6.3 新增
+ *
+ * @param {object} params
+ * @param {string} params.goal      - 业务目标
+ * @param {object} [params.context]  - 可选的业务上下文
+ * @param {number} [params.maxItems] - 最大规划项数
+ * @returns {Promise<object>} 任务规划结果
+ */
+async function planTasks(params) {
+  params = params || {};
+  var goal = params.goal;
+  var context = params.context;
+  var maxItems = params.maxItems;
+
+  // 1. 验证目标
+  var goalCheck = validateGoal(goal);
+  if (!goalCheck.valid) {
+    return {
+      success: false,
+      error: goalCheck.reason,
+    };
+  }
+
+  // 2. 生成执行计划 (lazy require 打破循环依赖)
+  var plannerAgent = require('./planner-agent');
+  var plan = await plannerAgent.generatePlan({
+    goal: goalCheck.normalized,
+    context: context,
+    maxItems: maxItems,
+  });
+
+  if (!plan.success) {
+    return plan;
+  }
+
+  // 3. 将队列项转化为任务草稿
+  var taskDrafts = plan.result.queue.map(function(item) {
+    return {
+      seq:      item.seq,
+      agent:    item.agent,
+      command:  item.command,
+      priority: item.priority,
+      reason:   item.reason,
+      status:   'draft',
+      // 任务草稿不会被 dispatch，需要手动确认
+      actionable: false,
+      action_note: '使用 /任务 ' + item.agent + ' "' + item.command + ': ' + item.reason + '" 手动创建',
+    };
+  });
+
+  // 4. 构建结果
+  return {
+    success:    true,
+    goal:       plan.result.goal,
+    task_id:    plan.task_id,
+    mode:       'plan-only',
+    tasks:      taskDrafts,
+    summary:    plan.result.summary,
+    plan:       plan.result.plan,
+    metadata: {
+      total_tasks:      taskDrafts.length,
+      agents_used:      plan.result.summary.agentsInvolved,
+      priority_range:   plan.result.summary.priorityRange,
+      generated_at:     new Date().toISOString(),
+      planner_status:   plannerAgent.getPlannerStatus(),
+    },
+  };
+}
+
+/**
+ * 预览规划 (轻量版，不写任务记录) — P6.6.3 新增
+ *
+ * @param {object} params
+ * @param {string} params.goal - 业务目标
+ * @returns {object} 预览结果
+ */
+function previewPlan(params) {
+  params = params || {};
+  var goal = params.goal;
+
+  var goalCheck = validateGoal(goal);
+  if (!goalCheck.valid) {
+    return {
+      success: false,
+      error: goalCheck.reason,
+    };
+  }
+
+  var queueResult = buildQueue({ goal: goalCheck.normalized });
+
+  if (!queueResult.success) {
+    return queueResult;
+  }
+
+  return {
+    success:  true,
+    goal:     queueResult.goal,
+    queue:    queueResult.queue,
+    summary:  queueResult.summary,
+    preview:  true,
+    note:     '预览模式: 此队列为只读预览，尚未创建任何任务',
+  };
+}
+
+/**
+ * 获取所有可用目标及其推荐队列概览 — P6.6.3 新增
+ * @returns {object}
+ */
+function getGoalCatalog() {
+  var goals = listGoals();
+
+  var catalog = goals.map(function(g) {
+    var queueResult = buildQueue({ goal: g.key });
+    var agentSet = {};
+    if (queueResult.success) {
+      for (var i = 0; i < queueResult.queue.length; i++) {
+        agentSet[queueResult.queue[i].agent] = true;
+      }
+    }
+    return {
+      key:         g.key,
+      label:       g.label,
+      description: g.description,
+      step_count:  queueResult.success ? queueResult.queue.length : 0,
+      agents:      queueResult.success ? Object.keys(agentSet) : [],
+      first_step:  queueResult.success && queueResult.queue.length > 0
+        ? queueResult.queue[0].agent + ': ' + queueResult.queue[0].command
+        : null,
+    };
+  });
+
+  // lazy require 打破循环依赖
+  var plannerAgent = require('./planner-agent');
+
+  return {
+    catalog:     catalog,
+    total_goals: catalog.length,
+    planner:     plannerAgent.getPlannerStatus(),
+  };
+}
+
 module.exports = {
+  // P6.5 原有
   plan: plan,
   matchTemplates: matchTemplates,
   countAgents: countAgents,
@@ -227,4 +379,8 @@ module.exports = {
   DOMAIN_LABELS: DOMAIN_LABELS,
   CATEGORY_LABELS: CATEGORY_LABELS,
   AGENT_LABELS: AGENT_LABELS,
+  // P6.6.3 新增
+  planTasks:       planTasks,
+  previewPlan:     previewPlan,
+  getGoalCatalog:  getGoalCatalog,
 };

@@ -21,7 +21,8 @@
     "test:progress-reporter": "node tests/test-progress-reporter.cjs",
     "test:planner-agent": "node tests/test-planner-agent.cjs",
     "test:task-db": "node tests/test-task-db.cjs",
-    "test:task-state-machine": "node tests/test-task-state-machine.cjs"
+    "test:task-state-machine": "node tests/test-task-state-machine.cjs",
+    "test:agent-queue-builder": "node tests/test-agent-queue-builder.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",
