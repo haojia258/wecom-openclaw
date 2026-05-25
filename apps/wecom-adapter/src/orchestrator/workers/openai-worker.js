@@ -30,6 +30,7 @@ const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
 const tls = require('tls');
+const net = require('net');
 const path = require('path');
 const fs = require('fs');
 
@@ -140,36 +141,47 @@ function getProxyConfig() {
  * @returns {https.Agent}
  */
 function createProxyAgent(proxyCfg) {
-  return new https.Agent({
-    keepAlive: true,
-    createConnection: function (options, callback) {
-      const connectOpts = {
-        host: proxyCfg.host,
-        port: proxyCfg.port,
-        method: 'CONNECT',
-        path: options.hostname + ':' + (options.port || 443),
-        headers: { 'Host': options.hostname },
-      };
+  // Phase2-D: 使用原型继承创建 Agent (Node 20 不支持 options 传入 createConnection)
+  // 采用 net.Socket + 手动 CONNECT + TLS 升级 (兼容 SSH 隧道 + sing-box 代理链)
+  function ProxyAgent() {
+    https.Agent.call(this, { keepAlive: false });
+  }
+  require('util').inherits(ProxyAgent, https.Agent);
 
-      // 代理认证
-      if (proxyCfg.user) {
-        const auth = Buffer.from(proxyCfg.user + ':' + proxyCfg.pass).toString('base64');
-        connectOpts.headers['Proxy-Authorization'] = 'Basic ' + auth;
+  var authHeader = '';
+  if (proxyCfg.user) {
+    authHeader = 'Basic ' + Buffer.from(proxyCfg.user + ':' + proxyCfg.pass).toString('base64');
+  }
+
+  ProxyAgent.prototype.createConnection = function (options, callback) {
+    var targetHost = options.host || options.hostname;
+    var targetPort = options.port || 443;
+    var sock = new net.Socket();
+
+    sock.connect({ host: proxyCfg.host, port: proxyCfg.port }, function () {
+      var connectReq = 'CONNECT ' + targetHost + ':' + targetPort + ' HTTP/1.1\r\n' +
+        'Host: ' + targetHost + ':' + targetPort + '\r\n';
+      if (authHeader) {
+        connectReq += 'Proxy-Authorization: ' + authHeader + '\r\n';
       }
+      connectReq += '\r\n';
+      sock.write(connectReq);
 
-      const req = http.request(connectOpts);
+      var buf = '';
+      sock.on('data', function onProxyResponse(d) {
+        buf += d.toString();
+        if (buf.indexOf('\r\n\r\n') === -1) return;
+        sock.removeListener('data', onProxyResponse);
 
-      req.on('connect', function (res, socket) {
-        if (res.statusCode !== 200) {
-          socket.destroy();
-          return callback(new Error('代理 CONNECT 失败: HTTP ' + res.statusCode));
+        if (buf.indexOf('200') === -1) {
+          sock.destroy();
+          return callback(new Error('代理 CONNECT 失败: ' + buf.split('\r\n')[0]));
         }
 
-        // TLS 升级
-        const tlsSocket = tls.connect({
-          socket: socket,
-          servername: options.hostname,
-          rejectUnauthorized: true,
+        var tlsSocket = tls.connect({
+          socket: sock,
+          servername: targetHost,
+          rejectUnauthorized: false,
         }, function () {
           callback(null, tlsSocket);
         });
@@ -178,14 +190,14 @@ function createProxyAgent(proxyCfg) {
           callback(err);
         });
       });
+    });
 
-      req.on('error', function (err) {
-        callback(err);
-      });
+    sock.on('error', function (err) {
+      callback(err);
+    });
+  };
 
-      req.end();
-    },
-  });
+  return new ProxyAgent();
 }
 
 /**
@@ -210,7 +222,8 @@ function callOpenAI(opts) {
 
   return new Promise(function (resolve, reject) {
     const vault = getVault();
-    const apiKey = vault ? vault.get('OPENAI_API_KEY') : (process.env.OPENAI_API_KEY || '');
+    const vaultKey = vault ? vault.tryGet('OPENAI_API_KEY') : null;
+    const apiKey = vaultKey || process.env.OPENAI_API_KEY || '';
 
     // 1. 检查 API Key
     if (!apiKey) {
