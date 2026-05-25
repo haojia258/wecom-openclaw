@@ -2,7 +2,7 @@
 
 /**
  * command-center.js - 统一指令注册中心
- * v1.10 - 新增 /今日运营 命令（Today Ops Worker Orchestrator）
+ * v1.11 - 新增 /ai审计 命令（AI Audit Dashboard v1）
  */
 
 // 指令注册表
@@ -31,6 +31,7 @@ const REGISTRY = {
   '/监控':   { file: '../commands/monitor', aliases: ['/monitor', '/生产监控'] },
   '/ai任务': { file: '../commands/ai-task', aliases: ['/aitask', '/AI任务', '/ai-task'] },
   '/今日运营': { file: '../commands/today-ops', aliases: ['/todayops', '/运营日报', '/日报'] },
+  '/ai审计':   { file: '../commands/ai-audit',  aliases: ['/aiaudit', '/AI审计', '/ai审计'] },
 };
 
 // 缓存已加载的 handler（懒加载）
