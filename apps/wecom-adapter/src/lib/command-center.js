@@ -37,6 +37,7 @@ const REGISTRY = {
   '/今日运营': { file: '../commands/today-ops', aliases: ['/todayops', '/运营日报', '/日报'] },
   '/ai审计':   { file: '../commands/ai-audit',  aliases: ['/aiaudit', '/AI审计', '/ai审计'] },
   '/ai灰度': { file: '../commands/ai-grayscale', aliases: ['/aigray'] },
+  '/目标':   { file: '../commands/goal-command', aliases: ['/goal', '/计划', '/拆解'] },
 };
 
 // 缓存已加载的 handler（懒加载）
@@ -75,13 +76,13 @@ function resolve(input) {
 
   // 1. 精确匹配主命令
   if (REGISTRY[trimmed]) {
-    return { handler: loadHandler(trimmed), args: '' };
+    return { handler: loadHandler(trimmed), args: '', cmd: trimmed };
   }
 
   // 2. 精确匹配别名
   for (const [cmd, entry] of Object.entries(REGISTRY)) {
     if (entry.aliases && entry.aliases.includes(trimmed)) {
-      return { handler: loadHandler(cmd), args: '' };
+      return { handler: loadHandler(cmd), args: '', cmd: cmd };
     }
   }
 
@@ -91,7 +92,7 @@ function resolve(input) {
   for (const cmd of sortedCmds) {
     if (trimmed.startsWith(cmd) && trimmed.length > cmd.length) {
       const args = extractArgs(trimmed, cmd);
-      return { handler: loadHandler(cmd), args };
+      return { handler: loadHandler(cmd), args, cmd: cmd };
     }
   }
 
@@ -108,7 +109,7 @@ function resolve(input) {
   for (const { cmd, alias } of allAliases) {
     if (trimmed.startsWith(alias) && trimmed.length > alias.length) {
       const args = extractArgs(trimmed, alias);
-      return { handler: loadHandler(cmd), args };
+      return { handler: loadHandler(cmd), args, cmd: cmd };
     }
   }
 
@@ -118,7 +119,7 @@ function resolve(input) {
     const { resolveSkill } = require('../skills');
     const skillResult = resolveSkill(trimmed);
     if (skillResult) {
-      return { handler: skillAgent.execute.bind(null, trimmed), args: '' };
+      return { handler: skillAgent.execute.bind(null, trimmed), args: '', cmd: '/技能' };
     }
   }
 
@@ -131,7 +132,7 @@ function resolve(input) {
     try {
       const enrollMod = require('../commands/activity-enroll');
       if (enrollMod && typeof enrollMod.execute === 'function') {
-        return { handler: enrollMod.execute, args: trimmed };
+        return { handler: enrollMod.execute, args: trimmed, cmd: '/活动报名' };
       }
     } catch (_) {
       // 静默回退
@@ -152,7 +153,7 @@ function resolve(input) {
     try {
       const activityMod = require('../commands/activity');
       if (activityMod && typeof activityMod.execute === 'function') {
-        return { handler: activityMod.execute, args: trimmed };
+        return { handler: activityMod.execute, args: trimmed, cmd: '/活动' };
       }
     } catch (_) {
       // 如果 activity 模块不存在，静默回退

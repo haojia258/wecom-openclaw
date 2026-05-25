@@ -66,7 +66,7 @@ async function execute(ctx, args) {
     return '错误: 任务内容不能为空\n\n格式: /任务 <agent> <内容>\nAgent: ' + getSupportedAgents().join(' | ');
   }
 
-  const result = await dispatch({ agent: agent, content: content, command: '/任务' });
+  const result = await dispatch({ agent: agent, content: content, command: '/任务', userId: ctx.fromUser });
   return formatResult(result);
 }
 

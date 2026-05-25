@@ -21,20 +21,25 @@ function execute(ctx, args) {
   const progressBar = '█'.repeat(Math.floor(progressPct / 10)) +
     '░'.repeat(10 - Math.floor(progressPct / 10));
 
-  return [
+  var lines = [
     '📊 任务进度',
     '[' + progressBar + '] ' + progressPct + '%',
     '',
     '总计:    ' + stats.total,
     '⏳ 待处理: ' + stats.pending,
-    '🔄 进行中: ' + stats.in_progress,
+    '📋 规划中: ' + (stats.PLANNING || 0),
+    '🔄 进行中: ' + (stats.RUNNING || stats.in_progress),
+    '🔍 审查中: ' + (stats.REVIEWING || 0),
     '✅ 已完成: ' + stats.completed,
     '🚫 阻断项: ' + stats.blocked,
-    '❌ 失败:   ' + stats.failed,
-    '',
-    '使用 /任务列表 查看详情',
-    '使用 /阻断项 查看阻断任务'
-  ].join('\n');
+    '❌ 失败:   ' + stats.failed
+  ];
+
+  lines.push('');
+  lines.push('使用 /任务列表 查看详情');
+  lines.push('使用 /阻断项 查看阻断任务');
+
+  return lines.join('\n');
 }
 
 module.exports = { execute: execute, desc: desc };

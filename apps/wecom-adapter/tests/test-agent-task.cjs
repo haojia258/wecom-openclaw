@@ -11,7 +11,7 @@ const { execute: taskProgressExecute } = require('../src/commands/task-progress'
 const { execute: taskListExecute } = require('../src/commands/task-list');
 const { execute: taskBlockersExecute } = require('../src/commands/task-blockers');
 const { validateAgent, dispatch, getSupportedAgents } = require('../src/orchestrator/v2/agent-dispatcher');
-const { createTask, updateTask, getTask, listTasks, getBlockers, getStats } = require('../src/orchestrator/v2/task-store');
+const { createTask, updateTask, getTask, listTasks, getBlockers, getStats, STATES } = require('../src/orchestrator/v2/task-store');
 const { generateTaskId, sanitizeOutput, securityCheck, validateWorkbuddyCommand, checkForbiddenAction, isPlanOnly } = require('../src/orchestrator/v2/commander-policy');
 const { reportTaskCreated, reportStatusChange, reportBlocker, reportProgressSummary, reportTaskCompleted, reportTaskFailed } = require('../src/wecom/progress-reporter');
 
@@ -148,7 +148,7 @@ console.log('\n[TEST 3] task-store.js - 任务持久化');
 
   const t1 = createTask({ taskId: 'task_test_001', type: 'agent_task', agent: 'codex', content: '测试任务1' });
   assertEqual(t1.task_id, 'task_test_001', '任务 ID 正确');
-  assertEqual(t1.status, 'pending', '初始状态为 pending');
+  assertEqual(t1.status, 'PENDING', '初始状态为 PENDING');
   assertEqual(t1.agent, 'codex', 'Agent 正确');
 
   createTask({ taskId: 'task_test_002', type: 'agent_task', agent: 'deepseek', content: '测试任务2' });
@@ -159,22 +159,26 @@ console.log('\n[TEST 3] task-store.js - 任务持久化');
   const codexTasks = listTasks({ agent: 'codex' });
   assertEqual(codexTasks.length, 1, 'codex 任务有 1 项');
 
-  const updated = updateTask('task_test_001', { status: 'in_progress' });
+  const updated = updateTask('task_test_001', { status: 'RUNNING' });
   assert(updated !== null, '任务更新成功');
-  assertEqual(updated.status, 'in_progress', '状态已更新');
+  assertEqual(updated.status, 'RUNNING', '状态已更新');
 
   const got = getTask('task_test_001');
-  assertEqual(got.status, 'in_progress', 'getTask 获取正确状态');
+  assertEqual(got.status, 'RUNNING', 'getTask 获取正确状态');
 
-  updateTask('task_test_002', { status: 'blocked' });
+  updateTask('task_test_002', { status: 'BLOCKED' });
   const blockers = getBlockers();
   assertEqual(blockers.length, 1, '阻断项有 1 个');
   assertEqual(blockers[0].task_id, 'task_test_002', '阻断项 ID 正确');
 
   const stats = getStats();
   assertEqual(stats.total, 2, '总计 2 个任务');
-  assertEqual(stats.in_progress, 1, '进行中 1 个');
-  assertEqual(stats.blocked, 1, '阻断 1 个');
+  assertEqual(stats.in_progress, 1, '进行中 1 个 (RUNNING → in_progress)');
+  assertEqual(stats.blocked, 1, '阻断 1 个 (BLOCKED → blocked)');
+
+  // P6.6.2: 新状态 key 验证
+  assertEqual(stats.RUNNING, 1, '新状态 RUNNING = 1');
+  assertEqual(stats.BLOCKED, 1, '新状态 BLOCKED = 1');
 
   assert(fs.existsSync(logFile), 'JSONL 日志文件已创建');
 }
@@ -255,7 +259,7 @@ console.log('\n[TEST 7] progress-reporter.js - 进度回传');
     task_id: 'task_reporter_test',
     agent: 'codex',
     content: 'reporter test',
-    status: 'pending',
+    status: 'PENDING',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
@@ -264,9 +268,9 @@ console.log('\n[TEST 7] progress-reporter.js - 进度回传');
   assert(r1.indexOf('新任务已创建') !== -1, '任务创建上报');
   assert(r1.indexOf('task_reporter_test') !== -1, '包含 task_id');
 
-  const r2 = reportStatusChange(Object.assign({}, task, { status: 'in_progress' }), 'pending');
+  const r2 = reportStatusChange(Object.assign({}, task, { status: 'RUNNING' }), 'PENDING');
   assert(r2.indexOf('任务状态变更') !== -1, '状态变更上报');
-  assert(r2.indexOf('pending') !== -1 && r2.indexOf('in_progress') !== -1, '状态变更详情');
+  assert(r2.indexOf('PENDING') !== -1 && r2.indexOf('RUNNING') !== -1, '状态变更详情');
 
   const r3 = reportBlocker(task, '依赖未满足');
   assert(r3.indexOf('阻断项通知') !== -1, '阻断通知上报');

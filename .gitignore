@@ -12,7 +12,9 @@ package-lock.json
 # === Logs & Runtime Data ===
 logs/
 storage/
+!apps/wecom-adapter/src/storage/
 data/
+!apps/wecom-adapter/data/
 cookies/
 screenshots/
 
