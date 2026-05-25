@@ -7,10 +7,13 @@
  * 支持: codex, workbuddy, deepseek, doubao
  * P6.1: codex + confirm:create-pr → 委托 codex-agent 创建真实 PR
  * P6.2: workbuddy + confirm:audit → 委托 workbuddy-agent 执行只读审计
+ * P6.3: deepseek + confirm:review → 委托 deepseek-agent 执行 PR 审查
+ * P6.4: 接入 progress-reporter 推送企微消息
  */
 
 const { securityCheck, sanitizeOutput, generateTaskId } = require('./commander-policy');
 const { createTask, updateTask } = require('./task-store');
+const reporter = require('../../wecom/progress-reporter');
 
 const SUPPORTED_AGENTS = ['codex', 'workbuddy', 'deepseek', 'doubao'];
 
@@ -66,6 +69,13 @@ const AGENT_RESPONSES = {
   }
 };
 
+/**
+ * 安全调用 progress-reporter，失败不影响主流程
+ */
+function safeReport(fn) {
+  try { fn(); } catch (_) { /* 推送失败不影响任务 */ }
+}
+
 function validateAgent(agent) {
   if (!agent) {
     return { valid: false, reason: 'Agent 名称不能为空' };
@@ -109,32 +119,68 @@ async function dispatch(params) {
 
   const taskId = generateTaskId();
 
-  createTask({
+  const task = createTask({
     taskId: taskId,
     type: 'agent_task',
     agent: normalizedAgent,
     content: content
   });
 
+  // P6.4: 任务创建通知
+  safeReport(function() { reporter.reportTaskCreated(task); });
+
   // P6.2: workbuddy + confirm:audit → 委托 workbuddy-agent (真实只读审计)
   if (normalizedAgent === 'workbuddy' && content.indexOf('confirm:audit') !== -1) {
-    const workbuddyAgent = require('../../agents/workbuddy-agent');
-    return await workbuddyAgent.execute({ content: content, taskId: taskId, command: command });
+    // P6.4: 报告状态变更
+    var auditTask = Object.assign({}, task, { status: 'in_progress', updated_at: new Date().toISOString() });
+    safeReport(function() { reporter.reportStatusChange(auditTask, 'pending'); });
+
+    var auditResult = await workbuddyExecute(content, taskId, command);
+
+    // P6.4: 根据结果报告
+    if (auditResult.success) {
+      safeReport(function() { reporter.reportTaskCompleted(Object.assign({}, task, { status: 'completed', updated_at: new Date().toISOString(), agent: 'workbuddy' })); });
+    } else {
+      safeReport(function() { reporter.reportTaskFailed(Object.assign({}, task, { status: 'failed', updated_at: new Date().toISOString(), agent: 'workbuddy' }), auditResult.error || 'unknown'); });
+    }
+    return auditResult;
   }
 
   // P6.1: codex + confirm:create-pr → 委托 codex-agent (真实 PR 创建)
   if (normalizedAgent === 'codex' && content.indexOf('confirm:create-pr') !== -1) {
-    const codexAgent = require('../../agents/codex-agent');
-    return await codexAgent.execute({ content: content, taskId: taskId, command: command });
+    var codexTask = Object.assign({}, task, { status: 'in_progress', updated_at: new Date().toISOString() });
+    safeReport(function() { reporter.reportStatusChange(codexTask, 'pending'); });
+
+    var codexResult = await codexExecute(content, taskId, command);
+
+    if (codexResult.success) {
+      safeReport(function() { reporter.reportTaskCompleted(Object.assign({}, task, { status: 'completed', updated_at: new Date().toISOString(), agent: 'codex' })); });
+    } else {
+      safeReport(function() { reporter.reportTaskFailed(Object.assign({}, task, { status: 'failed', updated_at: new Date().toISOString(), agent: 'codex' }), codexResult.error || 'unknown'); });
+    }
+    return codexResult;
   }
 
   // P6.3: deepseek + confirm:review → 委托 deepseek-agent (真实 PR 审查)
   if (normalizedAgent === 'deepseek' && content.indexOf('confirm:review') !== -1) {
-    const deepseekAgent = require('../../agents/deepseek-agent');
-    return await deepseekAgent.execute({ content: content, taskId: taskId, command: command });
+    var deepseekTask = Object.assign({}, task, { status: 'in_progress', updated_at: new Date().toISOString() });
+    safeReport(function() { reporter.reportStatusChange(deepseekTask, 'pending'); });
+
+    var deepseekResult = await deepseekExecute(content, taskId, command);
+
+    if (deepseekResult.success) {
+      safeReport(function() { reporter.reportTaskCompleted(Object.assign({}, task, { status: 'completed', updated_at: new Date().toISOString(), agent: 'deepseek' })); });
+    } else {
+      safeReport(function() { reporter.reportTaskFailed(Object.assign({}, task, { status: 'failed', updated_at: new Date().toISOString(), agent: 'deepseek' }), deepseekResult.error || 'unknown'); });
+    }
+    return deepseekResult;
   }
 
   updateTask(taskId, { status: 'in_progress' });
+  var inProgressTask = Object.assign({}, task, { status: 'in_progress', updated_at: new Date().toISOString() });
+
+  // P6.4: 状态变更通知
+  safeReport(function() { reporter.reportStatusChange(inProgressTask, 'pending'); });
 
   const responseFn = AGENT_RESPONSES[normalizedAgent];
   const mockResponse = responseFn ? responseFn(content) : {
@@ -159,11 +205,49 @@ async function dispatch(params) {
     result: JSON.stringify(result)
   });
 
+  var completedTask = Object.assign({}, task, {
+    status: 'completed',
+    updated_at: new Date().toISOString(),
+    result: JSON.stringify(result)
+  });
+
+  // P6.4: 任务完成通知
+  safeReport(function() { reporter.reportTaskCompleted(completedTask); });
+
   return {
     success: true,
     task_id: taskId,
     result: result
   };
+}
+
+// ─── P6.1-P6.3 agent execute wrappers (内联避免重复延迟加载) ───
+
+async function codexExecute(content, taskId, command) {
+  try {
+    const codexAgent = require('../../agents/codex-agent');
+    return await codexAgent.execute({ content: content, taskId: taskId, command: command });
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+async function workbuddyExecute(content, taskId, command) {
+  try {
+    const workbuddyAgent = require('../../agents/workbuddy-agent');
+    return await workbuddyAgent.execute({ content: content, taskId: taskId, command: command });
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+async function deepseekExecute(content, taskId, command) {
+  try {
+    const deepseekAgent = require('../../agents/deepseek-agent');
+    return await deepseekAgent.execute({ content: content, taskId: taskId, command: command });
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
 }
 
 function getSupportedAgents() {
