@@ -7,14 +7,12 @@
  * 不修改 /今日运营 主流程，不接入 roi-analysis-worker / video-content-worker。
  *
  * Phase: Phase B Grayscale Test
+ * Fixes: await executeOpenAIWorker, loader-based prompt, dual params, sanitize output, worker-audit.record
  */
-
-var path = require('path');
-var fs = require('fs');
 
 // 延迟加载依赖
 var _openaiWorker = null;
-var _workerRegistry = null;
+var _workerLoader = null;
 var _workerAudit = null;
 
 function getOpenAIWorker() {
@@ -24,16 +22,16 @@ function getOpenAIWorker() {
   return _openaiWorker;
 }
 
-function getWorkerRegistry() {
-  if (!_workerRegistry) {
-    _workerRegistry = require('../orchestrator/workers/worker-registry-loader');
+function getWorkerLoader() {
+  if (!_workerLoader) {
+    _workerLoader = require('../orchestrator/workers/worker-registry-loader');
   }
-  return _workerRegistry;
+  return _workerLoader;
 }
 
 function getWorkerAudit() {
   if (!_workerAudit) {
-    try { _workerAudit = require('../orchestrator/workers/worker-audit'); } catch (e) { _workerAudit = null; }
+    try { _workerAudit = require('../orchestrator/worker-audit'); } catch (e) { _workerAudit = null; }
   }
   return _workerAudit;
 }
@@ -45,50 +43,97 @@ var SAFETY_NOTE = 'REVIEW_ONLY__NO_AUTO_APPLY — 本报告由 AI 灰度测试�
 var MAX_SUMMARY_LEN = 800;
 
 // ============================================================
-// 工具函数
+// 安全工具函数（复用 ai-audit-dashboard.js 的脱敏思路）
 // ============================================================
 
 /**
- * 清理文本中的敏感信息
+ * 统一脱敏函数 — 对所有输出到企业微信 Markdown 的字段做安全处理
+ * 覆盖：sk-*, Bearer, Authorization, Cookie, token=, key=, secret=, password=, Windows/Linux 路径, .env
  */
-function sanitizeText(text) {
-  if (!text) return '';
-  return text
-    .replace(/sk-[a-zA-Z0-9\-_]{10,}/g, '[MASKED_API_KEY]')
-    .replace(/Bearer\s+[a-zA-Z0-9_\-\.]{10,}/gi, 'Bearer [MASKED]')
-    .replace(/Authorization:\s*[^\s,;\|]{10,}/gi, 'Authorization: [MASKED]')
-    .replace(/Cookie:\s*[^\s;`]{10,}/gi, 'Cookie: [MASKED]')
-    .replace(/token\s*=\s*[^\s,;\|]{4,}/gi, 'token=[MASKED]')
-    .replace(/key\s*=\s*[^\s,;\|]{4,}/gi, 'key=[MASKED]')
-    .replace(/secret\s*=\s*[^\s,;\|]{4,}/gi, 'secret=[MASKED]')
-    .replace(/password\s*=\s*[^\s,;\|]{4,}/gi, 'password=[MASKED]')
-    .replace(/C:\\Users[^\s,;\|]*/gi, '[MASKED_PATH]')
-    .replace(/C:\\Program[^\s,;\|]*/gi, '[MASKED_PATH]')
-    .replace(/\/(home|opt|etc|root|var|usr|tmp)[^\s,;\|]*/gi, '[MASKED_PATH]')
-    .replace(/\.env[^\s,;\|]*/gi, '[MASKED_PATH]')
-    .replace(/\|/g, '\\|');
+function redactSensitive(value) {
+  if (value == null) return '';
+  if (typeof value !== 'string') value = String(value);
+
+  // 1. sk- 开头 API key（OpenAI 格式）
+  value = value.replace(/\bsk-[a-zA-Z0-9\-_]{10,}\b/g, '[MASKED_API_KEY]');
+
+  // 2. Bearer token
+  value = value.replace(/\bBearer\s+[^,\s\n\r|]{10,}/gi, 'Bearer [MASKED]');
+
+  // 3. Authorization header
+  value = value.replace(/\bAuthorization\s*:\s*[^,\n\r|]{10,}/gi, 'Authorization: [MASKED]');
+
+  // 4. Cookie header
+  value = value.replace(/\bCookie\s*:\s*[^\s;`]{10,}/gi, 'Cookie: [MASKED]');
+
+  // 5. token=xxx 键值对
+  value = value.replace(/\btoken\s*=\s*['"]?[a-zA-Z0-9\-_\.\+]{6,}['"]?/gi, 'token=[MASKED]');
+
+  // 6. key=xxx 键值对
+  value = value.replace(/\bkey\s*=\s*['"]?[a-zA-Z0-9\-_\.\+]{6,}['"]?/gi, 'key=[MASKED]');
+
+  // 7. secret=xxx 键值对
+  value = value.replace(/\bsecret\s*=\s*['"]?[a-zA-Z0-9\-_\.\+]{6,}['"]?/gi, 'secret=[MASKED]');
+
+  // 8. password=xxx 键值对
+  value = value.replace(/\bpassword\s*=\s*['"]?[^\s,'";`|]{4,}['"]?/gi, 'password=[MASKED]');
+
+  // 9. Windows 绝对路径
+  value = value.replace(/[A-Za-z]:\\(?:Users|Program|Windows|WINDOWS|ProgramData)[^,;\s]*/gi, '[MASKED_PATH]');
+
+  // 10. Linux 绝对路径
+  value = value.replace(/\/(?:home|opt|etc|root|var|usr|tmp)\/[^,\s;|]*/g, '[MASKED_PATH]');
+
+  // 11. .env 路径片段
+  value = value.replace(/[^\s,;|]*\\\.env[^\s,;|]*/gi, '[MASKED_PATH]');
+  value = value.replace(/[^\s,;|]*\/\.env[^\s,;|]*/g, '[MASKED_PATH]');
+  value = value.replace(/(^|\s)\.env(?=\s|$)/g, '$1[MASKED_PATH]');
+
+  return value;
 }
 
 /**
- * 截断文本到指定长度
+ * Markdown 转义 — 防止表格注入和格式破坏
+ */
+function escapeMarkdown(value) {
+  if (value == null) return '';
+  if (typeof value !== 'string') value = String(value);
+  // 管道符转义（防止表格注入）
+  value = value.replace(/\|/g, '\\|');
+  return value;
+}
+
+/**
+ * 安全字段处理 — 脱敏 + Markdown 转义
+ */
+function sanitizeField(value) {
+  return escapeMarkdown(redactSensitive(value));
+}
+
+/**
+ * 处理 AI 输出文本中的代码围栏和 Markdown 注入
+ * - 脱敏所有敏感信息
+ * - 将 ``` 替换为安全占位符，避免破坏企业微信 Markdown 格式
+ * - Markdown 转义
+ */
+function sanitizeOutput(outputText) {
+  if (!outputText) return '';
+  // 先脱敏
+  var text = redactSensitive(outputText);
+  // 处理代码围栏：替换为安全占位符
+  text = text.replace(/```/g, '[CODE_BLOCK]');
+  // Markdown 转义（管道符）
+  text = escapeMarkdown(text);
+  return text;
+}
+
+/**
+ * 截断文本到指定长度（在脱敏处理后调用）
  */
 function truncateText(text, maxLen) {
   if (!text) return '';
   if (text.length <= maxLen) return text;
   return text.substring(0, maxLen) + '...(截断)';
-}
-
-/**
- * 加载 prompt 文件
- */
-function loadPrompt(promptFile) {
-  try {
-    var fullPath = path.resolve(__dirname, '..', '..', promptFile);
-    if (!fs.existsSync(fullPath)) return null;
-    return fs.readFileSync(fullPath, 'utf8');
-  } catch (e) {
-    return null;
-  }
 }
 
 /**
@@ -106,21 +151,23 @@ function buildMinimalContext() {
   return ctx;
 }
 
+// ============================================================
+// 审计（复用 worker-audit.record）
+// ============================================================
+
 /**
- * 验证 worker prompt
+ * 记录审计日志
+ * 不记录：prompt 原文、artifact 正文、key/token/header/cookie/path
  */
-function validateWorkerPrompt(promptText) {
-  if (!promptText) return false;
-  var lower = promptText.toLowerCase();
-  var blockedKeywords = [
-    'apply patch', 'deploy', 'rollback', 'merge',
-    '修改环境变量', 'nginx配置', '应用补丁',
-    '自动部署', '自动发布', '生产环境部署',
-  ];
-  for (var i = 0; i < blockedKeywords.length; i++) {
-    if (lower.indexOf(blockedKeywords[i]) !== -1) return false;
+function recordAuditLog(entry) {
+  try {
+    var audit = getWorkerAudit();
+    if (audit && audit.record) {
+      audit.record(entry);
+    }
+  } catch (e) {
+    // 审计写入失败不阻塞主流程
   }
-  return true;
 }
 
 // ============================================================
@@ -129,11 +176,16 @@ function validateWorkerPrompt(promptText) {
 
 /**
  * 执行 /ai灰度 命令
+ *
+ * 兼容真实 router: handler(ctx, args)
+ * - args 参数优先（来自 command-center resolve 结果）
+ * - 回退到 ctx.args（兼容直接调用/测试）
  */
-function execute(ctx) {
+async function execute(ctx, args) {
   var opts = ctx || {};
-  var args = (opts.args || '').trim();
-  var workerId = args || 'planner-summary-worker';
+  // 真实 args 优先，回退 ctx.args
+  var argStr = (args !== undefined ? String(args || '') : (opts.args || '')).trim();
+  var workerId = argStr || 'planner-summary-worker';
 
   // 1. 只允许 planner-summary-worker
   if (workerId !== 'planner-summary-worker') {
@@ -141,15 +193,15 @@ function execute(ctx) {
            '用法：\n```\n/ai灰度 planner-summary\n```';
   }
 
-  // 2. 检查 Gate
+  // 2. 检查 Feature Gate
   if (process.env.OPENAI_WORKER_ENABLED !== 'true') {
     return '⚠️ OPENAI_WORKER_ENABLED 未开启\n\n' +
            '请在 .env 中设置 `OPENAI_WORKER_ENABLED=true` 后重试。';
   }
 
-  // 3. 加载 worker 配置
-  var registry = getWorkerRegistry();
-  var workerConfig = registry.getWorker ? registry.getWorker(workerId) : null;
+  // 3. 使用 loader 加载 Worker 配置
+  var loader = getWorkerLoader();
+  var workerConfig = loader.getWorker(workerId);
   if (!workerConfig) {
     return '❌ 无法加载 Worker 配置：' + workerId;
   }
@@ -164,38 +216,36 @@ function execute(ctx) {
     return '❌ Model 不匹配：期望 gpt-4o，实际 ' + workerConfig.model;
   }
 
-  // 6. 加载 prompt
-  var promptText = loadPrompt(workerConfig.promptFile);
+  // 6. 使用 loader.validateWorkerPrompt 验证 Prompt 安全标记
+  var validation = loader.validateWorkerPrompt(workerId);
+  if (!validation || !validation.valid) {
+    var errors = (validation && validation.errors && validation.errors.length > 0)
+      ? validation.errors.join('; ') : '未知验证错误';
+    return '❌ Prompt 验证失败：' + errors;
+  }
+
+  // 7. 使用 loader.loadWorkerPrompt 加载 Prompt 文件
+  var promptText = loader.loadWorkerPrompt(workerId);
   if (!promptText) {
-    return '❌ 无法加载 Prompt 文件：' + workerConfig.promptFile;
+    return '❌ 无法加载 Prompt 文件';
   }
 
-  // 7. 验证 prompt
-  if (!validateWorkerPrompt(promptText)) {
-    return '❌ Prompt 验证失败：包含敏感操作指令';
-  }
-
-  // 8. 检查 REVIEW_ONLY__NO_AUTO_APPLY
-  if (promptText.indexOf('REVIEW_ONLY__NO_AUTO_APPLY') === -1) {
-    return '❌ 安全标记缺失：Prompt 必须包含 REVIEW_ONLY__NO_AUTO_APPLY';
-  }
-
-  // 9. 检查 requiresHumanApproval
+  // 8. 检查 requiresHumanApproval
   if (workerConfig.requiresHumanApproval !== true) {
     return '❌ 安全属性缺失：requiresHumanApproval 必须为 true';
   }
 
-  // 10. 构造最小只读 context
+  // 9. 构造最小只读 context
   var context = buildMinimalContext();
 
-  // 11. 调用 executeOpenAIWorker
+  // 10. 调用 executeOpenAIWorker（async/await）
   var taskId = 'grayscale-test-' + Date.now();
   var startTime = Date.now();
+  var openaiWorker = getOpenAIWorker();
 
   var workerResult;
   try {
-    var openaiWorker = getOpenAIWorker();
-    workerResult = openaiWorker.executeOpenAIWorker({
+    workerResult = await openaiWorker.executeOpenAIWorker({
       taskId: taskId,
       workerId: workerId,
       provider: workerConfig.provider,
@@ -205,63 +255,58 @@ function execute(ctx) {
       userRequest: '灰度测试：生成今日运营总结',
     });
   } catch (e) {
-    writeAuditLog({
-      ts: new Date().toISOString(),
+    // OpenAI Worker 抛出异常（网络错误/超时等）
+    var latency = Date.now() - startTime;
+    var errMsg = redactSensitive(e.message || String(e));
+
+    // 审计：记录 error（已脱敏，不记录 prompt/artifact/key/token 原文）
+    recordAuditLog({
       worker: workerId,
-      provider: workerConfig.provider,
       model: workerConfig.model,
       taskId: taskId,
-      latency: Date.now() - startTime,
-      tokenEstimate: 0,
+      latency: latency,
       resultStatus: 'error',
-      errorMessage: sanitizeText(e.message || String(e)),
+      errorMessage: errMsg,
+      outputText: '',
     });
+
     return '❌ OpenAI Worker 调用失败\n\n' +
-           '错误信息：\n```\n' + sanitizeText(e.message || String(e)) + '\n```\n\n' +
-           SAFETY_NOTE;
+           '错误信息：\n```\n' + errMsg + '\n```\n\n' +
+           '---\n' +
+           '> 🔒 ' + SAFETY_NOTE;
   }
 
   var latency = Date.now() - startTime;
-  var tokenEstimate = (workerResult && workerResult.usage && workerResult.usage.total_tokens) || 0;
 
-  // 12. 写审计日志
-  writeAuditLog({
-    ts: new Date().toISOString(),
+  // workerResult 字段（openai-worker 返回）：outputText, error, model, safetyNote, taskId, promptHash, createdAt
+  var outputText = (workerResult && workerResult.outputText) || '';
+  var hasError = !!(workerResult && workerResult.error);
+  var errorMessage = hasError ? (workerResult.error || '') : '';
+  var resultModel = (workerResult && workerResult.model) || workerConfig.model;
+
+  // 11. 审计写入（复用 worker-audit.record）
+  // 不记录：prompt 原文、artifact 正文、key/token/header/cookie/path
+  recordAuditLog({
     worker: workerId,
-    provider: workerConfig.provider,
-    model: workerConfig.model,
+    model: resultModel,
     taskId: taskId,
     latency: latency,
-    tokenEstimate: tokenEstimate,
-    resultStatus: (workerResult && workerResult.success) ? 'success' : 'error',
-    errorMessage: workerResult ? sanitizeText(workerResult.error || '') : '',
+    resultStatus: hasError ? 'error' : 'success',
+    errorMessage: redactSensitive(errorMessage),
+    outputText: outputText,
+    promptHash: (workerResult && workerResult.promptHash) || undefined,
   });
 
-  // 13. 生成输出
+  // 12. 生成输出（OpenAI error 时返回安全失败摘要）
   return generateOutput({
     workerId: workerId,
     provider: workerConfig.provider,
-    model: workerConfig.model,
+    model: resultModel,
     latency: latency,
-    tokenEstimate: tokenEstimate,
-    resultStatus: (workerResult && workerResult.success) ? 'success' : 'error',
-    aiOutput: workerResult ? workerResult.content || '' : '',
-    error: workerResult ? workerResult.error || '' : '未知错误',
+    resultStatus: hasError ? 'error' : 'success',
+    aiOutput: outputText,
+    error: errorMessage,
   });
-}
-
-/**
- * 写审计日志
- */
-function writeAuditLog(entry) {
-  try {
-    var audit = getWorkerAudit();
-    if (audit && audit.writeAudit) {
-      audit.writeAudit(entry);
-    }
-  } catch (e) {
-    // 审计日志写入失败不阻塞主流程
-  }
 }
 
 /**
@@ -274,36 +319,36 @@ function generateOutput(params) {
   lines.push('> 单次 OpenAI 调用测试（安全、只读、可审计）');
   lines.push('');
 
-  // 基本信息
+  // 基本信息（全部脱敏 + Markdown 转义）
   lines.push('## 📊 调用信息');
   lines.push('');
   lines.push('| 字段 | 值 |');
   lines.push('|------|-----|');
-  lines.push('| Worker | `' + sanitizeText(params.workerId) + '` |');
-  lines.push('| Provider | `' + sanitizeText(params.provider) + '` |');
-  lines.push('| Model | `' + sanitizeText(params.model) + '` |');
+  lines.push('| Worker | `' + sanitizeField(params.workerId) + '` |');
+  lines.push('| Provider | `' + sanitizeField(params.provider) + '` |');
+  lines.push('| Model | `' + sanitizeField(params.model) + '` |');
   lines.push('| 延迟 | ' + (params.latency / 1000).toFixed(2) + 's |');
-  lines.push('| Token 估算 | ~' + (params.tokenEstimate >= 1000 ? (params.tokenEstimate / 1000).toFixed(1) + 'K' : params.tokenEstimate) + ' |');
   lines.push('| 状态 | ' + (params.resultStatus === 'success' ? '✅ 成功' : '❌ 失败') + ' |');
   lines.push('');
 
-  // AI 输出摘要
-  if (params.resultStatus === 'success' && params.aiOutput) {
+  // AI 输出摘要（脱敏 + 处理代码围栏 + Markdown 转义 + 截断）
+  if (params.aiOutput) {
     lines.push('## 🤖 AI 输出摘要');
     lines.push('');
-    var summary = truncateText(params.aiOutput, MAX_SUMMARY_LEN);
+    var cleaned = sanitizeOutput(params.aiOutput);
+    var summary = truncateText(cleaned, MAX_SUMMARY_LEN);
     lines.push('```');
     lines.push(summary);
     lines.push('```');
     lines.push('');
   }
 
-  // 错误详情
+  // 错误详情（脱敏）
   if (params.resultStatus === 'error' && params.error) {
     lines.push('## ⚠️ 错误详情');
     lines.push('');
     lines.push('```');
-    lines.push(sanitizeText(params.error));
+    lines.push(sanitizeField(params.error));
     lines.push('```');
     lines.push('');
   }
@@ -321,7 +366,7 @@ function generateOutput(params) {
 }
 
 // ============================================================
-// Mock 模式（测试用）
+// Mock 模式（测试用 — 不依赖外部模块）
 // ============================================================
 
 function executeMock() {
@@ -330,7 +375,6 @@ function executeMock() {
     provider: 'openai',
     model: 'gpt-4o',
     latency: 2340,
-    tokenEstimate: 850,
     resultStatus: 'success',
     aiOutput: '【Mock】今日运营总结：GMV 环比 +12%，ROI 稳定在 2.3，风险可控。建议：加大投流力度，关注高价值 SKU 转化。',
     error: '',
@@ -345,4 +389,10 @@ module.exports = {
   execute: execute,
   executeMock: executeMock,
   desc: 'AI 灰度测试（planner-summary-worker OpenAI 单次调用）',
+
+  // 安全函数导出（供测试用）
+  redactSensitive: redactSensitive,
+  escapeMarkdown: escapeMarkdown,
+  sanitizeField: sanitizeField,
+  sanitizeOutput: sanitizeOutput,
 };
