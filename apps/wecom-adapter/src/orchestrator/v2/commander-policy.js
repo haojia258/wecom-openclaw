@@ -11,9 +11,12 @@
  * 5. WorkBuddy 白名单命令 (confirm:audit 允许绕过白名单内容校验)
  * 6. 所有任务写 logs/tasks/*.jsonl
  * 7. 每个任务生成 task_id
+ *
+ * P6.7.1: 新增 RBAC 角色权限检查辅助函数
  */
 
 const crypto = require('crypto');
+const { ROLES, hasMinRole } = require('../../auth/user-role-store');
 
 // WorkBuddy 白名单命令
 const WORKBUDDY_WHITELIST = [
@@ -140,6 +143,22 @@ function getPolicySummary() {
   ];
 }
 
+/**
+ * P6.7.1: 检查角色权限
+ * @param {string} userRole - 用户角色 ('admin'|'operator'|'viewer')
+ * @param {string} requiredRole - 最低要求角色
+ * @returns {{ allowed: boolean, error?: string }}
+ */
+function checkRolePermission(userRole, requiredRole) {
+  if (hasMinRole(userRole, requiredRole)) {
+    return { allowed: true };
+  }
+  return {
+    allowed: false,
+    error: '[RBAC] 权限不足: 需要 ' + requiredRole + ' 权限，当前角色: ' + userRole
+  };
+}
+
 module.exports = {
   generateTaskId: generateTaskId,
   sanitizeOutput: sanitizeOutput,
@@ -147,5 +166,8 @@ module.exports = {
   checkForbiddenAction: checkForbiddenAction,
   validateWorkbuddyCommand: validateWorkbuddyCommand,
   securityCheck: securityCheck,
-  getPolicySummary: getPolicySummary
+  getPolicySummary: getPolicySummary,
+  // P6.7.1: RBAC 辅助
+  ROLES: ROLES,
+  checkRolePermission: checkRolePermission
 };

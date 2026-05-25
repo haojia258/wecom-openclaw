@@ -1,0 +1,5 @@
+{
+  "admin": ["wecom_admin_1"],
+  "operator": ["wecom_ops_1"],
+  "viewer": ["*"]
+}
