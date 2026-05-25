@@ -16,11 +16,19 @@ const sm = require('../orchestrator/v2/task-state-machine');
 
 // ─── JSONL 辅助（与旧 task-store.js 逻辑一致）────────────
 
-var LOG_DIR = path.resolve(__dirname, '../../logs/tasks');
+/**
+ * 获取日志目录（支持 TASK_LOG_DIR 环境变量隔离测试）
+ * 生产环境: logs/tasks/
+ * 测试环境: 可设置为临时目录避免污染生产日志
+ */
+function getLogDir() {
+  return process.env.TASK_LOG_DIR || path.resolve(__dirname, '../../logs/tasks');
+}
 
 function ensureLogDir() {
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
+  var dir = getLogDir();
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
 }
 
@@ -29,7 +37,7 @@ function getLogFilePath() {
   var yyyy = today.getFullYear();
   var mm = String(today.getMonth() + 1).padStart(2, '0');
   var dd = String(today.getDate()).padStart(2, '0');
-  return path.join(LOG_DIR, yyyy + '-' + mm + '-' + dd + '.jsonl');
+  return path.join(getLogDir(), yyyy + '-' + mm + '-' + dd + '.jsonl');
 }
 
 function appendJSONL(record) {
@@ -429,7 +437,7 @@ module.exports = {
   getStats: getStats,
   // 导出辅助函数供测试
   _getLogFilePath: getLogFilePath,
-  _getLogDir: function() { return LOG_DIR; },
+  _getLogDir: getLogDir,
   // P6.6.2: 暴露状态机供验证
   _sm: sm,
 };
