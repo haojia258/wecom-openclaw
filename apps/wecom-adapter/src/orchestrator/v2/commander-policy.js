@@ -8,7 +8,7 @@
  * 2. 禁止自动 merge
  * 3. 禁止自动 deploy
  * 4. 禁止输出 API Key
- * 5. WorkBuddy 白名单命令
+ * 5. WorkBuddy 白名单命令 (confirm:audit 允许绕过白名单内容校验)
  * 6. 所有任务写 logs/tasks/*.jsonl
  * 7. 每个任务生成 task_id
  */
@@ -104,10 +104,17 @@ function securityCheck(context) {
     violations.push(forbidden.reason);
   }
 
+  // P6.2: workbuddy + confirm:audit 允许绕过白名单内容校验
+  // (实际命令执行由 safe-command-runner.js 的白名单+黑名单双重保护)
   if (context.agent === 'workbuddy') {
-    const wbCheck = validateWorkbuddyCommand(context.content);
-    if (!wbCheck.allowed) {
-      violations.push(wbCheck.reason);
+    const isAuditAuthorized = context.content &&
+      context.content.toLowerCase().indexOf('confirm:audit') !== -1;
+
+    if (!isAuditAuthorized) {
+      const wbCheck = validateWorkbuddyCommand(context.content);
+      if (!wbCheck.allowed) {
+        violations.push(wbCheck.reason);
+      }
     }
   }
 
@@ -127,7 +134,7 @@ function getPolicySummary() {
     '2. 禁止自动 merge',
     '3. 禁止自动 deploy',
     '4. 禁止输出 API Key',
-    '5. WorkBuddy 仅允许白名单命令',
+    '5. WorkBuddy 仅允许白名单命令 (confirm:audit 例外)',
     '6. 所有任务写 logs/tasks/*.jsonl',
     '7. 每个任务生成 task_id'
   ];

@@ -15,7 +15,8 @@
     "test:v2": "node tests/test-agent-task.cjs",
     "test:v2:skills": "node tests/test-agent-task.cjs",
     "test:v2:agents": "node tests/test-agent-task.cjs",
-    "test:codex-agent": "node tests/test-codex-agent.cjs"
+    "test:codex-agent": "node tests/test-codex-agent.cjs",
+    "test:workbuddy-agent": "node tests/test-workbuddy-agent.cjs"
   },
   "dependencies": {
     "express": "^4.18.2",
