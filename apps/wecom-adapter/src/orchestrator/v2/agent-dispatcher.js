@@ -128,6 +128,12 @@ async function dispatch(params) {
     return await codexAgent.execute({ content: content, taskId: taskId, command: command });
   }
 
+  // P6.3: deepseek + confirm:review → 委托 deepseek-agent (真实 PR 审查)
+  if (normalizedAgent === 'deepseek' && content.indexOf('confirm:review') !== -1) {
+    const deepseekAgent = require('../../agents/deepseek-agent');
+    return await deepseekAgent.execute({ content: content, taskId: taskId, command: command });
+  }
+
   updateTask(taskId, { status: 'in_progress' });
 
   const responseFn = AGENT_RESPONSES[normalizedAgent];
