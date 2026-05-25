@@ -6,6 +6,7 @@
  * 将任务分发到对应 AI Agent
  * 支持: codex, workbuddy, deepseek, doubao
  * P6.1: codex + confirm:create-pr → 委托 codex-agent 创建真实 PR
+ * P6.2: workbuddy + confirm:audit → 委托 workbuddy-agent 执行只读审计
  */
 
 const { securityCheck, sanitizeOutput, generateTaskId } = require('./commander-policy');
@@ -115,6 +116,12 @@ async function dispatch(params) {
     content: content
   });
 
+  // P6.2: workbuddy + confirm:audit → 委托 workbuddy-agent (真实只读审计)
+  if (normalizedAgent === 'workbuddy' && content.indexOf('confirm:audit') !== -1) {
+    const workbuddyAgent = require('../../agents/workbuddy-agent');
+    return await workbuddyAgent.execute({ content: content, taskId: taskId, command: command });
+  }
+
   // P6.1: codex + confirm:create-pr → 委托 codex-agent (真实 PR 创建)
   if (normalizedAgent === 'codex' && content.indexOf('confirm:create-pr') !== -1) {
     const codexAgent = require('../../agents/codex-agent');
@@ -161,6 +168,14 @@ function getAgentStatus(agent) {
   const normalizedAgent = agent.toLowerCase();
   if (SUPPORTED_AGENTS.indexOf(normalizedAgent) === -1) {
     return { agent: agent, available: false, reason: '不支持的 Agent' };
+  }
+  if (normalizedAgent === 'workbuddy') {
+    return {
+      agent: normalizedAgent,
+      available: true,
+      mode: 'plan-only + audit (confirm:audit)',
+      model: 'workbuddy-agent'
+    };
   }
   return {
     agent: normalizedAgent,
