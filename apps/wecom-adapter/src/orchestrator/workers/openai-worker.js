@@ -471,21 +471,30 @@ function buildPrompt(task) {
   var lines = [];
   lines.push('=== AI Orchestrator Runtime v0.5 Task ===');
   lines.push('');
-  lines.push('Task ID: ' + task.taskId);
+  lines.push('Task ID: ' + (task.taskId || 'unknown'));
   lines.push('Assignee: Codex (' + getModelForTask(task) + ')');
   lines.push('');
 
-  if (task.userRequest) {
-    lines.push('--- User Request ---');
-    lines.push(task.userRequest);
+  // 优先使用 task.prompt（来自 Worker loader 的完整 prompt 文件）
+  // 如果存在，作为系统/主 prompt 进入最终请求
+  if (task.prompt && typeof task.prompt === 'string' && task.prompt.trim().length > 0) {
+    lines.push('--- System Prompt (From Worker Loader) ---');
+    lines.push(task.prompt.trim());
     lines.push('');
-  }
+  } else {
+    // Fallback: 使用 userRequest + dispatchPayload 拼接
+    if (task.userRequest) {
+      lines.push('--- User Request ---');
+      lines.push(task.userRequest);
+      lines.push('');
+    }
 
-  // 附加 dispatch payload (如果有)
-  if (task.dispatchPayload && task.dispatchPayload.instruction) {
-    lines.push('--- Dispatch Instruction ---');
-    lines.push(task.dispatchPayload.instruction.substring(0, 2000));
-    lines.push('');
+    // 附加 dispatch payload (如果有)
+    if (task.dispatchPayload && task.dispatchPayload.instruction) {
+      lines.push('--- Dispatch Instruction ---');
+      lines.push(task.dispatchPayload.instruction.substring(0, 2000));
+      lines.push('');
+    }
   }
 
   lines.push('--- Safety Rules ---');
