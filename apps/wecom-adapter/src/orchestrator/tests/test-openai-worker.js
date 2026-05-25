@@ -114,6 +114,46 @@ test('buildPrompt 不包含 API key', function () {
   assert.ok(p.indexOf('sk-') === -1);
 });
 
+// ========== PR #39 Fix: buildPrompt 消费 task.prompt ==========
+test('buildPrompt 包含 task.prompt 内容（优先于 userRequest）', function () {
+  var p = openaiWorker.buildPrompt({
+    taskId: 't-prompt-test',
+    prompt: 'TEST_PLANNER_SUMMARY_PROMPT_MARKER\n这是完整的 planner-summary 系统 prompt',
+    userRequest: '灰度测试：生成今日运营总结',
+  });
+  assert.ok(p.indexOf('TEST_PLANNER_SUMMARY_PROMPT_MARKER') >= 0,
+    'task.prompt 应出现在最终 prompt 中');
+  assert.ok(p.indexOf('这是完整的 planner-summary 系统 prompt') >= 0,
+    'task.prompt 完整内容应保留');
+  assert.ok(p.indexOf('System Prompt (From Worker Loader)') >= 0,
+    '应标注来自 Worker Loader');
+});
+
+test('buildPrompt 有 task.prompt 时仍包含安全规则 REVIEW_ONLY', function () {
+  var p = openaiWorker.buildPrompt({
+    taskId: 't-safety',
+    prompt: 'TEST_PLANNER_SUMMARY_PROMPT_MARKER\n测试 prompt',
+  });
+  assert.ok(p.indexOf('REVIEW_ONLY') >= 0,
+    '安全规则 REVIEW_ONLY 必须保留');
+  assert.ok(p.indexOf('DO NOT auto-apply') >= 0,
+    '安全规则 DO NOT auto-apply 必须保留');
+  assert.ok(p.indexOf('No credential or API key in output') >= 0,
+    '安全规则 No credential 必须保留');
+});
+
+test('buildPrompt 无 task.prompt 时 fallback 到 userRequest（不变更原逻辑）', function () {
+  var p = openaiWorker.buildPrompt({ taskId: 't-fallback', userRequest: 'code review task' });
+  assert.ok(p.indexOf('code review task') >= 0,
+    'userRequest 应出现在 prompt 中');
+  assert.ok(p.indexOf('User Request') >= 0,
+    '应标注来自 User Request');
+  assert.ok(p.indexOf('System Prompt (From Worker Loader)') === -1,
+    '无 task.prompt 时不应出现 System Prompt 标记');
+  assert.ok(p.indexOf('REVIEW_ONLY') >= 0,
+    '安全规则 REVIEW_ONLY 必须保留');
+});
+
 // ========== 无 API Key 测试 (异步 Promise) ==========
 // Phase2-B: 需要开启灰度开关才能绕过 feature gate
 process.env.OPENAI_WORKER_ENABLED = 'true';

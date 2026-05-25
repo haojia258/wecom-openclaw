@@ -32,6 +32,7 @@ const REGISTRY = {
   '/ai任务': { file: '../commands/ai-task', aliases: ['/aitask', '/AI任务', '/ai-task'] },
   '/今日运营': { file: '../commands/today-ops', aliases: ['/todayops', '/运营日报', '/日报'] },
   '/ai审计':   { file: '../commands/ai-audit',  aliases: ['/aiaudit', '/AI审计', '/ai审计'] },
+  '/ai灰度': { file: '../commands/ai-grayscale', aliases: ['/aigray'] },
 };
 
 // 缓存已加载的 handler（懒加载）
