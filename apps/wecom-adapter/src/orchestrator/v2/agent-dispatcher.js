@@ -3,8 +3,9 @@
 /**
  * agent-dispatcher.js - Agent 调度器 (v2)
  *
- * 将任务分发到对应 AI Agent (Mock 模式)
+ * 将任务分发到对应 AI Agent
  * 支持: codex, workbuddy, deepseek, doubao
+ * P6.1: codex + confirm:create-pr → 委托 codex-agent 创建真实 PR
  */
 
 const { securityCheck, sanitizeOutput, generateTaskId } = require('./commander-policy');
@@ -113,6 +114,12 @@ async function dispatch(params) {
     agent: normalizedAgent,
     content: content
   });
+
+  // P6.1: codex + confirm:create-pr → 委托 codex-agent (真实 PR 创建)
+  if (normalizedAgent === 'codex' && content.indexOf('confirm:create-pr') !== -1) {
+    const codexAgent = require('../../agents/codex-agent');
+    return await codexAgent.execute({ content: content, taskId: taskId, command: command });
+  }
 
   updateTask(taskId, { status: 'in_progress' });
 
