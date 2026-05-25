@@ -134,7 +134,7 @@ console.log('\n=== TEST GROUP B: CRUD 操作 ===\n');
     priority: 'high'
   });
   assertEqual(t1.task_id, 'test_db_001', 'B1. createTask 返回正确 task_id');
-  assertEqual(t1.status, 'pending', 'B2. 初始状态为 pending');
+  assertEqual(t1.status, 'PENDING', 'B2. 初始状态为 PENDING');
   assertEqual(t1.agent, 'codex', 'B3. agent 正确');
   assertEqual(t1.priority, 'high', 'B4. priority 正确');
   assert(t1.created_at !== null && t1.created_at !== undefined, 'B5. created_at 已设置');
@@ -162,45 +162,49 @@ console.log('\n=== TEST GROUP B: CRUD 操作 ===\n');
   var got = repo.getTask('test_db_001');
   assert(got !== null, 'B10. getTask 查到已有任务');
   assertEqual(got.task_id, 'test_db_001', 'B11. getTask task_id 正确');
-  assertEqual(got.status, 'pending', 'B12. getTask status 正确');
+  assertEqual(got.status, 'PENDING', 'B12. getTask status 正确');
 
   // B13: getTask 不存在的
   var notFound = repo.getTask('nonexistent');
   assert(notFound === null, 'B13. getTask 不存在的任务返回 null');
 
   // B14: updateTask 更新状态
-  var updated = repo.updateTask('test_db_001', { status: 'in_progress' });
+  var updated = repo.updateTask('test_db_001', { status: 'RUNNING' });
   assert(updated !== null, 'B14. updateTask 返回更新后的对象');
-  assertEqual(updated.status, 'in_progress', 'B15. 状态已更新为 in_progress');
+  assertEqual(updated.status, 'RUNNING', 'B15. 状态已更新为 RUNNING');
 
   // B16: updateTask 不存在的
-  var updNone = repo.updateTask('nonexistent', { status: 'completed' });
+  var updNone = repo.updateTask('nonexistent', { status: 'COMPLETED' });
   assert(updNone === null, 'B16. updateTask 不存在的任务返回 null');
 
   // B17: updateTask 设置 error 字段
   repo.createTask({ taskId: 'test_db_003', agent: 'codex', content: '会失败' });
-  var errUpdated = repo.updateTask('test_db_003', { status: 'failed', error: 'timeout' });
-  assertEqual(errUpdated.status, 'failed', 'B17. error 状态设置成功');
+  var errUpdated = repo.updateTask('test_db_003', { status: 'FAILED', error: 'timeout' });
+  assertEqual(errUpdated.status, 'FAILED', 'B17. FAILED 状态设置成功');
   assertEqual(errUpdated.error, 'timeout', 'B18. error 字段正确');
 
   // B19: listTasks 无过滤
   var all = repo.listTasks();
   assert(all.length >= 3, 'B19. listTasks 返回所有任务 (' + all.length + ' 个)');
 
-  // B20: listTasks 按 status 过滤
-  var pendingTasks = repo.listTasks({ status: 'pending' });
+  // B20: listTasks 按 status 过滤 (使用新大写状态)
+  var pendingTasks = repo.listTasks({ status: 'PENDING' });
   assert(pendingTasks.length >= 1, 'B20. listTasks status 过滤有效');
+
+  // B20b: listTasks 按旧小写 status 过滤 (向后兼容)
+  var pendingTasksOld = repo.listTasks({ status: 'pending' });
+  assert(pendingTasksOld.length >= 1, 'B20b. listTasks 旧小写 status 过滤有效');
 
   // B21: listTasks 按 agent 过滤
   var codexTasks = repo.listTasks({ agent: 'codex' });
   assert(codexTasks.length >= 2, 'B21. listTasks agent 过滤有效 (' + codexTasks.length + ' 个)');
 
   // B22: listTasks 双重过滤
-  var filtered = repo.listTasks({ status: 'pending', agent: 'deepseek' });
+  var filtered = repo.listTasks({ status: 'PENDING', agent: 'deepseek' });
   assert(filtered.length >= 1, 'B22. listTasks 双重过滤有效');
 
   // B23: getBlockers
-  repo.updateTask('test_db_002', { status: 'blocked' });
+  repo.updateTask('test_db_002', { status: 'BLOCKED' });
   var blockers = repo.getBlockers();
   assert(blockers.length >= 1, 'B23. getBlockers 返回阻断项 (' + blockers.length + ' 个)');
 
@@ -210,12 +214,16 @@ console.log('\n=== TEST GROUP B: CRUD 操作 ===\n');
   assert(typeof stats.pending === 'number', 'B25. getStats.pending 是数字');
   assert(typeof stats.in_progress === 'number', 'B26. getStats.in_progress 是数字');
   assert(typeof stats.blocked === 'number', 'B27. getStats.blocked 是数字');
+  // P6.6.2: 新大写状态 key 也存在
+  assert(typeof stats.PENDING === 'number', 'B27b. getStats.PENDING 是数字');
+  assert(typeof stats.RUNNING === 'number', 'B27c. getStats.RUNNING 是数字');
+  assert(typeof stats.BLOCKED === 'number', 'B27d. getStats.BLOCKED 是数字');
 
   // B28: updateTask 更新 result 对象
   var resultObj = { plan: 'test plan', steps: 3 };
-  repo.updateTask('test_db_001', { status: 'completed', result: resultObj });
+  repo.updateTask('test_db_001', { status: 'COMPLETED', result: resultObj });
   var withResult = repo.getTask('test_db_001');
-  assertEqual(withResult.status, 'completed', 'B28. 状态更新为 completed');
+  assertEqual(withResult.status, 'COMPLETED', 'B28. 状态更新为 COMPLETED');
   assert(withResult.result !== null, 'B29. result 不为 null');
 }
 
@@ -287,7 +295,7 @@ console.log('\n=== TEST GROUP D: 数据持久化 ===\n');
 
     var reopenedTask = repo.getTask('test_db_001');
     assert(reopenedTask !== null, 'D2. close/reopen 后数据不丢失');
-    assertEqual(reopenedTask.status, 'completed', 'D3. 持久化后状态正确');
+    assertEqual(reopenedTask.status, 'COMPLETED', 'D3. 持久化后状态正确');
 
     // D4: DB 文件存在
     assert(fs.existsSync(DB_PATH), 'D4. tasks.db 文件存在');

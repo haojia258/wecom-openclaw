@@ -158,10 +158,14 @@ function reportProgressSummary(stats) {
     ? Math.round((stats.completed / stats.total) * 100)
     : 0;
 
+  // P6.6.2: 使用统一状态显示
+  var planningDisplay = (stats.PLANNING && stats.PLANNING > 0) ? ' | 📋 规划中: ' + stats.PLANNING : '';
+  var reviewingDisplay = (stats.REVIEWING && stats.REVIEWING > 0) ? ' | 🔍 审查中: ' + stats.REVIEWING : '';
+
   const msg = [
     '📊 进度报告',
     '进度: ' + progressPct + '% (' + stats.completed + '/' + stats.total + ')',
-    '待处理: ' + stats.pending + ' | 进行中: ' + stats.in_progress,
+    '待处理: ' + stats.pending + ' | 进行中: ' + stats.RUNNING + planningDisplay + reviewingDisplay,
     '已完成: ' + stats.completed + ' | 阻断项: ' + stats.blocked + ' | 失败: ' + stats.failed
   ].join('\n');
 

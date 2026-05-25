@@ -10,6 +10,7 @@
  */
 
 var repo = require('../../storage/task-repository');
+var sm = require('./task-state-machine');
 
 module.exports = {
   createTask: repo.createTask,
@@ -18,4 +19,6 @@ module.exports = {
   listTasks: repo.listTasks,
   getBlockers: repo.getBlockers,
   getStats: repo.getStats,
+  // P6.6.2: 导出统一状态常量
+  STATES: sm.STATES,
 };
