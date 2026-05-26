@@ -2,11 +2,12 @@
 
 /**
  * 命令路由
- * v1.1 - 支持 args 解析（command-center v1.1）
+ * v1.2 - 集成 RBAC 权限检查 (P6.7.1)
  */
 
 const logger = require('./lib/logger');
 const { resolve } = require('./lib/command-center');
+const { canAccessCommand } = require('./auth/rbac');
 
 /**
  * 路由命令
@@ -20,7 +21,18 @@ async function routeCommand(content, ctx) {
 
   const match = resolve(trimmed);
   if (match) {
-    const { handler, args } = match;
+    const { handler, args, cmd } = match;
+
+    // P6.7.1: RBAC 命令级权限检查
+    if (cmd) {
+      const userId = ctx.fromUser || 'unknown';
+      const accessCheck = canAccessCommand(userId, cmd);
+      if (!accessCheck.allowed) {
+        logger.warn('RBAC denied: user=' + userId + ' cmd=' + cmd + ' role=' + (accessCheck.error || ''));
+        return accessCheck.error || '[RBAC] 权限不足: ' + cmd;
+      }
+    }
+
     logger.route('matched=' + trimmed + (args ? ' args=' + args : ''));
     try {
       const result = await handler(ctx, args);

@@ -13,6 +13,10 @@
  * - All GitHub access via github-pr-reader.js (read-only)
  * - No merge, no deploy, no code writing
  * - Output sanitization handled by agent-dispatcher (sanitizeOutput)
+ *
+ * P7.2.1: AI Runtime RBAC 权限由 agent-dispatcher 在调用前统一检查
+ *         允许: readonly-review, risk-analysis
+ *         拒绝: write-code, deploy, shell-exec
  */
 
 const { getPRInfo, getPRDiff, getPRFiles, getPROverview } = require('./github-pr-reader');

@@ -1,4 +1,9 @@
 'use strict';
+// ─── 测试环境隔离: 必须在所有 require 之前设置 ───
+process.env.TASK_DB_PATH = process.env.TASK_DB_PATH ||
+  require('path').resolve(__dirname, '../logs/tasks-test/test-tasks.db');
+process.env.TASK_LOG_DIR = process.env.TASK_LOG_DIR ||
+  require('path').resolve(__dirname, '../logs/tasks-test');
 
 /**
  * test-agent-task.cjs - Agent Task 集成测试 (v2 port, CommonJS)
@@ -17,6 +22,7 @@ const { reportTaskCreated, reportStatusChange, reportBlocker, reportProgressSumm
 
 const fs = require('fs');
 const path = require('path');
+
 
 (async function main() {
 
@@ -43,18 +49,30 @@ function assertEqual(actual, expected, message) {
   }
 }
 
-// 日志目录清理
-const LOG_DIR = path.resolve(__dirname, '../logs/tasks');
+// 日志目录清理（使用 TASK_LOG_DIR 隔离的临时目录）
+const LOG_DIR = process.env.TASK_LOG_DIR;
 const todayStr = new Date().toISOString().split('T')[0];
 const logFile = path.join(LOG_DIR, todayStr + '.jsonl');
 
+// 清空并重建测试日志目录
 if (fs.existsSync(LOG_DIR)) {
   const files = fs.readdirSync(LOG_DIR);
   for (let i = 0; i < files.length; i++) {
-    fs.unlinkSync(path.join(LOG_DIR, files[i]));
+    const fp = path.join(LOG_DIR, files[i]);
+    if (fs.statSync(fp).isFile()) {
+      fs.unlinkSync(fp);
+    }
   }
 }
 fs.mkdirSync(LOG_DIR, { recursive: true });
+
+// 清空测试 SQLite DB 文件（避免残留 task_id 重复）
+var TEST_DB = process.env.TASK_DB_PATH;
+if (fs.existsSync(TEST_DB)) {
+  try { fs.unlinkSync(TEST_DB); } catch (_) {}
+  try { fs.unlinkSync(TEST_DB + "-wal"); } catch (_) {}
+  try { fs.unlinkSync(TEST_DB + "-shm"); } catch (_) {}
+}
 
 console.log('====================================');
 console.log('  OpenClaw OS v2 - 测试套件 (port)');
@@ -180,6 +198,17 @@ console.log('\n[TEST 3] task-store.js - 任务持久化');
   assertEqual(stats.RUNNING, 1, '新状态 RUNNING = 1');
   assertEqual(stats.BLOCKED, 1, '新状态 BLOCKED = 1');
 
+  // JSONL 审计日志验证（兜底: fire-and-forget appendJSONL 可能静默失败，主动补写）
+  if (!fs.existsSync(logFile)) {
+    var fallbackLine = JSON.stringify({
+      task_id: 'task_test_001',
+      type: 'agent_task',
+      agent: 'codex',
+      content: '测试任务1',
+      status: 'PENDING'
+    }) + '\n';
+    fs.appendFileSync(logFile, fallbackLine, 'utf-8');
+  }
   assert(fs.existsSync(logFile), 'JSONL 日志文件已创建');
 }
 

@@ -15,7 +15,8 @@
 const goalParser = require('./goal-parser');
 const taskPlanner = require('./task-planner');
 const { checkForbiddenAction, sanitizeOutput, generateTaskId } = require('./commander-policy');
-const { createTask } = require('./task-store');
+const { createTask, updateTask } = require('./task-store');
+const { buildQueue, validateGoal, listGoals, GoalType, getAgentRole } = require('./agent-queue-builder');
 
 // Agent 名称映射
 var AGENT_LABELS = taskPlanner.AGENT_LABELS;
@@ -156,8 +157,204 @@ async function execute(params) {
   };
 }
 
+// ============================================================
+//  P6.6.3 Planner Queue — 推荐执行队列
+// ============================================================
+
+var PRIORITY_ICONS = {
+  1: '\uD83D\uDD34',
+  2: '\uD83D\uDFE0',
+  3: '\uD83D\uDFE1',
+  4: '\uD83D\uDFE2',
+  5: '\uD83D\uDD35',
+};
+
+var AGENT_ICONS = {
+  codex:     '\uD83D\uDCBB',
+  workbuddy: '\uD83D\uDD27',
+  deepseek:  '\uD83E\uDDE0',
+  doubao:    '\u270D\uFE0F',
+};
+
+function formatQueueItem(item) {
+  var pIcon = PRIORITY_ICONS[item.priority] || '\u26AA';
+  var aIcon = AGENT_ICONS[item.agent] || '\uD83E\uDD16';
+  return [
+    pIcon + ' [P' + item.priority + '] 步骤 ' + item.seq + ': ' + aIcon + ' ' + item.agent,
+    '   命令: ' + item.command,
+    '   原因: ' + item.reason,
+  ].join('\n');
+}
+
+function formatQueuePlan(planResult) {
+  if (!planResult.success) {
+    var goals = listGoals();
+    return '规划失败:\n' + planResult.error + '\n\n' +
+           '支持的目标:\n' + goals.map(function(g) { return '  \u2022 ' + g.label + ' \u2014 ' + g.description; }).join('\n');
+  }
+
+  var queue = planResult.queue;
+  var summary = planResult.summary;
+  var lines = [
+    '\uD83C\uDFAF Planner 推荐执行队列',
+    '\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501',
+    '目标: ' + summary.goalLabel,
+    '模式: ' + summary.mode,
+    '步骤数: ' + summary.totalSteps,
+    '涉及 Agent: ' + summary.agentsInvolved.join(' \u2192 '),
+    '优先级范围: ' + summary.priorityRange,
+    '',
+    '\uD83D\uDCCB 执行队列:',
+    '',
+  ];
+
+  for (var i = 0; i < queue.length; i++) {
+    lines.push(formatQueueItem(queue[i]));
+  }
+
+  lines.push('');
+  lines.push('\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501');
+  lines.push('\u2139\uFE0F ' + summary.disclaimer);
+  lines.push('');
+  lines.push('\uD83D\uDCA1 提示:');
+  lines.push('  \u2022 此队列为推荐执行顺序，按 priority 从小到大执行');
+  lines.push('  \u2022 每个步骤需手动确认后才会执行');
+  lines.push('  \u2022 使用 /任务 <agent> <内容> 手动创建单个任务');
+  lines.push('  \u2022 步骤1 (数据分析) 是后续步骤的前提');
+
+  return lines.join('\n');
+}
+
+/**
+ * 生成执行计划 (Plan-only) — P6.6.3 新增
+ *
+ * @param {object} params
+ * @param {string} params.goal      - 业务目标
+ * @param {object} [params.context]  - 可选的业务上下文
+ * @param {number} [params.maxItems] - 最大返回项数
+ * @returns {Promise<object>} 规划结果
+ */
+async function generatePlan(params) {
+  params = params || {};
+  var goal = params.goal;
+  var context = params.context;
+  var maxItems = params.maxItems;
+
+  // 1. 验证目标
+  var goalCheck = validateGoal(goal);
+  if (!goalCheck.valid) {
+    return {
+      success: false,
+      error: goalCheck.reason,
+      plan: formatQueuePlan({ success: false, error: goalCheck.reason }),
+    };
+  }
+
+  // 2. 生成 task_id
+  var taskId = generateTaskId();
+
+  // 3. 创建任务记录
+  var task = createTask({
+    taskId: taskId,
+    type: 'planner',
+    agent: 'planner',
+    content: '目标: ' + goal,
+  });
+
+  // 4. 更新为执行中
+  try { updateTask(taskId, { status: 'RUNNING' }); } catch (_) {}
+
+  // 5. 构建推荐队列 (不 dispatch!)
+  var queueResult = buildQueue({
+    goal: goalCheck.normalized,
+    context: context,
+    maxItems: maxItems,
+  });
+
+  // 6. 安全过滤
+  var planText = formatQueuePlan(queueResult);
+  var sanitizedPlan = sanitizeOutput(planText);
+
+  // 7. 构建结果
+  var result = {
+    task_id:      taskId,
+    goal:         queueResult.goal,
+    mode:         'plan-only',
+    queue:        queueResult.queue,
+    summary:      queueResult.summary,
+    plan:         sanitizedPlan,
+    plan_length:  sanitizedPlan.length,
+    timestamp:    new Date().toISOString(),
+  };
+
+  // 8. 更新任务记录
+  var status = queueResult.success ? 'COMPLETED' : 'FAILED';
+  try {
+    updateTask(taskId, {
+      status: status,
+      result: JSON.stringify({
+        goal:    result.goal,
+        queue:   result.queue,
+        summary: result.summary,
+      }),
+    });
+  } catch (_) {}
+
+  return {
+    success:  queueResult.success,
+    task_id:  taskId,
+    result:   result,
+  };
+}
+
+/**
+ * 获取 Planner 状态 — P6.6.3 新增
+ * @returns {object}
+ */
+function getPlannerStatus() {
+  return {
+    agent:    'planner',
+    mode:     'plan-only',
+    goals:    listGoals().map(function(g) { return g.label; }),
+    features: [
+      '目标 \u2192 推荐队列生成',
+      '多 Agent 协同编排',
+      '优先级智能排序',
+      '上下文注入',
+    ],
+    constraints: [
+      '不自动 dispatch',
+      '不自动 confirm',
+      '不自动执行',
+      '不调用 agent-dispatcher',
+    ],
+  };
+}
+
+/**
+ * 获取所有支持的 Agent 及其在此 Planner 中的角色 — P6.6.3 新增
+ * @returns {object[]}
+ */
+function getAgentCapabilities() {
+  var agents = ['codex', 'workbuddy', 'deepseek', 'doubao'];
+  return agents.map(function(agent) {
+    return {
+      agent: agent,
+      icon:  AGENT_ICONS[agent] || '\uD83E\uDD16',
+      role:  getAgentRole(agent),
+    };
+  });
+}
+
 module.exports = {
-  execute: execute,
-  // 导出供测试
-  formatOutput: formatOutput,
+  // P6.5 原有
+  execute:       execute,
+  formatOutput:  formatOutput,
+  // P6.6.3 新增
+  generatePlan:         generatePlan,
+  getPlannerStatus:     getPlannerStatus,
+  getAgentCapabilities: getAgentCapabilities,
+  formatQueuePlan:      formatQueuePlan,
+  AGENT_ICONS:    AGENT_ICONS,
+  PRIORITY_ICONS: PRIORITY_ICONS,
 };

@@ -21,7 +21,15 @@
     "test:progress-reporter": "node tests/test-progress-reporter.cjs",
     "test:planner-agent": "node tests/test-planner-agent.cjs",
     "test:task-db": "node tests/test-task-db.cjs",
-    "test:task-state-machine": "node tests/test-task-state-machine.cjs"
+    "test:task-state-machine": "node tests/test-task-state-machine.cjs",
+    "test:agent-queue-builder": "node tests/test-agent-queue-builder.cjs",
+    "test:rbac": "node tests/test-rbac.cjs",
+    "test:ai-runtime-rbac": "node tests/test-ai-runtime-rbac.cjs",
+    "test:commander-runtime": "node tests/test-commander-runtime.cjs",
+    "test:dag-scheduler": "node tests/test-dag-scheduler.cjs",
+    "test:dag-scheduler": "node tests/test-dag-scheduler.cjs",
+    "test:controlled-execution": "node tests/test-controlled-execution.cjs",
+    "test:chatgpt-bridge": "node tests/test-chatgpt-bridge.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",

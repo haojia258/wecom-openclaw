@@ -5,7 +5,7 @@
  * v1.1 - HashiCorp Vault 集成，密钥不再从 .env 明文读取
  */
 
-require('dotenv').config({ path: '/opt/wecom-openclaw/.env', override: true });
+require('dotenv').config({ path: '/opt/wecom-openclaw/.env', override: false });
 
 const express = require('express');
 const https = require('https');
@@ -13,6 +13,7 @@ const xml2js = require('xml2js');
 const crypto = require('crypto');
 const logger = require('./lib/logger');
 const pushScheduler = require('./lib/push-scheduler');
+const commandIngress = require('./runtime/command-ingress');
 const vault = require('./lib/vault-client');
 
 const app = express();
@@ -238,6 +239,9 @@ app.post('/wecom/callback', async function(req, res) {
     } catch (_) {}
   }
 });
+
+// ─── ChatGPT Bridge (P8.0) ──────────────────────
+commandIngress.registerRoutes(app);
 
 // ─── health（不再暴露 corpId） ──────────────────
 
