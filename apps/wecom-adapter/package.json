@@ -27,7 +27,9 @@
     "test:ai-runtime-rbac": "node tests/test-ai-runtime-rbac.cjs",
     "test:commander-runtime": "node tests/test-commander-runtime.cjs",
     "test:dag-scheduler": "node tests/test-dag-scheduler.cjs",
-    "test:controlled-execution": "node tests/test-controlled-execution.cjs"
+    "test:dag-scheduler": "node tests/test-dag-scheduler.cjs",
+    "test:controlled-execution": "node tests/test-controlled-execution.cjs",
+    "test:chatgpt-bridge": "node tests/test-chatgpt-bridge.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",
