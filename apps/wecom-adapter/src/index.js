@@ -5,7 +5,7 @@
  * v1.1 - HashiCorp Vault 集成，密钥不再从 .env 明文读取
  */
 
-require('dotenv').config({ path: '/opt/wecom-openclaw/.env', override: true });
+require('dotenv').config({ path: '/opt/wecom-openclaw/.env', override: false });
 
 const express = require('express');
 const https = require('https');
