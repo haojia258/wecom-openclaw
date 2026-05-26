@@ -84,6 +84,7 @@ const {
 } = require('../src/runtime/execution-audit-log');
 
 const {
+  AGENT_EXECUTION_PERMISSIONS,
   registerExecutor,
   getRegisteredExecutors,
   resetExecutors,
@@ -285,34 +286,53 @@ assert(v4.valid === false, 'C5. sudo rm 验证失败');
 
 section('GROUP D: runtimeRBACCheck');
 
-// D1. codex + test → 允许（codex allow: patch/tests/draft-pr）
+// D1. codex + test → 允许（codex 可执行 test）
 var rb1 = runtimeRBACCheck('codex', 'test');
-assert(rb1.allowed === false, 'D1. codex test 不在 allow 列表中（codex allow: patch/tests/draft-pr, test 分类不在）');
-// 注: codex 的 allow 列表是 ['patch', 'tests', 'draft-pr']，'test' 不匹配
+assert(rb1.allowed === true, 'D1. codex test 允许');
 
 // D2. workbuddy + readonly-audit → 允许
 var rb2 = runtimeRBACCheck('workbuddy', 'readonly-audit');
 assert(rb2.allowed === true, 'D2. workbuddy readonly-audit 允许');
 
-// D3. workbuddy + deploy-production → 拒绝
-var rb3 = runtimeRBACCheck('workbuddy', 'deploy-production');
-assert(rb3.allowed === false, 'D3. workbuddy deploy-production 拒绝');
+// D3. workbuddy + health-check → 允许
+var rb3 = runtimeRBACCheck('workbuddy', 'health-check');
+assert(rb3.allowed === true, 'D3. workbuddy health-check 允许');
 
-// D4. workbuddy + rm → 拒绝
-var rb4 = runtimeRBACCheck('workbuddy', 'dangerous-operation');
-assert(rb4.allowed === false, 'D4. workbuddy dangerous-operation 拒绝（不在 allow 列表）');
+// D4. workbuddy + staging-pm2 → 允许
+var rb4 = runtimeRBACCheck('workbuddy', 'staging-pm2');
+assert(rb4.allowed === true, 'D4. workbuddy staging-pm2 允许');
 
-// D5. deepseek + readonly-review → 允许
-var rb5 = runtimeRBACCheck('deepseek', 'readonly-review');
-assert(rb5.allowed === true, 'D5. deepseek readonly-review 允许');
+// D5. deepseek + readonly-audit → 允许
+var rb5 = runtimeRBACCheck('deepseek', 'readonly-audit');
+assert(rb5.allowed === true, 'D5. deepseek readonly-audit 允许');
 
-// D6. 未知 agent
-var rb6 = runtimeRBACCheck('evil-agent', 'npm-test');
-assert(rb6.allowed === false, 'D6. 未知 agent 拒绝');
+// D6. deepseek + test → 拒绝（deepseek 不可执行 test）
+var rb6 = runtimeRBACCheck('deepseek', 'test');
+assert(rb6.allowed === false, 'D6. deepseek 不可执行 test');
 
-// D7. 空参数
-var rb7 = runtimeRBACCheck('', '');
-assert(rb7.allowed === false, 'D7. 空参数拒绝');
+// D7. doubao + test → 拒绝（doubao 仅 readonly-audit）
+var rb7 = runtimeRBACCheck('doubao', 'test');
+assert(rb7.allowed === false, 'D7. doubao 不可执行 test');
+
+// D8. 未知 agent
+var rb8 = runtimeRBACCheck('evil-agent', 'test');
+assert(rb8.allowed === false, 'D8. 未知 agent 拒绝');
+
+// D9. 空参数
+var rb9 = runtimeRBACCheck('', '');
+assert(rb9.allowed === false, 'D9. 空参数拒绝');
+
+// D10. workbuddy + shadow-validation → 允许
+var rb10 = runtimeRBACCheck('workbuddy', 'shadow-validation');
+assert(rb10.allowed === true, 'D10. workbuddy shadow-validation 允许');
+
+// D11. workbuddy + dag-dry-run → 允许
+var rb11 = runtimeRBACCheck('workbuddy', 'dag-dry-run');
+assert(rb11.allowed === true, 'D11. workbuddy dag-dry-run 允许');
+
+// D12. codex + health-check → 拒绝（codex 无 health-check 权限）
+var rb12 = runtimeRBACCheck('codex', 'health-check');
+assert(rb12.allowed === false, 'D12. codex 不可执行 health-check');
 
 // ─── GROUP E: dryRun ────────────────────────────────────────────
 

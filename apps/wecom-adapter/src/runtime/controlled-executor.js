@@ -24,13 +24,50 @@
  */
 
 const { checkCommand, checkAction } = require('./execution-policy');
-const { checkAgentAction } = require('./ai-runtime-rbac');
 const {
   writeAuditEntry,
   writeBlockedEntry,
   writeSuccessEntry,
   writeErrorEntry
 } = require('./execution-audit-log');
+
+// ─── Agent 执行权限映射 ─────────────────────────────────────────
+
+/**
+ * Agent 到 execution category 的权限映射。
+ * 这是 controlled-executor 的 Runtime RBAC 层，独立于 agent-permission-matrix。
+ *
+ * agent-permission-matrix:  dispatch 流程（plan-only 操作）
+ * AGENT_EXECUTION_PERMISSIONS: controlled-executor 流程（命令执行）
+ */
+const AGENT_EXECUTION_PERMISSIONS = {
+  codex: {
+    description: 'Codex: 代码审查与测试',
+    allowedCategories: ['test', 'readonly-audit', 'readonly-db', 'git-status']
+  },
+  workbuddy: {
+    description: 'WorkBuddy: 运维审计与 staging 管理',
+    allowedCategories: [
+      'test',
+      'health-check',
+      'staging-pm2',
+      'readonly-audit',
+      'readonly-db',
+      'git-status',
+      'dag-dry-run',
+      'rollout-dry-run',
+      'shadow-validation'
+    ]
+  },
+  deepseek: {
+    description: 'DeepSeek: 只读审查与风险分析',
+    allowedCategories: ['readonly-audit', 'readonly-db', 'git-status']
+  },
+  doubao: {
+    description: 'Doubao: 内容生成',
+    allowedCategories: ['readonly-audit']
+  }
+};
 
 // ─── 命令白名单映射 ──────────────────────────────────────────────
 
@@ -90,23 +127,40 @@ function validateExecution(command) {
 }
 
 /**
- * 步骤 2: Runtime RBAC 检查
+ * 步骤 2: Runtime RBAC 检查（Agent 执行权限层）
+ *
+ * 使用 AGENT_EXECUTION_PERMISSIONS 检查 agent 是否有权执行指定 category。
+ * 这与 agent-permission-matrix 不同：
+ *   - agent-permission-matrix: dispatch 流程（plan-only confirm 操作）
+ *   - AGENT_EXECUTION_PERMISSIONS: controlled-executor 流程（命令执行）
  *
  * @param {string} agentName - Agent 名称 (codex/workbuddy/deepseek/doubao)
- * @param {string} action    - 逻辑操作名称
+ * @param {string} category  - 命令分类 (test/health-check/staging-pm2/...)
  * @returns {{ allowed: boolean, reason: string }}
  */
-function runtimeRBACCheck(agentName, action) {
-  if (!agentName || !action) {
-    return { allowed: false, reason: '[CE-RBAC] 缺少 agent 或 action 参数' };
+function runtimeRBACCheck(agentName, category) {
+  if (!agentName || !category) {
+    return { allowed: false, reason: '[CE-RBAC] 缺少 agent 或 category 参数' };
   }
 
-  var result = checkAgentAction(agentName, action);
+  var normalizedAgent = (agentName || '').toLowerCase();
+  var normalizedCategory = (category || '').toLowerCase();
 
-  if (!result.allowed) {
+  // 未知 agent
+  var agentPerm = AGENT_EXECUTION_PERMISSIONS[normalizedAgent];
+  if (!agentPerm) {
     return {
       allowed: false,
-      reason: result.reason
+      reason: '[CE-RBAC] 未知 Agent: "' + normalizedAgent + '"，无执行权限配置'
+    };
+  }
+
+  // 检查 category 是否在 allow 列表
+  if (agentPerm.allowedCategories.indexOf(normalizedCategory) === -1) {
+    return {
+      allowed: false,
+      reason: '[CE-RBAC] ' + normalizedAgent + ' 无权执行分类 "' + normalizedCategory +
+              '"（超出 Agent 执行权限范围）'
     };
   }
 
@@ -536,6 +590,9 @@ function resetExecutors() {
 }
 
 module.exports = {
+  // AGENT 执行权限
+  AGENT_EXECUTION_PERMISSIONS,
+
   // 执行器注册
   registerExecutor,
   getRegisteredExecutors,
