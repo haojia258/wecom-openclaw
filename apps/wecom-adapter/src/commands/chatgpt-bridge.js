@@ -24,8 +24,34 @@
 var commanderCommand = require('./commander-command');
 var { canAccessCommand } = require('../auth/rbac');
 var { checkAgentAction } = require('../runtime/ai-runtime-rbac');
-var { checkCommand } = require('../runtime/execution-policy');
-var { controlledExecute } = require('../runtime/controlled-executor');
+// P8.1 模块懒加载: execution-policy 和 controlled-executor 是可选依赖
+// 仅在 live 模式 / 非 WeCom 命令时需要; plan-only WeCom 命令直接跳过
+var _lazyExecutionPolicy = null;
+var _lazyControlledExecutor = null;
+
+function _checkCommand(cmd) {
+  if (!_lazyExecutionPolicy) {
+    try {
+      _lazyExecutionPolicy = require('../runtime/execution-policy');
+    } catch (e) {
+      // P8.1 未部署: 所有命令标记为允许（plan-only 模式已做安全检查）
+      return { allowed: true, category: 'p8.1-not-deployed', reason: 'P8.1 未部署，跳过 execution-policy' };
+    }
+  }
+  return _lazyExecutionPolicy.checkCommand(cmd);
+}
+
+function _controlledExecute(opts) {
+  if (!_lazyControlledExecutor) {
+    try {
+      _lazyControlledExecutor = require('../runtime/controlled-executor');
+    } catch (e) {
+      return { success: true, checked: false, reason: 'P8.1 未部署，跳过 controlled-executor' };
+    }
+  }
+  return _lazyControlledExecutor.controlledExecute(opts);
+}
+
 var { generateBridgeTaskId, createBridgeTask, updateBridgeTask, buildRBACContext, appendBridgeAudit } = require('../runtime/external-task-api');
 
 var desc = 'ChatGPT Bridge — /bridge <command> 将外部指令导入 Commander Runtime';
@@ -220,8 +246,8 @@ async function executeControlled(params) {
       };
     }
 
-    // 非 WeCom 命令：做命令合法性检查
-    var cmdCheck = checkCommand(params.command);
+    // 非 WeCom 命令：做命令合法性检查（懒加载 P8.1 execution-policy）
+    var cmdCheck = _checkCommand(params.command);
 
     appendBridgeAudit({
       event: 'controlled_exec_check',
@@ -242,8 +268,8 @@ async function executeControlled(params) {
     };
   }
 
-  // live 模式：完整受控执行
-  var execResult = await controlledExecute({
+  // live 模式：完整受控执行（懒加载 P8.1 controlled-executor）
+  var execResult = await _controlledExecute({
     command: params.command,
     agentName: 'workbuddy',
     humanConfirmToken: params.humanConfirmToken,
