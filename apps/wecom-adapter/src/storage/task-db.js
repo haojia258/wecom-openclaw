@@ -19,7 +19,7 @@ var _db = null;
 var _available = null; // null = 未检测, true = 可用, false = 不可用
 
 // 数据库路径: apps/wecom-adapter/data/tasks.db
-var DB_PATH = path.resolve(__dirname, '../../data/tasks.db');
+var DB_PATH = process.env.TASK_DB_PATH || path.resolve(__dirname, '../../data/tasks.db');
 
 // ─── better-sqlite3 加载 ───────────────────────────────────
 

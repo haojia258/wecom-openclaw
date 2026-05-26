@@ -1,4 +1,9 @@
 'use strict';
+// ─── 测试环境隔离: 必须在所有 require 之前设置 ───
+process.env.TASK_DB_PATH = process.env.TASK_DB_PATH ||
+  require('path').resolve(__dirname, '../logs/tasks-test/test-tasks.db');
+process.env.TASK_LOG_DIR = process.env.TASK_LOG_DIR ||
+  require('path').resolve(__dirname, '../logs/tasks-test');
 
 /**
  * test-agent-task.cjs - Agent Task 集成测试 (v2 port, CommonJS)
@@ -18,9 +23,6 @@ const { reportTaskCreated, reportStatusChange, reportBlocker, reportProgressSumm
 const fs = require('fs');
 const path = require('path');
 
-// ─── 测试环境隔离: 使用临时日志目录，避免污染生产 logs/tasks/ ───
-process.env.TASK_LOG_DIR = process.env.TASK_LOG_DIR ||
-  path.resolve(__dirname, '../logs/tasks-test');
 
 (async function main() {
 
@@ -63,6 +65,14 @@ if (fs.existsSync(LOG_DIR)) {
   }
 }
 fs.mkdirSync(LOG_DIR, { recursive: true });
+
+// 清空测试 SQLite DB 文件（避免残留 task_id 重复）
+var TEST_DB = process.env.TASK_DB_PATH;
+if (fs.existsSync(TEST_DB)) {
+  try { fs.unlinkSync(TEST_DB); } catch (_) {}
+  try { fs.unlinkSync(TEST_DB + "-wal"); } catch (_) {}
+  try { fs.unlinkSync(TEST_DB + "-shm"); } catch (_) {}
+}
 
 console.log('====================================');
 console.log('  OpenClaw OS v2 - 测试套件 (port)');

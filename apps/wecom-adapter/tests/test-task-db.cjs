@@ -14,6 +14,10 @@
 var fs = require('fs');
 var path = require('path');
 
+// ─── 测试环境隔离: 使用临时 SQLite DB ───
+process.env.TASK_DB_PATH = process.env.TASK_DB_PATH ||
+  path.resolve(__dirname, '../logs/tasks-test/test-tasks.db');
+
 var taskDb = require('../src/storage/task-db');
 var repo = require('../src/storage/task-repository');
 
