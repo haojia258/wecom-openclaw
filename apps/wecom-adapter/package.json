@@ -25,7 +25,8 @@
     "test:agent-queue-builder": "node tests/test-agent-queue-builder.cjs",
     "test:rbac": "node tests/test-rbac.cjs",
     "test:ai-runtime-rbac": "node tests/test-ai-runtime-rbac.cjs",
-    "test:commander-runtime": "node tests/test-commander-runtime.cjs"
+    "test:commander-runtime": "node tests/test-commander-runtime.cjs",
+    "test:dag-scheduler": "node tests/test-dag-scheduler.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",
