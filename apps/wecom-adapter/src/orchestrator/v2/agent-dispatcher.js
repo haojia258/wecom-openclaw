@@ -10,6 +10,7 @@
  * P6.3: deepseek + confirm:review → 委托 deepseek-agent 执行 PR 审查
  * P6.4: 接入 progress-reporter 推送企微消息
  * P6.7.1: RBAC 权限检查 (confirm: 级)
+ * P7.2.1: AI Runtime RBAC (Agent 运行时权限层，叠加于 WeCom RBAC 之上)
  */
 
 const { securityCheck, sanitizeOutput, generateTaskId } = require('./commander-policy');
@@ -17,6 +18,7 @@ const { createTask, updateTask } = require('./task-store');
 const reporter = require('../../wecom/progress-reporter');
 const { STATES } = require('./task-state-machine');
 const { canUseConfirm } = require('../../auth/rbac');
+const { checkConfirmPermission, buildDenyMessage } = require('../../runtime/ai-runtime-rbac');
 
 const SUPPORTED_AGENTS = ['codex', 'workbuddy', 'deepseek', 'doubao'];
 
@@ -135,10 +137,22 @@ async function dispatch(params) {
 
   // P6.2: workbuddy + confirm:audit → 委托 workbuddy-agent (真实只读审计)
   if (normalizedAgent === 'workbuddy' && content.indexOf('confirm:audit') !== -1) {
-    // P6.7.1: RBAC 检查 — confirm:audit 需要 operator+
+    // P6.7.1: WeCom RBAC 检查 — confirm:audit 需要 operator+
     var auditRbac = canUseConfirm(userId, 'confirm:audit');
     if (!auditRbac.allowed) {
       return { success: false, error: auditRbac.error, task_id: null, result: null };
+    }
+
+    // P7.2.1: AI Runtime RBAC 检查 — workbuddy 运行时权限
+    var auditRuntimeRbac = checkConfirmPermission('workbuddy', 'confirm:audit');
+    if (!auditRuntimeRbac.allowed) {
+      updateTask(taskId, { status: STATES.FAILED, result: JSON.stringify({ reason: auditRuntimeRbac.reason }) });
+      return {
+        success: false,
+        error: buildDenyMessage(auditRuntimeRbac, taskId),
+        task_id: taskId,
+        result: null
+      };
     }
 
     // P6.6.2: PENDING → PLANNING → RUNNING
@@ -161,10 +175,22 @@ async function dispatch(params) {
 
   // P6.1: codex + confirm:create-pr → 委托 codex-agent (真实 PR 创建)
   if (normalizedAgent === 'codex' && content.indexOf('confirm:create-pr') !== -1) {
-    // P6.7.1: RBAC 检查 — confirm:create-pr 需要 admin
+    // P6.7.1: WeCom RBAC 检查 — confirm:create-pr 需要 admin
     var codexRbac = canUseConfirm(userId, 'confirm:create-pr');
     if (!codexRbac.allowed) {
       return { success: false, error: codexRbac.error, task_id: null, result: null };
+    }
+
+    // P7.2.1: AI Runtime RBAC 检查 — codex 运行时权限
+    var codexRuntimeRbac = checkConfirmPermission('codex', 'confirm:create-pr');
+    if (!codexRuntimeRbac.allowed) {
+      updateTask(taskId, { status: STATES.FAILED, result: JSON.stringify({ reason: codexRuntimeRbac.reason }) });
+      return {
+        success: false,
+        error: buildDenyMessage(codexRuntimeRbac, taskId),
+        task_id: taskId,
+        result: null
+      };
     }
 
     // P6.6.2: PENDING → PLANNING → RUNNING
@@ -186,10 +212,22 @@ async function dispatch(params) {
 
   // P6.3: deepseek + confirm:review → 委托 deepseek-agent (真实 PR 审查)
   if (normalizedAgent === 'deepseek' && content.indexOf('confirm:review') !== -1) {
-    // P6.7.1: RBAC 检查 — confirm:review 需要 operator+
+    // P6.7.1: WeCom RBAC 检查 — confirm:review 需要 operator+
     var deepseekRbac = canUseConfirm(userId, 'confirm:review');
     if (!deepseekRbac.allowed) {
       return { success: false, error: deepseekRbac.error, task_id: null, result: null };
+    }
+
+    // P7.2.1: AI Runtime RBAC 检查 — deepseek 运行时权限
+    var deepseekRuntimeRbac = checkConfirmPermission('deepseek', 'confirm:review');
+    if (!deepseekRuntimeRbac.allowed) {
+      updateTask(taskId, { status: STATES.FAILED, result: JSON.stringify({ reason: deepseekRuntimeRbac.reason }) });
+      return {
+        success: false,
+        error: buildDenyMessage(deepseekRuntimeRbac, taskId),
+        task_id: taskId,
+        result: null
+      };
     }
 
     // P6.6.2: PENDING → PLANNING → RUNNING
