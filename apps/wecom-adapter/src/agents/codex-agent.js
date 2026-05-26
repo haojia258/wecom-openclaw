@@ -5,6 +5,10 @@
  *
  * 默认 plan-only: 返回执行计划
  * confirm:create-pr: 创建 feature 分支 + Draft PR
+ *
+ * P7.2.1: AI Runtime RBAC 权限由 agent-dispatcher 在调用前统一检查
+ *         允许: patch, tests, draft-pr
+ *         拒绝: deploy-production, modify-nginx, modify-env, pm2-restart, git-push-main
  */
 
 const { createBranch, commitFile, createDraftPR, parseRepo } = require("./github-pr-client");

@@ -11,6 +11,10 @@
  * - All commands go through safe-command-runner.js (whitelist + blocklist)
  * - Output sanitization handled by agent-dispatcher (sanitizeOutput)
  * - Results logged to logs/tasks/*.jsonl via task-store
+ *
+ * P7.2.1: AI Runtime RBAC 权限由 agent-dispatcher 在调用前统一检查
+ *         允许: readonly-audit, staging-audit
+ *         拒绝: deploy-production, modify-env, modify-nginx, rm, kill, sudo
  */
 
 const { executeCommand } = require('./safe-command-runner');
