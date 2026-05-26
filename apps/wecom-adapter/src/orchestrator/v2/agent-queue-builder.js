@@ -387,4 +387,5 @@ module.exports = {
   buildQueue:    buildQueue,
   listGoals:     listGoals,
   getAgentRole:  getAgentRole,
+  getGoalLabel:  function(goalType) { return GOAL_LABELS[goalType] || goalType; },
 };

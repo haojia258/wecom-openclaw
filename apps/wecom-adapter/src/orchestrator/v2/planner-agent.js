@@ -355,4 +355,6 @@ module.exports = {
   getPlannerStatus:     getPlannerStatus,
   getAgentCapabilities: getAgentCapabilities,
   formatQueuePlan:      formatQueuePlan,
+  AGENT_ICONS:    AGENT_ICONS,
+  PRIORITY_ICONS: PRIORITY_ICONS,
 };
