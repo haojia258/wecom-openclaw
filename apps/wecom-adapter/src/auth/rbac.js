@@ -34,7 +34,10 @@ const VIEWER_COMMANDS = [
   '/progress',
   '/任务进度',
   '/tasklist',
-  '/所有任务'
+  '/所有任务',
+  '/总控',
+  '/commander',
+  '/总控台'
 ];
 
 // 标准化：去重
