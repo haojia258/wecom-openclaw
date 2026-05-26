@@ -26,6 +26,8 @@ var { validateGoal, buildQueue, listGoals, GoalType, GOAL_LABELS, getAgentRole }
 var { generateTaskId, isPlanOnly, sanitizeOutput } = require('./commander-policy');
 var { getPlannerStatus } = require('./planner-agent');
 var { checkAgentAction, buildDenyMessage } = require('../../runtime/ai-runtime-rbac');
+var dagScheduler = require('./dag-scheduler');
+var dagPlan = require('./dag-executor-plan');
 
 // ============================================================
 //  常量
@@ -167,6 +169,16 @@ async function execute(params) {
   }
 
   // ─── 6. Shadow 模式标记 ───
+  // Step 6+: DAG Parallel Scheduling
+  var dagResult = dagScheduler.schedule(queue);
+  var dagRbacInfo = dagResult.success ? dagScheduler.applyRBAC(dagResult.dag, rbacResults) : null;
+  if (dagResult.success && dagRbacInfo) {
+    // Re-sort with blocked nodes excluded
+    var dagSortResult = dagScheduler.topologicalSort(dagRbacInfo.dag);
+    dagResult.stages = dagSortResult.stages;
+    dagResult.totalStages = dagSortResult.totalStages;
+  }
+
   var shadowMode = isPlanOnly();
   var policySummary = getPolicySummary();
 
@@ -183,6 +195,8 @@ async function execute(params) {
     plannerResult: plannerResult,
     shadowMode:    shadowMode,
     policySummary: policySummary,
+    dagResult: dagResult,
+    dagRbacInfo: dagRbacInfo,
   });
 
   return {
@@ -298,6 +312,33 @@ function formatOutput(data) {
       lines.push('     上下文: ' + JSON.stringify(qi.context));
     }
   }
+  lines.push('');
+
+  // DAG Execution Plan (parallel stages)
+  if (data.dagResult && data.dagResult.success) {
+    lines.push('');
+    lines.push('DAG Execution Plan (Stages):');
+    lines.push('----------------------------');
+    var dagStages = data.dagResult.stages;
+    var levels = dagPlan.getExecutionLevels(dagStages);
+    for (var li = 0; li < levels.length; li++) {
+      var level = levels[li];
+      var stageLabel = '  Stage ' + level.level + ': ';
+      stageLabel += level.type === 'parallel' ? '[PARALLEL] (' + level.nodeCount + ' agents)' : '[SEQUENTIAL]';
+      if (li > 0) stageLabel += ' — depends on Stage ' + li;
+      lines.push(stageLabel);
+      for (var lj = 0; lj < level.nodes.length; lj++) {
+        var node = level.nodes[lj];
+        var nIcon = node.blocked ? '❌' : '◉';
+        var bTag = node.blocked ? ' BLOCKED' : '';
+        lines.push('    ' + nIcon + ' ' + node.agent + ' → ' + node.command + ' [P' + node.priority + ']' + bTag);
+      }
+    }
+    if (data.dagRbacInfo && data.dagRbacInfo.totalBlocked > 0) {
+      lines.push('  ⚠ Blocked: ' + data.dagRbacInfo.totalBlocked + ' nodes (RBAC deny + downstream propagation)');
+    }
+  }
+
   lines.push('');
 
   // ─── Shadow Mode ───
