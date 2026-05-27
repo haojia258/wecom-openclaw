@@ -31,6 +31,38 @@ const {
   writeErrorEntry
 } = require('./execution-audit-log');
 
+// P9.1: Feedback Loop 依赖（懒加载以支持可选部署）
+var _classifier = null;
+var _retryPolicy = null;
+var _recoveryPlanner = null;
+var _failureMemory = null;
+var _feedbackLog = null;
+
+function _getClassifier() {
+  if (!_classifier) _classifier = require('./execution-result-classifier');
+  return _classifier;
+}
+
+function _getRetryPolicy() {
+  if (!_retryPolicy) _retryPolicy = require('./retry-policy');
+  return _retryPolicy;
+}
+
+function _getRecoveryPlanner() {
+  if (!_recoveryPlanner) _recoveryPlanner = require('./recovery-planner');
+  return _recoveryPlanner;
+}
+
+function _getFailureMemory() {
+  if (!_failureMemory) _failureMemory = require('./failure-memory');
+  return _failureMemory;
+}
+
+function _getFeedbackLog() {
+  if (!_feedbackLog) _feedbackLog = require('./execution-feedback-log');
+  return _feedbackLog;
+}
+
 // ─── Agent 执行权限映射 ─────────────────────────────────────────
 
 /**
@@ -589,6 +621,285 @@ function resetExecutors() {
   COMMAND_EXECUTORS = {};
 }
 
+// ─── P9.1: Execution Feedback Loop ───────────────────────────
+
+/**
+ * 带反馈循环的受控执行
+ *
+ * Execution → Observe → Analyze → Retry → Recover 闭环。
+ *
+ * 流程：
+ *   1. controlledExecute（标准受控执行）
+ *   2. 如果失败 → classify（分类故障）
+ *   3. 如果是 retryable → retry（带 policy check）
+ *   4. 如果 retry 耗尽 → recovery plan（staging-safe）
+ *   5. 所有步骤写入 execution-feedback.log 审计
+ *
+ * @param {Object} params
+ * @param {string} params.command          - shell 命令
+ * @param {string} params.executorName     - 已注册的执行器名称
+ * @param {string} params.agent            - Agent 名称
+ * @param {string} params.user             - 发起用户
+ * @param {string} [params.task_id]        - 任务 ID
+ * @param {string} [params.mode]           - 'dry-run' (默认) | 'live'
+ * @param {string} [params.humanConfirmToken] - 人工确认令牌
+ * @param {string} [params.protocol]       - 协议: http/pm2/npm-test/executor-throw
+ * @param {Object} [params.metadata]       - 额外元数据
+ * @returns {Promise<Object>} 含反馈循环信息的执行结果
+ */
+async function controlledExecuteWithFeedback(params) {
+  var correlationId = params.task_id || ('fb_' + Date.now());
+  var protocol = params.protocol || 'executor-throw';
+  var agent = params.agent || 'workbuddy';
+  var user = params.user || 'unknown';
+  var executorName = params.executorName;
+
+  var classifier = _getClassifier();
+  var retryPolicy = _getRetryPolicy();
+  var recoveryPlanner = _getRecoveryPlanner();
+  var failureMemory = _getFailureMemory();
+  var feedbackLog = _getFeedbackLog();
+
+  var feedbackHistory = [];
+  var totalRetries = 0;
+  var recoveryPlanGenerated = false;
+  var recoveryPlan = null;
+  var recoveryDag = null;
+
+  // ─── Step 1: 执行 ───
+  var result = await controlledExecute({
+    command: params.command,
+    executorName: executorName,
+    agent: agent,
+    user: user,
+    task_id: correlationId,
+    mode: params.mode || 'dry-run',
+    humanConfirmToken: params.humanConfirmToken
+  });
+
+  // 成功即返回
+  if (result.success) {
+    feedbackLog.logClassify({
+      correlationId: correlationId,
+      executor: executorName,
+      protocol: protocol,
+      classificationType: 'SUCCESS',
+      retryable: false,
+      reason: 'Execution succeeded'
+    });
+
+    feedbackLog.logFinal({
+      correlationId: correlationId,
+      executor: executorName,
+      finalResult: 'SUCCESS',
+      totalRetries: 0,
+      recoveryAttempted: false,
+      recovered: false
+    });
+
+    return {
+      success: true,
+      correlationId: correlationId,
+      result: result,
+      feedback: {
+        classification: { type: 'SUCCESS', retryable: false },
+        retries: 0,
+        retryExhausted: false,
+        recoveryPlanGenerated: false,
+        recoveryPlan: null,
+        history: feedbackHistory
+      }
+    };
+  }
+
+  // ─── Step 2: Classify ───
+  var classification = classifier.classify({
+    protocol: protocol,
+    success: false,
+    error: result.error || '',
+    output: result.output || '',
+    durationMs: result.duration_ms
+  });
+
+  feedbackHistory.push({ phase: 'classify', classification: classification });
+
+  feedbackLog.logClassify({
+    correlationId: correlationId,
+    executor: executorName,
+    protocol: protocol,
+    classificationType: classification.type,
+    retryable: classification.retryable,
+    reason: classification.reason,
+    error: result.error
+  });
+
+  // ─── Step 3: Retry Loop ───
+  if (classification.retryable && protocol !== 'dry-run') {
+    var retryResult = retryPolicy.shouldRetry(classification.type, 0, executorName);
+    var retryAttempt = 0;
+
+    while (retryResult.shouldRetry && retryAttempt < retryPolicy.getPolicy(classification.type, executorName).maxRetry) {
+      retryAttempt++;
+      totalRetries++;
+
+      // 延迟
+      await retryPolicy.sleep(retryResult.delayMs);
+
+      // Re-check policy（retry 必须经过 policy check）
+      var policyCheck = validateExecution(params.command);
+      if (!policyCheck.valid) {
+        feedbackLog.logRetry({
+          correlationId: correlationId,
+          executor: executorName,
+          attempt: retryAttempt,
+          maxRetry: retryPolicy.getPolicy(classification.type, executorName).maxRetry,
+          delayMs: retryResult.delayMs,
+          failureType: 'POLICY_BLOCKED',
+          success: false
+        });
+        feedbackHistory.push({ phase: 'retry', attempt: retryAttempt, blocked: true, reason: 'policy-deny: ' + policyCheck.reason });
+        break;
+      }
+
+      // 重新执行
+      var retryExecResult = await executeControlled({
+        executorName: executorName,
+        mode: params.mode || 'live',
+        humanConfirmToken: params.humanConfirmToken,
+        task_id: correlationId,
+        user: user,
+        agent: agent,
+        command: params.command,
+        category: policyCheck.category
+      });
+
+      if (retryExecResult.success) {
+        feedbackLog.logRetry({
+          correlationId: correlationId,
+          executor: executorName,
+          attempt: retryAttempt,
+          maxRetry: retryPolicy.getPolicy(classification.type, executorName).maxRetry,
+          delayMs: retryResult.delayMs,
+          failureType: classification.type,
+          success: true
+        });
+
+        feedbackLog.logFinal({
+          correlationId: correlationId,
+          executor: executorName,
+          finalResult: 'SUCCESS_AFTER_RETRY',
+          totalRetries: totalRetries,
+          recoveryAttempted: false,
+          recovered: false
+        });
+
+        return {
+          success: true,
+          correlationId: correlationId,
+          result: retryExecResult,
+          feedback: {
+            classification: classification,
+            retries: totalRetries,
+            retryExhausted: false,
+            recoveryPlanGenerated: false,
+            recoveryPlan: null,
+            history: feedbackHistory
+          }
+        };
+      }
+
+      feedbackLog.logRetry({
+        correlationId: correlationId,
+        executor: executorName,
+        attempt: retryAttempt,
+        maxRetry: retryPolicy.getPolicy(classification.type, executorName).maxRetry,
+        delayMs: retryResult.delayMs,
+        failureType: classification.type,
+        success: false
+      });
+
+      feedbackHistory.push({ phase: 'retry', attempt: retryAttempt, success: false, error: retryExecResult.error });
+
+      // 更新重试策略
+      retryResult = retryPolicy.shouldRetry(classification.type, retryAttempt, executorName);
+    }
+  }
+
+  // ─── Step 4: Recovery Plan ───
+  if (classification.type === classifier.ResultType.EXECUTOR_ERROR ||
+      classification.type === classifier.ResultType.INFRA_ERROR ||
+      (totalRetries > 0 && !result.success)) {
+
+    var recoveryResult = recoveryPlanner.generateRecoveryPlan({
+      failureType: classification.type,
+      protocol: protocol,
+      error: result.error || '',
+      executorName: executorName,
+      correlationId: correlationId
+    });
+
+    // 验证恢复计划 staging-safe
+    var validation = recoveryPlanner.validateRecoveryPlan(recoveryResult.plan);
+    if (validation.safe) {
+      recoveryPlanGenerated = true;
+      recoveryPlan = recoveryResult.plan;
+      recoveryDag = recoveryResult.recoveryDag;
+
+      feedbackLog.logRecovery({
+        correlationId: correlationId,
+        executor: executorName,
+        recoveryPlanId: recoveryPlan.correlationId,
+        totalSteps: recoveryPlan.totalSteps,
+        stagingSafe: recoveryPlan.stagingSafe,
+        description: recoveryPlan.description
+      });
+
+      feedbackHistory.push({ phase: 'recovery', plan: recoveryPlan.description, steps: recoveryPlan.totalSteps });
+
+      // 记录故障记忆
+      failureMemory.recordFailure({
+        correlationId: correlationId,
+        executor: executorName,
+        failureType: classification.type,
+        retryCount: totalRetries,
+        recoveryPlan: recoveryPlan.correlationId,
+        error: result.error,
+        protocol: protocol,
+        resolved: false
+      });
+    } else {
+      feedbackHistory.push({ phase: 'recovery', blocked: true, violations: validation.violations });
+    }
+  }
+
+  // ─── Step 5: Final Result ───
+  feedbackLog.logFinal({
+    correlationId: correlationId,
+    executor: executorName,
+    finalResult: totalRetries > 0 ? 'FAILED_RETRY_EXHAUSTED' : 'FAILED',
+    totalRetries: totalRetries,
+    recoveryAttempted: recoveryPlanGenerated,
+    recovered: false,
+    error: result.error,
+    output: result.output
+  });
+
+  return {
+    success: false,
+    correlationId: correlationId,
+    result: result,
+    feedback: {
+      classification: classification,
+      retries: totalRetries,
+      retryExhausted: totalRetries > 0,
+      recoveryPlanGenerated: recoveryPlanGenerated,
+      recoveryPlan: recoveryPlan,
+      recoveryDag: recoveryDag,
+      history: feedbackHistory
+    }
+  };
+}
+
 module.exports = {
   // AGENT 执行权限
   AGENT_EXECUTION_PERMISSIONS,
@@ -606,6 +917,9 @@ module.exports = {
   controlledExecute,
   auditExecution,
   rollbackPlan,
+
+  // P9.1: Execution Feedback Loop
+  controlledExecuteWithFeedback,
 
   // 辅助
   generateHumanConfirmToken,
