@@ -59,10 +59,44 @@ var CREATE_EVENTS_TABLE = [
   ');'
 ].join('\n');
 
+// ─── P10.0: AI Mission Control Dashboard v0.1 表 ──────────
+
+var CREATE_MISSION_TASKS_TABLE = [
+  'CREATE TABLE IF NOT EXISTS mission_tasks (',
+  '  id           TEXT PRIMARY KEY,',
+  '  title        TEXT NOT NULL DEFAULT \'\',',
+  '  description  TEXT DEFAULT \'\',',
+  '  status       TEXT NOT NULL DEFAULT \'pending\',',
+  '  owner_agent  TEXT NOT NULL DEFAULT \'unknown\',',
+  '  github_pr    TEXT,',
+  '  current_stage TEXT,',
+  '  last_event_at TEXT,',
+  '  created_at   TEXT NOT NULL,',
+  '  updated_at   TEXT NOT NULL',
+  ');'
+].join('\n');
+
+var CREATE_AGENT_EVENTS_TABLE = [
+  'CREATE TABLE IF NOT EXISTS agent_events (',
+  '  id               INTEGER PRIMARY KEY AUTOINCREMENT,',
+  '  mission_task_id  TEXT NOT NULL,',
+  '  event_type       TEXT NOT NULL,',
+  '  stage            TEXT,',
+  '  payload          TEXT,',
+  '  created_at       TEXT NOT NULL,',
+  '  FOREIGN KEY (mission_task_id) REFERENCES mission_tasks(id) ON DELETE CASCADE',
+  ');'
+].join('\n');
+
 var INDEXES = [
   'CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);',
   'CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(agent);',
-  'CREATE INDEX IF NOT EXISTS idx_events_task_id ON events(task_id);'
+  'CREATE INDEX IF NOT EXISTS idx_events_task_id ON events(task_id);',
+  // P10.0: mission 索引
+  'CREATE INDEX IF NOT EXISTS idx_mission_tasks_status ON mission_tasks(status);',
+  'CREATE INDEX IF NOT EXISTS idx_mission_tasks_owner_agent ON mission_tasks(owner_agent);',
+  'CREATE INDEX IF NOT EXISTS idx_agent_events_mission_task_id ON agent_events(mission_task_id);',
+  'CREATE INDEX IF NOT EXISTS idx_agent_events_created_at ON agent_events(created_at);'
 ];
 
 // ─── 初始化 ───────────────────────────────────────────────
@@ -77,6 +111,9 @@ function ensureDataDir() {
 function initTables(db) {
   db.exec(CREATE_TASKS_TABLE);
   db.exec(CREATE_EVENTS_TABLE);
+  // P10.0: AI Mission Control Dashboard 表
+  db.exec(CREATE_MISSION_TASKS_TABLE);
+  db.exec(CREATE_AGENT_EVENTS_TABLE);
   for (var i = 0; i < INDEXES.length; i++) {
     db.exec(INDEXES[i]);
   }

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Mission Control Dashboard v0.1</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: #0d1117;
+  color: #c9d1d9;
+  line-height: 1.5;
+}
+.header {
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #58a6ff;
+}
+.header .stats {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+}
+.header .stats span {
+  background: #21262d;
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid #30363d;
+}
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px 24px;
+  min-height: calc(100vh - 130px);
+}
+.panel {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #30363d;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panel-body {
+  padding: 12px 16px;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+.task-row {
+  padding: 10px 12px;
+  border-bottom: 1px solid #21262d;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
+}
+.task-row:hover { background: #1c2128; }
+.task-row.active {
+  background: #1c2541;
+  border-left-color: #58a6ff;
+}
+.task-row .top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.task-row .title {
+  font-weight: 600;
+  font-size: 14px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-row .meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #8b949e;
+  flex-wrap: wrap;
+}
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.badge-pending { background: #21262d; color: #8b949e; }
+.badge-running,
+.badge-in_progress { background: #1c3a5c; color: #58a6ff; }
+.badge-completed { background: #1a3d2e; color: #3fb950; }
+.badge-failed { background: #3d1a1a; color: #f85149; }
+.badge-blocked { background: #3d2e1a; color: #d29922; }
+.event-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #21262d;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.event-item .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.dot-info { background: #58a6ff; }
+.dot-success { background: #3fb950; }
+.dot-warn { background: #d29922; }
+.dot-error { background: #f85149; }
+.event-item .content {
+  flex: 1;
+  font-size: 13px;
+}
+.event-item .content .type {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.event-item .content .stage {
+  font-size: 11px;
+  color: #8b949e;
+}
+.event-item .content .payload {
+  font-size: 11px;
+  color: #6e7681;
+  margin-top: 2px;
+  font-family: 'SF Mono', Consolas, monospace;
+  background: #0d1117;
+  padding: 4px 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  max-height: 80px;
+  overflow-y: auto;
+}
+.event-item .time {
+  font-size: 11px;
+  color: #484f58;
+  flex-shrink: 0;
+}
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #484f58;
+  font-size: 14px;
+}
+.empty-state .icon { font-size: 32px; margin-bottom: 8px; }
+.task-detail {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #0d1117;
+  border-radius: 6px;
+  border: 1px solid #21262d;
+}
+.task-detail .row {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.task-detail .row label {
+  color: #8b949e;
+  min-width: 90px;
+}
+.task-detail .row a {
+  color: #58a6ff;
+  text-decoration: none;
+}
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #8b949e;
+}
+.refresh-btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.refresh-btn:hover { background: #30363d; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>AI Mission Control Dashboard v0.1</h1>
+  <div class="stats" id="stats"></div>
+</div>
+<div class="container">
+  <div class="panel" id="tasks-panel">
+    <div class="panel-header">
+      <span>Mission Tasks</span>
+      <button class="refresh-btn" onclick="loadTasks()">Refresh</button>
+    </div>
+    <div class="panel-body" id="tasks-list">
+      <div class="loading">Loading...</div>
+    </div>
+  </div>
+  <div class="panel" id="events-panel">
+    <div class="panel-header">
+      <span id="events-title">Event Timeline</span>
+      <button class="refresh-btn" onclick="loadEvents()">Refresh</button>
+    </div>
+    <div class="panel-body" id="events-list">
+      <div class="empty-state">
+        <div class="icon">&#x1F4CB;</div>
+        <div>Select a task to view its event timeline</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentTaskId = null;
+var allEvents = [];
+
+function getStatusBadge(status) {
+  var cls = 'badge-';
+  if (!status) return '<span class="badge badge-pending">unknown</span>';
+  var s = status.toLowerCase();
+  if (s === 'pending') cls += 'pending';
+  else if (s === 'running' || s === 'in_progress') cls += 'in_progress';
+  else if (s === 'completed') cls += 'completed';
+  else if (s === 'failed') cls += 'failed';
+  else if (s === 'blocked') cls += 'blocked';
+  else cls += 'pending';
+  return '<span class="badge ' + cls + '">' + escapeHtml(status) + '</span>';
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatTime(iso) {
+  if (!iso) return '-';
+  var d = new Date(iso);
+  return d.toLocaleString('zh-CN', { hour12: false });
+}
+
+function loadTasks() {
+  var list = document.getElementById('tasks-list');
+  list.innerHTML = '<div class="loading">Loading...</div>';
+
+  fetch('/mission/tasks')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Failed: ' + escapeHtml(resp.error) + '</div></div>';
+        return;
+      }
+
+      // Update stats
+      var statsEl = document.getElementById('stats');
+      var s = resp.stats;
+      var total = s.total || 0;
+      statsEl.innerHTML = '<span>Total: ' + total + '</span>' +
+        (s.by_status ? Object.keys(s.by_status).map(function(k) {
+          return '<span>' + k + ': ' + s.by_status[k] + '</span>';
+        }).join('') : '');
+
+      var tasks = resp.data || [];
+      if (tasks.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4ED;</div><div>No mission tasks yet</div></div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < tasks.length; i++) {
+        var t = tasks[i];
+        var activeClass = (currentTaskId === t.id) ? ' active' : '';
+        html += '<div class="task-row' + activeClass + '" onclick="selectTask(\'' + escapeHtml(t.id) + '\')">';
+        html += '<div class="top">';
+        html += '<span class="title">' + escapeHtml(t.title || t.id) + '</span>';
+        html += getStatusBadge(t.status);
+        html += '</div>';
+        html += '<div class="meta">';
+        html += '<span title="Agent">Agent: ' + escapeHtml(t.owner_agent) + '</span>';
+        if (t.current_stage) html += '<span title="Stage">Stage: ' + escapeHtml(t.current_stage) + '</span>';
+        if (t.github_pr) html += '<span title="PR">PR: ' + escapeHtml(t.github_pr) + '</span>';
+        if (t.last_event_at) html += '<span title="Last Event">Last: ' + formatTime(t.last_event_at) + '</span>';
+        html += '</div>';
+        html += '</div>';
+      }
+      list.innerHTML = html;
+    })
+    .catch(function(e) {
+      list.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+function selectTask(taskId) {
+  currentTaskId = taskId;
+  loadTasks(); // re-render to highlight
+  loadEvents();
+}
+
+function loadEvents() {
+  var eventsDiv = document.getElementById('events-list');
+  var titleEl = document.getElementById('events-title');
+
+  if (!currentTaskId) {
+    eventsDiv.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4CB;</div><div>Select a task to view its event timeline</div></div>';
+    titleEl.textContent = 'Event Timeline';
+    return;
+  }
+
+  eventsDiv.innerHTML = '<div class="loading">Loading...</div>';
+  titleEl.textContent = 'Events: ' + currentTaskId;
+
+  fetch('/mission/tasks/' + encodeURIComponent(currentTaskId) + '/events')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        eventsDiv.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(resp.error) + '</div></div>';
+        return;
+      }
+
+      var task = resp.task;
+      var events = resp.events || [];
+
+      var html = '';
+
+      // Task detail header
+      if (task) {
+        html += '<div class="task-detail">';
+        html += '<div class="row"><label>Task ID:</label><span>' + escapeHtml(task.id) + '</span></div>';
+        html += '<div class="row"><label>Status:</label>' + getStatusBadge(task.status) + '</div>';
+        html += '<div class="row"><label>Agent:</label><span>' + escapeHtml(task.owner_agent) + '</span></div>';
+        html += '<div class="row"><label>Stage:</label><span>' + escapeHtml(task.current_stage || '-') + '</span></div>';
+        if (task.github_pr) {
+          html += '<div class="row"><label>GitHub PR:</label><a href="' + escapeHtml(task.github_pr) + '" target="_blank">' + escapeHtml(task.github_pr) + '</a></div>';
+        }
+        if (task.description) {
+          html += '<div class="row"><label>Desc:</label><span>' + escapeHtml(task.description.slice(0, 200)) + '</span></div>';
+        }
+        html += '<div class="row"><label>Created:</label><span>' + formatTime(task.created_at) + '</span></div>';
+        html += '<div class="row"><label>Last Event:</label><span>' + formatTime(task.last_event_at) + '</span></div>';
+        html += '</div>';
+      }
+
+      // Event timeline
+      if (events.length === 0) {
+        html += '<div class="empty-state"><div>No events recorded yet</div></div>';
+      } else {
+        for (var i = 0; i < events.length; i++) {
+          var evt = events[i];
+          var dotClass = 'dot-info';
+          if (evt.event_type && evt.event_type.toLowerCase().indexOf('error') >= 0) dotClass = 'dot-error';
+          else if (evt.event_type && evt.event_type.toLowerCase().indexOf('complete') >= 0) dotClass = 'dot-success';
+          else if (evt.event_type && evt.event_type.toLowerCase().indexOf('warn') >= 0) dotClass = 'dot-warn';
+
+          html += '<div class="event-item">';
+          html += '<div class="dot ' + dotClass + '"></div>';
+          html += '<div class="content">';
+          html += '<div class="type">' + escapeHtml(evt.event_type) + '</div>';
+          if (evt.stage) html += '<div class="stage">Stage: ' + escapeHtml(evt.stage) + '</div>';
+          if (evt.payload) html += '<div class="payload">' + escapeHtml(JSON.stringify(evt.payload, null, 2)) + '</div>';
+          html += '</div>';
+          html += '<div class="time">' + formatTime(evt.created_at) + '</div>';
+          html += '</div>';
+        }
+      }
+
+      eventsDiv.innerHTML = html;
+    })
+    .catch(function(e) {
+      eventsDiv.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+// Auto-refresh every 10 seconds
+setInterval(function() {
+  loadTasks();
+  if (currentTaskId) loadEvents();
+}, 10000);
+
+// Initial load
+loadTasks();
+</script>
+</body>
+</html>
