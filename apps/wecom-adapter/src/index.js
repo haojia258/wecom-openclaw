@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const logger = require('./lib/logger');
 const pushScheduler = require('./lib/push-scheduler');
 const commandIngress = require('./runtime/command-ingress');
+const aiGateway = require('./gateway/ai-gateway');
 const vault = require('./lib/vault-client');
 
 const app = express();
@@ -242,6 +243,9 @@ app.post('/wecom/callback', async function(req, res) {
 
 // ─── ChatGPT Bridge (P8.0) ──────────────────────
 commandIngress.registerRoutes(app);
+
+// ─── AI Gateway (P8.0.3) ────────────────────────
+aiGateway.registerGatewayRoutes(app);
 
 // ─── health（不再暴露 corpId） ──────────────────
 
