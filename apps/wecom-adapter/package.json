@@ -30,7 +30,8 @@
     "test:dag-scheduler": "node tests/test-dag-scheduler.cjs",
     "test:controlled-execution": "node tests/test-controlled-execution.cjs",
     "test:chatgpt-bridge": "node tests/test-chatgpt-bridge.cjs",
-    "test:ai-gateway": "node tests/test-ai-gateway.cjs"
+    "test:ai-gateway": "node tests/test-ai-gateway.cjs",
+    "test:execution-feedback-loop": "node tests/test-execution-feedback-loop.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",

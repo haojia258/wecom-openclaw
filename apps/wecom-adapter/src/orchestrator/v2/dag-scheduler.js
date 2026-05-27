@@ -5,9 +5,13 @@
  *
  * 将 Commander Runtime 中的线性队列升级为支持并行 stage 分组
  * 的 DAG Runtime 结构（仍 plan-only）。
+ *
+ * P9.1: 新增 retry/recovery DAG 支持
+ *   - FAILED_RETRYABLE, RETRYING, RECOVERING, RECOVERED 状态
+ *   - retry DAG node 和 recovery DAG node
  */
 
-var { DAGNode } = require('./dag-node');
+var { DAGNode, DAGNodeState } = require('./dag-node');
 
 /**
  * 从队列项构建 DAG 结构
@@ -309,6 +313,156 @@ function applyRBAC(dag, rbacResults) {
   };
 }
 
+/**
+ * P9.1: 向 DAG 添加 retry 节点
+ *
+ * @param {object} dag         - buildDAG 返回值
+ * @param {string} baseNodeId  - 失败的基础节点 ID
+ * @param {number} attempt     - 重试次数
+ * @returns {{ dag: object, retryNodeId: string }}
+ */
+function addRetryNode(dag, baseNodeId, attempt) {
+  var baseNode = dag.nodeMap[baseNodeId];
+  if (!baseNode) {
+    return { dag: dag, retryNodeId: null, error: 'Base node not found: ' + baseNodeId };
+  }
+
+  var retryNode = DAGNode.createRetryNode(baseNodeId, attempt, {
+    agent: baseNode.agent,
+    command: baseNode.command,
+    priority: baseNode.priority,
+    reason: baseNode.reason,
+    dependsOn: [],
+    context: baseNode.context
+  });
+
+  // 添加重试节点
+  dag.nodes.push(retryNode);
+  dag.nodeMap[retryNode.id] = retryNode;
+  dag.adjacency[retryNode.id] = [];
+  dag.inDegree[retryNode.id] = 0;
+
+  // 标记原节点状态
+  if (baseNode.setState) {
+    baseNode.setState(DAGNodeState.FAILED_RETRYABLE, 'Retry scheduled (attempt ' + attempt + ')');
+  }
+
+  return { dag: dag, retryNodeId: retryNode.id };
+}
+
+/**
+ * P9.1: 向 DAG 添加 recovery 节点列表
+ *
+ * @param {object} dag           - buildDAG 返回值
+ * @param {string} baseNodeId    - 失败的基础节点 ID
+ * @param {object[]} recoverySteps - 恢复步骤
+ * @returns {{ dag: object, recoveryNodeIds: string[] }}
+ */
+function addRecoveryNodes(dag, baseNodeId, recoverySteps) {
+  var recoveryNodeIds = [];
+
+  for (var i = 0; i < recoverySteps.length; i++) {
+    var step = recoverySteps[i];
+    var recoveryNode = DAGNode.createRecoveryNode(baseNodeId, step);
+
+    dag.nodes.push(recoveryNode);
+    dag.nodeMap[recoveryNode.id] = recoveryNode;
+    dag.adjacency[recoveryNode.id] = [];
+    dag.inDegree[recoveryNode.id] = 0;
+
+    recoveryNodeIds.push(recoveryNode.id);
+  }
+
+  // 处理恢复步骤之间的依赖关系
+  for (var j = 0; j < recoverySteps.length; j++) {
+    var step2 = recoverySteps[j];
+    if (step2.dependsOn && step2.dependsOn.length > 0) {
+      for (var k = 0; k < step2.dependsOn.length; k++) {
+        var depId = step2.dependsOn[k];
+        if (dag.nodeMap[depId]) {
+          dag.edges.push({ from: depId, to: step2.action });
+          if (!dag.adjacency[depId]) dag.adjacency[depId] = [];
+          dag.adjacency[depId].push(step2.action);
+          if (typeof dag.inDegree[step2.action] === 'number') {
+            dag.inDegree[step2.action]++;
+          }
+        }
+      }
+    }
+  }
+
+  // 标记原节点状态
+  if (dag.nodeMap[baseNodeId] && dag.nodeMap[baseNodeId].setState) {
+    dag.nodeMap[baseNodeId].setState(DAGNodeState.RECOVERING, 'Recovery DAG active');
+  }
+
+  return { dag: dag, recoveryNodeIds: recoveryNodeIds };
+}
+
+/**
+ * P9.1: 从 recovery plan DAG 添加到现有 DAG
+ *
+ * @param {object} dag          - 现有 DAG
+ * @param {object} recoveryDag  - recovery-planner 生成的 recoveryDag
+ * @param {string} baseNodeId   - 失败节点 ID
+ * @returns {object} 合并后的 DAG
+ */
+function addRecoveryDAG(dag, recoveryDag, baseNodeId) {
+  if (!recoveryDag || !recoveryDag.nodes) {
+    return dag;
+  }
+
+  for (var i = 0; i < recoveryDag.nodes.length; i++) {
+    var rn = recoveryDag.nodes[i];
+    var recoveryNode = new DAGNode(
+      rn.id,
+      rn.agent,
+      rn.command,
+      rn.priority,
+      rn.reason,
+      rn.dependsOn || [],
+      rn.context || {},
+      'recovery'
+    );
+    recoveryNode.state = DAGNodeState.RECOVERING;
+
+    dag.nodes.push(recoveryNode);
+    dag.nodeMap[rn.id] = recoveryNode;
+    dag.adjacency[rn.id] = [];
+    dag.inDegree[rn.id] = 0;
+  }
+
+  // 添加边
+  if (recoveryDag.edges) {
+    for (var j = 0; j < recoveryDag.edges.length; j++) {
+      var edge = recoveryDag.edges[j];
+      dag.edges.push(edge);
+      if (!dag.adjacency[edge.from]) dag.adjacency[edge.from] = [];
+      dag.adjacency[edge.from].push(edge.to);
+      if (typeof dag.inDegree[edge.to] === 'number') {
+        dag.inDegree[edge.to]++;
+      }
+    }
+  }
+
+  if (dag.nodeMap[baseNodeId] && dag.nodeMap[baseNodeId].setState) {
+    dag.nodeMap[baseNodeId].setState(DAGNodeState.RECOVERING, 'Recovery DAG active');
+  }
+
+  return dag;
+}
+
+/**
+ * P9.1: 按状态获取节点
+ *
+ * @param {object} dag   - buildDAG 返回值
+ * @param {string} state - DAGNodeState 值
+ * @returns {object[]}
+ */
+function getNodesByState(dag, state) {
+  return dag.nodes.filter(function(n) { return n.state === state; });
+}
+
 module.exports = {
   buildDAG: buildDAG,
   topologicalSort: topologicalSort,
@@ -317,4 +471,11 @@ module.exports = {
   detectCycles: detectCycles,
   propagateBlocked: propagateBlocked,
   applyRBAC: applyRBAC,
+
+  // P9.1: Retry/Recovery DAG
+  addRetryNode: addRetryNode,
+  addRecoveryNodes: addRecoveryNodes,
+  addRecoveryDAG: addRecoveryDAG,
+  getNodesByState: getNodesByState,
+  DAGNodeState: DAGNodeState,
 };
