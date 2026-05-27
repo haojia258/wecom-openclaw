@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # shadow-safe-cleanup.sh - Shadow 安全清理脚本
 # 生产防护：清理 shadow 进程，确认生产 3001 不受影响
-# 用法: bash scripts/shadow-safe-cleanup.sh <shadow-name> <shadow-port> [--force]
-# 示例: bash scripts/shadow-safe-cleanup.sh wecom-passive-monitor-shadow 39013
+# 用法: bash scripts/shadow-safe-cleanup.sh <shadow-port> <shadow-name> [--force]
+# 示例: bash scripts/shadow-safe-cleanup.sh 39013 wecom-passive-monitor-shadow
 set -euo pipefail
 
-SHADOW_NAME="${1:-}"
-SHADOW_PORT="${2:-}"
+SHADOW_PORT="${1:-}"
+SHADOW_NAME="${2:-}"
 FORCE="n"
 if [ "${3:-}" = "--force" ]; then
   FORCE="y"
@@ -15,7 +15,7 @@ fi
 # ─── 参数检查 ──────────────────────────────────
 if [ -z "$SHADOW_NAME" ] || [ -z "$SHADOW_PORT" ]; then
   echo "[FATAL] 缺少参数"
-  echo "用法: bash scripts/shadow-safe-cleanup.sh <shadow-name> <shadow-port> [--force]"
+  echo "用法: bash scripts/shadow-safe-cleanup.sh <shadow-port> <shadow-name> [--force]"
   exit 1
 fi
 
@@ -65,7 +65,7 @@ if [ -n "$PORT_OCCUPIED" ]; then
     echo "[OK] 残留进程已清理"
   else
     echo "[INFO] 不自动 kill。如需强制清理，传入 --force 参数:"
-    echo "  bash scripts/shadow-safe-cleanup.sh ${SHADOW_NAME} ${SHADOW_PORT} --force"
+    echo "  bash scripts/shadow-safe-cleanup.sh ${SHADOW_PORT} ${SHADOW_NAME} --force"
   fi
 else
   echo "[OK] 端口 ${SHADOW_PORT} 已释放"
