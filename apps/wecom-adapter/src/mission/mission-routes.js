@@ -3,16 +3,18 @@
 /**
  * mission-routes.js - AI Mission Control API Routes (P10.0)
  *
- * 提供 3 个 API 端点:
- *   GET  /mission/tasks         → 列出所有 mission tasks
- *   GET  /mission/tasks/:id/events → 获取某 task 的事件时间线
- *   POST /mission/events         → 创建 agent event
+ * 提供 4 个 API 端点:
+ *   GET  /mission/tasks               → 列出所有 mission tasks
+ *   GET  /mission/tasks/:id/events    → 获取某 task 的事件时间线
+ *   POST /mission/events              → 创建 agent event（含自动流转）
+ *   POST /mission/tasks/:id/transition → 显式触发 workflow 状态流转 (P10.1)
  *
  * 复用 Express app 注册模式（与 ai-gateway.js 一致）。
  * 无需额外的 auth token（内部使用，非公网暴露）。
  */
 
 var missionStore = require('./mission-store');
+var transitionEngine = require('./workflow-transition-engine');
 var path = require('path');
 
 // ─── JSON Body Parser for /mission/events ─────────────────
@@ -155,15 +157,82 @@ function handleCreateAgentEvent(req, res) {
       payload: body.payload || null
     });
 
+    // P10.1: 如果事件类型可触发状态流转，自动执行流转
+    var transitionResult = null;
+    if (transitionEngine.isTransitionTrigger(eventType)) {
+      transitionResult = transitionEngine.attemptTransition(
+        missionTaskId,
+        eventType,
+        body.payload || {}
+      );
+    }
+
     res.status(201).json({
       success: true,
       event: event,
+      transition: transitionResult,
       timestamp: new Date().toISOString()
     });
   } catch (e) {
     res.status(500).json({
       success: false,
       error: '创建事件失败: ' + e.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+/**
+ * POST /mission/tasks/:id/transition (P10.1)
+ * Body: { event_type: "TEST_PASSED", payload?: {...} }
+ *
+ * 通过事件驱动方式触发 Mission Task 的 workflow stage 变化。
+ * 自动验证状态流转合法性，拒绝非法跳转。
+ */
+function handleTransitionTask(req, res) {
+  var body = req._missionBody || {};
+  var taskId = req.params.id;
+  var eventType = (body.event_type || '').trim();
+
+  if (!eventType) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少必填字段: event_type'
+    });
+  }
+
+  try {
+    var result = transitionEngine.attemptTransition(taskId, eventType, body.payload || {});
+
+    if (result.success) {
+      res.json({
+        success: true,
+        from_stage: result.from_stage,
+        to_stage: result.to_stage,
+        event: result.event,
+        timestamp: new Date().toISOString()
+      });
+    } else if (result.error && result.error.indexOf('not found') !== -1) {
+      res.status(404).json({
+        success: false,
+        error: result.error,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      // 转换非法 → 409 Conflict
+      res.status(409).json({
+        success: false,
+        error: result.error || 'Transition failed',
+        reason: result.reason || 'Invalid transition',
+        from_stage: result.from_stage,
+        to_stage: result.to_stage,
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (e) {
+    res.status(500).json({
+      success: false,
+      error: '转换失败: ' + e.message,
       timestamp: new Date().toISOString()
     });
   }
@@ -177,8 +246,9 @@ function handleCreateAgentEvent(req, res) {
  * @param {object} app - Express app 实例
  */
 function registerMissionRoutes(app) {
-  // Body parser for POST /mission/events
+  // Body parser for POST /mission/events and POST /mission/tasks/:id/transition
   app.use('/mission/events', parseMissionBody);
+  app.use('/mission/tasks', parseMissionBody);
 
   // GET /mission/tasks
   app.get('/mission/tasks', handleListMissionTasks);
@@ -188,6 +258,9 @@ function registerMissionRoutes(app) {
 
   // POST /mission/events
   app.post('/mission/events', handleCreateAgentEvent);
+
+  // POST /mission/tasks/:id/transition (P10.1)
+  app.post('/mission/tasks/:id/transition', handleTransitionTask);
 }
 
 module.exports = {
@@ -196,4 +269,5 @@ module.exports = {
   _handleListMissionTasks: handleListMissionTasks,
   _handleGetTaskEvents: handleGetTaskEvents,
   _handleCreateAgentEvent: handleCreateAgentEvent,
+  _handleTransitionTask: handleTransitionTask,
 };

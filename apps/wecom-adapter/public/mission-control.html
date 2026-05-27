@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v0.1</title>
+<title>AI Mission Control Dashboard v0.2</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -110,6 +110,8 @@ body {
 .badge-completed { background: #1a3d2e; color: #3fb950; }
 .badge-failed { background: #3d1a1a; color: #f85149; }
 .badge-blocked { background: #3d2e1a; color: #d29922; }
+.badge-rollback { background: #3d2a1a; color: #e39038; }
+.badge-stage { background: #1c2541; color: #58a6ff; font-size: 10px; }
 .event-item {
   padding: 8px 0;
   border-bottom: 1px solid #21262d;
@@ -128,6 +130,7 @@ body {
 .dot-success { background: #3fb950; }
 .dot-warn { background: #d29922; }
 .dot-error { background: #f85149; }
+.dot-transition { background: #a371f7; }
 .event-item .content {
   flex: 1;
   font-size: 13px;
@@ -151,6 +154,11 @@ body {
   overflow-x: auto;
   max-height: 80px;
   overflow-y: auto;
+}
+.event-item .content .transition-arrow {
+  color: #a371f7;
+  font-weight: bold;
+  font-size: 13px;
 }
 .event-item .time {
   font-size: 11px;
@@ -185,6 +193,88 @@ body {
   color: #58a6ff;
   text-decoration: none;
 }
+/* P10.1: Stage Progress Bar */
+.stage-progress {
+  margin-top: 10px;
+  padding: 10px 0;
+  border-top: 1px solid #21262d;
+}
+.stage-progress .title {
+  font-size: 11px;
+  color: #8b949e;
+  margin-bottom: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.stage-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.stage-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  position: relative;
+}
+.stage-step .node {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #21262d;
+  border: 2px solid #30363d;
+  z-index: 1;
+  transition: all 0.2s;
+}
+.stage-step .node.done { background: #3fb950; border-color: #2ea043; }
+.stage-step .node.current { background: #58a6ff; border-color: #58a6ff; box-shadow: 0 0 6px rgba(88,166,255,0.5); }
+.stage-step .node.failed { background: #f85149; border-color: #f85149; }
+.stage-step .node.rollback { background: #d29922; border-color: #d29922; }
+.stage-step .label {
+  font-size: 9px;
+  color: #484f58;
+  margin-top: 4px;
+  text-align: center;
+  white-space: nowrap;
+}
+.stage-step .label.active { color: #58a6ff; font-weight: 600; }
+.stage-step .label.done { color: #3fb950; }
+.stage-step .line {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: #21262d;
+  z-index: 0;
+}
+.stage-step .line.done { background: #3fb950; }
+.stage-step:last-child .line { display: none; }
+/* P10.1: Workflow History */
+.workflow-history {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #21262d;
+}
+.workflow-history .title {
+  font-size: 11px;
+  color: #8b949e;
+  margin-bottom: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.workflow-history .history-item {
+  font-size: 11px;
+  color: #8b949e;
+  padding: 2px 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.workflow-history .history-item .arrow {
+  color: #a371f7;
+}
 .loading {
   text-align: center;
   padding: 20px;
@@ -204,7 +294,7 @@ body {
 </head>
 <body>
 <div class="header">
-  <h1>AI Mission Control Dashboard v0.1</h1>
+  <h1>AI Mission Control Dashboard v0.2</h1>
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
@@ -233,7 +323,7 @@ body {
 
 <script>
 var currentTaskId = null;
-var allEvents = [];
+var STAGES = ['queued', 'running', 'testing', 'audit', 'staging', 'production', 'completed'];
 
 function getStatusBadge(status) {
   var cls = 'badge-';
@@ -244,6 +334,7 @@ function getStatusBadge(status) {
   else if (s === 'completed') cls += 'completed';
   else if (s === 'failed') cls += 'failed';
   else if (s === 'blocked') cls += 'blocked';
+  else if (s === 'rollback') cls += 'rollback';
   else cls += 'pending';
   return '<span class="badge ' + cls + '">' + escapeHtml(status) + '</span>';
 }
@@ -294,10 +385,12 @@ function loadTasks() {
         html += '<div class="top">';
         html += '<span class="title">' + escapeHtml(t.title || t.id) + '</span>';
         html += getStatusBadge(t.status);
+        if (t.current_stage) {
+          html += '<span class="badge badge-stage">' + escapeHtml(t.current_stage) + '</span>';
+        }
         html += '</div>';
         html += '<div class="meta">';
         html += '<span title="Agent">Agent: ' + escapeHtml(t.owner_agent) + '</span>';
-        if (t.current_stage) html += '<span title="Stage">Stage: ' + escapeHtml(t.current_stage) + '</span>';
         if (t.github_pr) html += '<span title="PR">PR: ' + escapeHtml(t.github_pr) + '</span>';
         if (t.last_event_at) html += '<span title="Last Event">Last: ' + formatTime(t.last_event_at) + '</span>';
         html += '</div>';
@@ -314,6 +407,99 @@ function selectTask(taskId) {
   currentTaskId = taskId;
   loadTasks(); // re-render to highlight
   loadEvents();
+}
+
+function renderStageProgress(currentStage) {
+  var html = '<div class="stage-progress">';
+  html += '<div class="title">Workflow Progress</div>';
+  html += '<div class="stage-bar">';
+
+  var currentIndex = STAGES.indexOf(currentStage);
+  if (currentIndex < 0 && currentStage) {
+    // Special states: failed, rollback
+    currentIndex = -1;
+  }
+
+  for (var i = 0; i < STAGES.length; i++) {
+    var stage = STAGES[i];
+    var nodeClass = 'node';
+    var labelClass = 'label';
+    var lastDoneStage = false;
+
+    if (currentStage === 'failed') {
+      // Mark current stage as failed
+      if (stage === currentStage) {
+        nodeClass += ' failed';
+        labelClass += ' active';
+      }
+    } else if (currentStage === 'rollback') {
+      if (stage === currentStage) {
+        nodeClass += ' rollback';
+        labelClass += ' active';
+      }
+    } else if (currentIndex >= 0) {
+      if (i < currentIndex) {
+        nodeClass += ' done';
+        labelClass += ' done';
+      } else if (i === currentIndex) {
+        nodeClass += ' current';
+        labelClass += ' active';
+      }
+    }
+
+    html += '<div class="stage-step">';
+    if (i < STAGES.length - 1) {
+      var lineClass = 'line';
+      if (currentIndex >= 0 && i < currentIndex) lineClass += ' done';
+      html += '<div class="' + lineClass + '"></div>';
+    }
+    html += '<div class="' + nodeClass + '"></div>';
+    html += '<div class="' + labelClass + '">' + escapeHtml(stage) + '</div>';
+    html += '</div>';
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+function renderWorkflowHistory(events) {
+  var transitions = [];
+  for (var i = 0; i < events.length; i++) {
+    if (events[i].event_type === 'TASK_STAGE_CHANGED' && events[i].payload) {
+      transitions.push({
+        from: events[i].payload.from_stage,
+        to: events[i].payload.to_stage,
+        trigger: events[i].payload.trigger_event,
+        time: events[i].created_at
+      });
+    }
+  }
+
+  if (transitions.length === 0) return '';
+
+  var html = '<div class="workflow-history">';
+  html += '<div class="title">Workflow History</div>';
+  for (var j = 0; j < transitions.length; j++) {
+    var t = transitions[j];
+    html += '<div class="history-item">';
+    html += '<span>' + escapeHtml(t.from) + '</span>';
+    html += '<span class="arrow">→</span>';
+    html += '<span>' + escapeHtml(t.to) + '</span>';
+    html += '<span style="margin-left:8px;color:#484f58;font-size:10px">via ' + escapeHtml(t.trigger) + ' @ ' + formatTime(t.time) + '</span>';
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function getEventDotClass(eventType) {
+  if (!eventType) return 'dot-info';
+  var et = eventType.toLowerCase();
+  if (et === 'task_stage_changed') return 'dot-transition';
+  if (et.indexOf('error') >= 0 || et.indexOf('failed') >= 0) return 'dot-error';
+  if (et.indexOf('complete') >= 0 || et.indexOf('deployed') >= 0 || et.indexOf('passed') >= 0) return 'dot-success';
+  if (et.indexOf('warn') >= 0) return 'dot-warn';
+  return 'dot-info';
 }
 
 function loadEvents() {
@@ -348,7 +534,7 @@ function loadEvents() {
         html += '<div class="row"><label>Task ID:</label><span>' + escapeHtml(task.id) + '</span></div>';
         html += '<div class="row"><label>Status:</label>' + getStatusBadge(task.status) + '</div>';
         html += '<div class="row"><label>Agent:</label><span>' + escapeHtml(task.owner_agent) + '</span></div>';
-        html += '<div class="row"><label>Stage:</label><span>' + escapeHtml(task.current_stage || '-') + '</span></div>';
+        html += '<div class="row"><label>Stage:</label><span class="badge badge-stage">' + escapeHtml(task.current_stage || '-') + '</span></div>';
         if (task.github_pr) {
           html += '<div class="row"><label>GitHub PR:</label><a href="' + escapeHtml(task.github_pr) + '" target="_blank">' + escapeHtml(task.github_pr) + '</a></div>';
         }
@@ -357,6 +543,13 @@ function loadEvents() {
         }
         html += '<div class="row"><label>Created:</label><span>' + formatTime(task.created_at) + '</span></div>';
         html += '<div class="row"><label>Last Event:</label><span>' + formatTime(task.last_event_at) + '</span></div>';
+
+        // P10.1: Stage progress bar
+        html += renderStageProgress(task.current_stage);
+
+        // P10.1: Workflow history
+        html += renderWorkflowHistory(events);
+
         html += '</div>';
       }
 
@@ -366,17 +559,26 @@ function loadEvents() {
       } else {
         for (var i = 0; i < events.length; i++) {
           var evt = events[i];
-          var dotClass = 'dot-info';
-          if (evt.event_type && evt.event_type.toLowerCase().indexOf('error') >= 0) dotClass = 'dot-error';
-          else if (evt.event_type && evt.event_type.toLowerCase().indexOf('complete') >= 0) dotClass = 'dot-success';
-          else if (evt.event_type && evt.event_type.toLowerCase().indexOf('warn') >= 0) dotClass = 'dot-warn';
+          var dotClass = getEventDotClass(evt.event_type);
+
+          var isStageChange = evt.event_type === 'TASK_STAGE_CHANGED';
 
           html += '<div class="event-item">';
           html += '<div class="dot ' + dotClass + '"></div>';
           html += '<div class="content">';
-          html += '<div class="type">' + escapeHtml(evt.event_type) + '</div>';
-          if (evt.stage) html += '<div class="stage">Stage: ' + escapeHtml(evt.stage) + '</div>';
-          if (evt.payload) html += '<div class="payload">' + escapeHtml(JSON.stringify(evt.payload, null, 2)) + '</div>';
+          if (isStageChange && evt.payload) {
+            html += '<div class="type">' + escapeHtml(evt.event_type) + '</div>';
+            html += '<div class="transition-arrow">' +
+              escapeHtml(evt.payload.from_stage || '?') + ' → ' +
+              escapeHtml(evt.payload.to_stage || '?') + '</div>';
+            if (evt.payload.trigger_event) {
+              html += '<div class="stage">Trigger: ' + escapeHtml(evt.payload.trigger_event) + '</div>';
+            }
+          } else {
+            html += '<div class="type">' + escapeHtml(evt.event_type) + '</div>';
+            if (evt.stage) html += '<div class="stage">Stage: ' + escapeHtml(evt.stage) + '</div>';
+            if (evt.payload) html += '<div class="payload">' + escapeHtml(JSON.stringify(evt.payload, null, 2)) + '</div>';
+          }
           html += '</div>';
           html += '<div class="time">' + formatTime(evt.created_at) + '</div>';
           html += '</div>';
