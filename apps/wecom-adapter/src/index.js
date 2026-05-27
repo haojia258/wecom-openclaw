@@ -15,6 +15,7 @@ const logger = require('./lib/logger');
 const pushScheduler = require('./lib/push-scheduler');
 const commandIngress = require('./runtime/command-ingress');
 const aiGateway = require('./gateway/ai-gateway');
+const missionRoutes = require('./mission/mission-routes');
 const vault = require('./lib/vault-client');
 
 const app = express();
@@ -246,6 +247,14 @@ commandIngress.registerRoutes(app);
 
 // ─── AI Gateway (P8.0.3) ────────────────────────
 aiGateway.registerGatewayRoutes(app);
+
+// ─── AI Mission Control Dashboard (P10.0) ────────
+missionRoutes.registerMissionRoutes(app);
+
+// 静态文件: Dashboard 页面
+app.use('/mission', express.static(require('path').resolve(__dirname, '../public'), {
+  index: 'mission-control.html'
+}));
 
 // ─── health（不再暴露 corpId） ──────────────────
 
