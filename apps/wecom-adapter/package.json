@@ -33,7 +33,8 @@
     "test:ai-gateway": "node tests/test-ai-gateway.cjs",
     "test:execution-feedback-loop": "node tests/test-execution-feedback-loop.cjs",
     "test:mission-control": "node tests/test-mission-control.cjs",
-    "test:workflow-state-machine": "node tests/test-workflow-state-machine.cjs"
+    "test:workflow-state-machine": "node tests/test-workflow-state-machine.cjs",
+    "test:shared-memory-runtime": "node tests/test-shared-memory-runtime.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",
