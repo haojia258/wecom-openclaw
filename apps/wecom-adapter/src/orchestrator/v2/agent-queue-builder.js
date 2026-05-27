@@ -25,18 +25,28 @@
 // ============================================================
 
 var GoalType = Object.freeze({
-  BOOST_GMV:        'boost_gmv',
-  IMPROVE_ROI:      'improve_roi',
-  REDUCE_REFUND:    'reduce_refund',
-  OPTIMIZE_WECOM:   'optimize_wecom',
+  BOOST_GMV:              'boost_gmv',
+  IMPROVE_ROI:            'improve_roi',
+  REDUCE_REFUND:          'reduce_refund',
+  OPTIMIZE_WECOM:         'optimize_wecom',
+  // P8.5.1 — Controlled Execution Goal Pack
+  STAGING_HEALTH_CHECK:   'staging_health_check',
+  STAGING_NPM_TEST:       'staging_npm_test',
+  STAGING_RUNTIME_AUDIT:  'staging_runtime_audit',
+  STAGING_GATEWAY_VERIFY: 'staging_gateway_verify',
 });
 
 /** 中文名称映射 */
 var GOAL_LABELS = {
-  [GoalType.BOOST_GMV]:        '提升GMV',
-  [GoalType.IMPROVE_ROI]:      '提高ROI',
-  [GoalType.REDUCE_REFUND]:    '降低退款率',
-  [GoalType.OPTIMIZE_WECOM]:   '优化企业微信稳定性',
+  [GoalType.BOOST_GMV]:              '提升GMV',
+  [GoalType.IMPROVE_ROI]:            '提高ROI',
+  [GoalType.REDUCE_REFUND]:          '降低退款率',
+  [GoalType.OPTIMIZE_WECOM]:         '优化企业微信稳定性',
+  // P8.5.1 — Controlled Execution Goal Pack
+  [GoalType.STAGING_HEALTH_CHECK]:   'Staging 健康检查',
+  [GoalType.STAGING_NPM_TEST]:       'Staging NPM 测试',
+  [GoalType.STAGING_RUNTIME_AUDIT]:  'Staging 运行时审计',
+  [GoalType.STAGING_GATEWAY_VERIFY]: 'Staging Gateway 验证',
 };
 
 // ============================================================
@@ -192,6 +202,114 @@ var QUEUE_TEMPLATES = {
       reason:   '实现稳定性修复：错误处理增强、连接池优化',
     },
   ],
+
+  // -------------------------------------------------------
+  //  Staging 健康检查 (P8.5.1)
+  // -------------------------------------------------------
+  [GoalType.STAGING_HEALTH_CHECK]: [
+    {
+      agent:    'workbuddy',
+      command:  'health_check_3001',
+      dependsOn: [],
+      priority: 1,
+      reason:   '检查 wecom-adapter Gateway 健康状态 (GET :3001/health)',
+    },
+    {
+      agent:    'workbuddy',
+      command:  'health_check_3002',
+      dependsOn: [],
+      priority: 1,
+      reason:   '检查 Agent Host 健康状态 (GET :3002/health)',
+    },
+    {
+      agent:    'workbuddy',
+      command:  'gateway_plan_only_verify',
+      dependsOn: ['health_check_3001', 'health_check_3002'],
+      priority: 2,
+      reason:   '验证 Gateway plan-only 端到端链路（Host → Gateway → Bridge）',
+    },
+  ],
+
+  // -------------------------------------------------------
+  //  Staging NPM 测试 (P8.5.1)
+  // -------------------------------------------------------
+  [GoalType.STAGING_NPM_TEST]: [
+    {
+      agent:    'workbuddy',
+      command:  'npm_test_dry_run',
+      dependsOn: [],
+      priority: 1,
+      reason:   '执行 npm test dry-run（test:v2 + test:commander-runtime + test:dag-scheduler + test:chatgpt-bridge）',
+    },
+    {
+      agent:    'workbuddy',
+      command:  'test_result_audit',
+      dependsOn: ['npm_test_dry_run'],
+      priority: 2,
+      reason:   '审计测试结果：统计通过/失败数，生成测试报告',
+    },
+  ],
+
+  // -------------------------------------------------------
+  //  Staging 运行时审计 (P8.5.1)
+  // -------------------------------------------------------
+  [GoalType.STAGING_RUNTIME_AUDIT]: [
+    {
+      agent:    'workbuddy',
+      command:  'check_pm2_status',
+      dependsOn: [],
+      priority: 1,
+      reason:   '检查 PM2 进程状态：wecom-adapter、ads-worker、agent-host',
+    },
+    {
+      agent:    'workbuddy',
+      command:  'check_disk_memory',
+      dependsOn: [],
+      priority: 1,
+      reason:   '检查系统资源：磁盘使用 (df -h)、内存使用 (free -m)',
+    },
+    {
+      agent:    'workbuddy',
+      command:  'audit_log_review',
+      dependsOn: ['check_pm2_status', 'check_disk_memory'],
+      priority: 2,
+      reason:   '审计运行日志：gateway-audit.log、host-audit.log、token 脱敏检查',
+    },
+    {
+      agent:    'workbuddy',
+      command:  'generate_audit_report',
+      dependsOn: ['audit_log_review'],
+      priority: 3,
+      reason:   '生成运行时审计报告：稳定性基线对比、风险评级',
+    },
+  ],
+
+  // -------------------------------------------------------
+  //  Staging Gateway 验证 (P8.5.1)
+  // -------------------------------------------------------
+  [GoalType.STAGING_GATEWAY_VERIFY]: [
+    {
+      agent:    'workbuddy',
+      command:  'gateway_ping',
+      dependsOn: [],
+      priority: 1,
+      reason:   'Gateway 连通性测试：验证 GATEWAY_TOKEN 认证、timestamp 窗口',
+    },
+    {
+      agent:    'workbuddy',
+      command:  'bridge_chain_verify',
+      dependsOn: ['gateway_ping'],
+      priority: 2,
+      reason:   'Bridge 链路验证：Gateway → Bridge → Commander 全链路测试',
+    },
+    {
+      agent:    'workbuddy',
+      command:  'agent_host_verify',
+      dependsOn: ['bridge_chain_verify'],
+      priority: 3,
+      reason:   'Agent Host 端到端验证：Host → Gateway → Commander 完整路径',
+    },
+  ],
 };
 
 // ============================================================
@@ -216,6 +334,25 @@ function validateGoal(goal) {
     '提高roi':          GoalType.IMPROVE_ROI,
     '降低退款率':        GoalType.REDUCE_REFUND,
     '优化企业微信稳定性': GoalType.OPTIMIZE_WECOM,
+    // P8.5.1 — Controlled Execution Goal Pack
+    'staging health check':       GoalType.STAGING_HEALTH_CHECK,
+    'staging 健康检查':            GoalType.STAGING_HEALTH_CHECK,
+    '灰度健康检查':                GoalType.STAGING_HEALTH_CHECK,
+    'staging健康检查':             GoalType.STAGING_HEALTH_CHECK,
+    'npm test dry-run':           GoalType.STAGING_NPM_TEST,
+    '测试 dry-run':               GoalType.STAGING_NPM_TEST,
+    '测试dry-run':                GoalType.STAGING_NPM_TEST,
+    '运行测试计划':                GoalType.STAGING_NPM_TEST,
+    '运行时审计':                  GoalType.STAGING_RUNTIME_AUDIT,
+    'staging 审计':               GoalType.STAGING_RUNTIME_AUDIT,
+    'staging审计':                GoalType.STAGING_RUNTIME_AUDIT,
+    'pm2 状态检查':               GoalType.STAGING_RUNTIME_AUDIT,
+    'pm2状态检查':                GoalType.STAGING_RUNTIME_AUDIT,
+    'gateway 验证':               GoalType.STAGING_GATEWAY_VERIFY,
+    'gateway验证':                GoalType.STAGING_GATEWAY_VERIFY,
+    '网关验证':                    GoalType.STAGING_GATEWAY_VERIFY,
+    'agent host 到 gateway 验证':  GoalType.STAGING_GATEWAY_VERIFY,
+    'agent host到gateway验证':    GoalType.STAGING_GATEWAY_VERIFY,
   };
 
   if (chineseMap[normalized]) {
@@ -345,6 +482,27 @@ function listGoals() {
       key:         GoalType.OPTIMIZE_WECOM,
       label:       GOAL_LABELS[GoalType.OPTIMIZE_WECOM],
       description: '诊断企业微信适配器稳定性问题，实施容错和性能优化',
+    },
+    // P8.5.1 — Controlled Execution Goal Pack
+    {
+      key:         GoalType.STAGING_HEALTH_CHECK,
+      label:       GOAL_LABELS[GoalType.STAGING_HEALTH_CHECK],
+      description: '检查 :3001/:3002 健康状态并验证 Gateway plan-only 端到端链路',
+    },
+    {
+      key:         GoalType.STAGING_NPM_TEST,
+      label:       GOAL_LABELS[GoalType.STAGING_NPM_TEST],
+      description: '执行 npm test dry-run 并审计测试结果',
+    },
+    {
+      key:         GoalType.STAGING_RUNTIME_AUDIT,
+      label:       GOAL_LABELS[GoalType.STAGING_RUNTIME_AUDIT],
+      description: '审计 PM2 进程状态、系统资源和运行日志',
+    },
+    {
+      key:         GoalType.STAGING_GATEWAY_VERIFY,
+      label:       GOAL_LABELS[GoalType.STAGING_GATEWAY_VERIFY],
+      description: '验证 Gateway 认证、Bridge 链路和 Agent Host 端到端连通性',
     },
   ];
 }

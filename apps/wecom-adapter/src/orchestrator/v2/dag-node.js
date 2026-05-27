@@ -15,8 +15,9 @@
  * @param {string}  reason    - 原因/描述
  * @param {string[]} dependsOn - 依赖的节点 ID 列表（空数组 = 根节点）
  * @param {object}  [context] - 上下文数据
+ * @param {string}  [type]    - 节点类型: 'agent' (默认) | 'execution-plan' (P8.5.1)
  */
-function DAGNode(id, agent, command, priority, reason, dependsOn, context) {
+function DAGNode(id, agent, command, priority, reason, dependsOn, context, type) {
   this.id = id;
   this.agent = agent;
   this.command = command;
@@ -26,6 +27,7 @@ function DAGNode(id, agent, command, priority, reason, dependsOn, context) {
   this.context = context || {};
   this.blocked = false;
   this.blockReason = null;
+  this.type = type || 'agent';
 }
 
 /**
@@ -35,6 +37,14 @@ function DAGNode(id, agent, command, priority, reason, dependsOn, context) {
  */
 DAGNode.fromQueueItem = function (item) {
   var id = item.command || (item.agent + '_' + item.seq);
+
+  // P8.5.1: 检测 execution-plan 类型节点
+  var nodeType = 'agent';
+  var cmd = (item.command || '').toLowerCase();
+  if (/^(health_check_|npm_test_|test_result_|check_pm2|check_disk|audit_log|generate_audit|gateway_ping|bridge_chain|agent_host_verify|gateway_plan_only)/.test(cmd)) {
+    nodeType = 'execution-plan';
+  }
+
   return new DAGNode(
     id,
     item.agent,
@@ -42,7 +52,8 @@ DAGNode.fromQueueItem = function (item) {
     item.priority,
     item.reason,
     item.dependsOn || [],
-    item.context
+    item.context,
+    nodeType
   );
 };
 
@@ -68,6 +79,7 @@ DAGNode.prototype.toJSON = function () {
     reason: this.reason,
     dependsOn: this.dependsOn,
     blocked: this.blocked,
+    type: this.type,
   };
   if (this.blockReason) obj.blockReason = this.blockReason;
   if (Object.keys(this.context).length > 0) obj.context = this.context;

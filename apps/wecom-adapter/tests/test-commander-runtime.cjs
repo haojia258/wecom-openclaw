@@ -457,6 +457,11 @@ function testGroupH() {
   assertEqual(GOAL_LABELS[GoalType.IMPROVE_ROI], '提高ROI', 'H4.2: IMPROVE_ROI label');
   assertEqual(GOAL_LABELS[GoalType.REDUCE_REFUND], '降低退款率', 'H4.3: REDUCE_REFUND label');
   assertEqual(GOAL_LABELS[GoalType.OPTIMIZE_WECOM], '优化企业微信稳定性', 'H4.4: OPTIMIZE_WECOM label');
+  // P8.5.1 — Controlled Execution Goal Pack
+  assertEqual(GOAL_LABELS[GoalType.STAGING_HEALTH_CHECK], 'Staging 健康检查', 'H4.5: STAGING_HEALTH_CHECK label');
+  assertEqual(GOAL_LABELS[GoalType.STAGING_NPM_TEST], 'Staging NPM 测试', 'H4.6: STAGING_NPM_TEST label');
+  assertEqual(GOAL_LABELS[GoalType.STAGING_RUNTIME_AUDIT], 'Staging 运行时审计', 'H4.7: STAGING_RUNTIME_AUDIT label');
+  assertEqual(GOAL_LABELS[GoalType.STAGING_GATEWAY_VERIFY], 'Staging Gateway 验证', 'H4.8: STAGING_GATEWAY_VERIFY label');
 
   // H5: validateGoal 各类型
   var v1 = validateGoal('提升GMV');
@@ -467,10 +472,24 @@ function testGroupH() {
   assert(v3.valid, 'H5.3: 降低退款率 — valid');
   var v4 = validateGoal('优化企业微信稳定性');
   assert(v4.valid, 'H5.4: 优化企业微信稳定性 — valid');
+  // P8.5.1
+  var v5 = validateGoal('staging health check');
+  assert(v5.valid, 'H5.5: staging health check — valid');
+  assertEqual(v5.normalized, GoalType.STAGING_HEALTH_CHECK, 'H5.5b: 规范化为 staging_health_check');
+  var v6 = validateGoal('灰度健康检查');
+  assert(v6.valid, 'H5.6: 灰度健康检查 — valid');
+  var v7 = validateGoal('npm test dry-run');
+  assert(v7.valid, 'H5.7: npm test dry-run — valid');
+  var v8 = validateGoal('运行时审计');
+  assert(v8.valid, 'H5.8: 运行时审计 — valid');
+  var v9 = validateGoal('gateway 验证');
+  assert(v9.valid, 'H5.9: gateway 验证 — valid');
+  var v10 = validateGoal('网关验证');
+  assert(v10.valid, 'H5.10: 网关验证 — valid');
 
   // H6: listGoals
   var goals = listGoals();
-  assertEqual(goals.length, 4, 'H6.1: listGoals.length=4');
+  assertEqual(goals.length, 8, 'H6.1: listGoals.length=8');
 
   // H7: commander-runtime 模块结构
   assert(typeof commanderRuntime.execute === 'function', 'H7.1: execute 是函数');
@@ -525,6 +544,81 @@ console.log('\n=== GROUP I: 验证 [Commander Runtime] 输出完整性 ===\n');
 
   // 验证 shadowMode
   assert(r.shadowMode === true, 'I4: shadowMode=true');
+
+})();
+
+// ============================================================
+//  TEST GROUP J: P8.5.1 Controlled Execution Goal Pack
+// ============================================================
+
+console.log('\n=== GROUP J: P8.5.1 Controlled Execution Goal Pack ===\n');
+
+(async function testGroupJ() {
+
+  // J1: staging_health_check — execute
+  var j1 = await commanderRuntime.execute({ goal: 'staging health check' });
+  assert(j1.success, 'J1.1: staging health check — success=true');
+  assert(j1.goalLabel.indexOf('健康检查') !== -1, 'J1.2: goalLabel 含健康检查');
+  assert(j1.output.indexOf('Controlled Execution Plan') !== -1, 'J1.3: 输出含 Controlled Execution Plan');
+  assert(j1.queue.length === 3, 'J1.4: queue 有 3 个步骤');
+  assert(j1.output.indexOf('health_check_3001') !== -1, 'J1.5: 含 health_check_3001');
+  assert(j1.output.indexOf('health_check_3002') !== -1, 'J1.6: 含 health_check_3002');
+  assert(j1.output.indexOf('gateway_plan_only_verify') !== -1, 'J1.7: 含 gateway_plan_only_verify');
+  assert(j1.output.indexOf('plan-only') !== -1, 'J1.8: 输出含 plan-only');
+  assert(j1.output.indexOf('live execution: disabled') !== -1, 'J1.9: 输出含 live execution: disabled');
+  assert(j1.output.indexOf('production restart: forbidden') !== -1, 'J1.10: 输出含 production restart: forbidden');
+
+  // J2: staging_npm_test — execute
+  var j2 = await commanderRuntime.execute({ goal: 'npm test dry-run' });
+  assert(j2.success, 'J2.1: npm test dry-run — success=true');
+  assert(j2.queue.length === 2, 'J2.2: queue 有 2 个步骤');
+  assert(j2.output.indexOf('npm_test_dry_run') !== -1, 'J2.3: 含 npm_test_dry_run');
+  assert(j2.output.indexOf('test_result_audit') !== -1, 'J2.4: 含 test_result_audit');
+  assert(j2.output.indexOf('Controlled Execution Plan') !== -1, 'J2.5: 输出含 Controlled Execution Plan');
+
+  // J3: staging_runtime_audit — execute
+  var j3 = await commanderRuntime.execute({ goal: '运行时审计' });
+  assert(j3.success, 'J3.1: 运行时审计 — success=true');
+  assert(j3.queue.length === 4, 'J3.2: queue 有 4 个步骤');
+  assert(j3.output.indexOf('check_pm2_status') !== -1, 'J3.3: 含 check_pm2_status');
+  assert(j3.output.indexOf('check_disk_memory') !== -1, 'J3.4: 含 check_disk_memory');
+  assert(j3.output.indexOf('audit_log_review') !== -1, 'J3.5: 含 audit_log_review');
+  assert(j3.output.indexOf('generate_audit_report') !== -1, 'J3.6: 含 generate_audit_report');
+  assert(j3.output.indexOf('Controlled Execution Plan') !== -1, 'J3.7: 输出含 Controlled Execution Plan');
+
+  // J4: staging_gateway_verify — execute
+  var j4 = await commanderRuntime.execute({ goal: 'gateway 验证' });
+  assert(j4.success, 'J4.1: gateway 验证 — success=true');
+  assert(j4.queue.length === 3, 'J4.2: queue 有 3 个步骤');
+  assert(j4.output.indexOf('gateway_ping') !== -1, 'J4.3: 含 gateway_ping');
+  assert(j4.output.indexOf('bridge_chain_verify') !== -1, 'J4.4: 含 bridge_chain_verify');
+  assert(j4.output.indexOf('agent_host_verify') !== -1, 'J4.5: 含 agent_host_verify');
+  assert(j4.output.indexOf('Controlled Execution Plan') !== -1, 'J4.6: 输出含 Controlled Execution Plan');
+
+  // J5: 中文触发词测试
+  var j5a = await commanderRuntime.execute({ goal: '灰度健康检查' });
+  assert(j5a.success, 'J5.1: 灰度健康检查 — success=true');
+  assert(j5a.goalLabel.indexOf('健康检查') !== -1, 'J5.2: goalLabel 含健康检查');
+
+  var j5b = await commanderRuntime.execute({ goal: 'pm2 状态检查' });
+  assert(j5b.success, 'J5.3: pm2 状态检查 — success=true');
+  assert(j5b.output.indexOf('check_pm2_status') !== -1, 'J5.4: 输出含 check_pm2_status');
+
+  var j5c = await commanderRuntime.execute({ goal: '网关验证' });
+  assert(j5c.success, 'J5.5: 网关验证 — success=true');
+
+  // J6: DAG 结构验证 — staging_health_check 应有 2 个并行 Stage 1 节点
+  var dagResult = j1.dagResult;
+  if (dagResult && dagResult.success) {
+    assert(dagResult.totalNodes === 3, 'J6.1: DAG 总节点数=3');
+    assert(dagResult.totalStages >= 2, 'J6.2: 至少有 2 个阶段');
+  }
+
+  // J7: 所有 staging goals 都是 plan-only
+  assert(j1.shadowMode === true, 'J7.1: health_check plan-only');
+  assert(j2.shadowMode === true, 'J7.2: npm_test plan-only');
+  assert(j3.shadowMode === true, 'J7.3: runtime_audit plan-only');
+  assert(j4.shadowMode === true, 'J7.4: gateway_verify plan-only');
 
 })();
 

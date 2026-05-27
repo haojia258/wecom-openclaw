@@ -339,6 +339,31 @@ function formatOutput(data) {
     }
   }
 
+  // P8.5.1: Controlled Execution Plan (staging goals only)
+  if (data.normalizedGoal && data.normalizedGoal.indexOf('staging_') === 0) {
+    lines.push('');
+    lines.push('Controlled Execution Plan:');
+    lines.push('-----------------------------');
+    // Stage breakdown
+    if (data.dagResult && data.dagResult.success) {
+      var execStages = data.dagResult.stages;
+      var execLevels = dagPlan.getExecutionLevels(execStages);
+      for (var ei = 0; ei < execLevels.length; ei++) {
+        var execLevel = execLevels[ei];
+        lines.push('  Stage ' + execLevel.level + ':');
+        for (var ej = 0; ej < execLevel.nodes.length; ej++) {
+          var execNode = execLevel.nodes[ej];
+          lines.push('    - ' + execNode.command);
+        }
+      }
+    }
+    lines.push('');
+    lines.push('Policy:');
+    lines.push('  - mode: plan-only');
+    lines.push('  - live execution: disabled');
+    lines.push('  - production restart: forbidden');
+  }
+
   lines.push('');
 
   // ─── Shadow Mode ───

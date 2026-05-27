@@ -247,6 +247,19 @@ function _normalizeGoal(input) {
     '提高roi':    '提高ROI',
     '降低退款率':  '降低退款率',
     '优化企业微信稳定性': '优化企业微信稳定性',
+    // P8.5.1 — Controlled Execution Goal Pack
+    'staging health check':       'staging health check',
+    'staging 健康检查':            'staging 健康检查',
+    '灰度健康检查':                '灰度健康检查',
+    'npm test dry-run':           'npm test dry-run',
+    '测试 dry-run':               '测试 dry-run',
+    '运行测试计划':                '运行测试计划',
+    '运行时审计':                  '运行时审计',
+    'staging 审计':               'staging 审计',
+    'pm2 状态检查':               'pm2 状态检查',
+    'gateway 验证':               'gateway 验证',
+    '网关验证':                    '网关验证',
+    'agent host 到 gateway 验证':  'agent host 到 gateway 验证',
   };
 
   var lower = input.toLowerCase().trim();
@@ -268,7 +281,39 @@ function _normalizeGoal(input) {
     }
   }
 
-  // 3. 模糊包含匹配
+  // 3. P8.5.1: Staging 关键词匹配（必须在业务目标模糊匹配之前）
+  if (lower.indexOf('staging') !== -1 || lower.indexOf('灰度') !== -1) {
+    if (lower.indexOf('health') !== -1 || lower.indexOf('健康') !== -1) {
+      return 'staging health check';
+    }
+    if (lower.indexOf('npm') !== -1 || lower.indexOf('test') !== -1 || lower.indexOf('测试') !== -1 || lower.indexOf('dry') !== -1) {
+      return 'npm test dry-run';
+    }
+    if (lower.indexOf('审计') !== -1 || lower.indexOf('audit') !== -1) {
+      return '运行时审计';
+    }
+    if (lower.indexOf('gateway') !== -1 || lower.indexOf('网关') !== -1) {
+      return 'gateway 验证';
+    }
+    // 默认: staging 健康检查
+    return 'staging health check';
+  }
+  if ((lower.indexOf('npm test') !== -1 || lower.indexOf('测试 dry') !== -1) && (lower.indexOf('dry') !== -1 || lower.indexOf('运行') !== -1)) {
+    return 'npm test dry-run';
+  }
+  if (lower.indexOf('运行时审计') !== -1 || (lower.indexOf('pm2') !== -1 && lower.indexOf('状态') !== -1)) {
+    return '运行时审计';
+  }
+  if (lower.indexOf('gateway') !== -1 && lower.indexOf('验证') !== -1) {
+    return 'gateway 验证';
+  }
+  if (lower.indexOf('agent host') !== -1) {
+    if (lower.indexOf('gateway') !== -1 || lower.indexOf('验证') !== -1) {
+      return 'gateway 验证';
+    }
+  }
+
+  // 4. 模糊包含匹配
   if (lower.indexOf('gmv') !== -1 || lower.indexOf('提升') !== -1 && lower.indexOf('gm') !== -1) {
     return '提升GMV';
   }
@@ -282,13 +327,13 @@ function _normalizeGoal(input) {
     return '优化企业微信稳定性';
   }
 
-  // 4. 回退：直接尝试验证原始输入
+  // 5. 回退：直接尝试验证原始输入
   var directCheck = validateGoal(input);
   if (directCheck.valid) {
     return input;
   }
 
-  // 5. 保持原样，交给 commanderRuntime.execute 做最终验证
+  // 6. 保持原样，交给 commanderRuntime.execute 做最终验证
   return input;
 }
 
