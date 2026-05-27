@@ -38,6 +38,11 @@ var _recoveryPlanner = null;
 var _failureMemory = null;
 var _feedbackLog = null;
 
+// P9.2: Shared Memory Runtime 依赖（懒加载）
+var _memoryWriter = null;
+var _contextBuilder = null;
+var _memoryGovernance = null;
+
 function _getClassifier() {
   if (!_classifier) _classifier = require('./execution-result-classifier');
   return _classifier;
@@ -61,6 +66,30 @@ function _getFailureMemory() {
 function _getFeedbackLog() {
   if (!_feedbackLog) _feedbackLog = require('./execution-feedback-log');
   return _feedbackLog;
+}
+
+function _getMemoryWriter() {
+  if (!_memoryWriter) {
+    try { _memoryWriter = require('../memory-runtime/memory-writer'); }
+    catch (_) { _memoryWriter = null; }
+  }
+  return _memoryWriter;
+}
+
+function _getContextBuilder() {
+  if (!_contextBuilder) {
+    try { _contextBuilder = require('../memory-runtime/context-builder'); }
+    catch (_) { _contextBuilder = null; }
+  }
+  return _contextBuilder;
+}
+
+function _getMemoryGovernance() {
+  if (!_memoryGovernance) {
+    try { _memoryGovernance = require('../memory-runtime/memory-governance'); }
+    catch (_) { _memoryGovernance = null; }
+  }
+  return _memoryGovernance;
 }
 
 // ─── Agent 执行权限映射 ─────────────────────────────────────────
@@ -697,6 +726,21 @@ async function controlledExecuteWithFeedback(params) {
       recovered: false
     });
 
+    // ─── P9.2: Shared Memory Runtime - 记录成功执行 ───
+    var mw = _getMemoryWriter();
+    if (mw) {
+      mw.appendExecution({
+        correlationId: correlationId,
+        timestamp: new Date().toISOString(),
+        executor: executorName,
+        command: params.command || '',
+        success: true,
+        durationMs: result.duration_ms || 0,
+        output: result.output || '',
+        agent: agent
+      });
+    }
+
     return {
       success: true,
       correlationId: correlationId,
@@ -793,6 +837,34 @@ async function controlledExecuteWithFeedback(params) {
           recovered: false
         });
 
+        // ─── P9.2: Shared Memory Runtime - 记录重试后成功 ───
+        var mwRetry = _getMemoryWriter();
+        if (mwRetry) {
+          mwRetry.appendIncident({
+            correlationId: correlationId,
+            timestamp: new Date().toISOString(),
+            incidentType: classification.type,
+            retryCount: retryAttempt,
+            recoveryResult: 'retry_succeeded',
+            executor: executorName,
+            command: params.command || '',
+            error: '',
+            protocol: protocol,
+            agent: agent
+          });
+
+          mwRetry.appendExecution({
+            correlationId: correlationId,
+            timestamp: new Date().toISOString(),
+            executor: executorName,
+            command: params.command || '',
+            success: true,
+            durationMs: retryExecResult.duration_ms || 0,
+            output: retryExecResult.output || '',
+            agent: agent
+          });
+        }
+
         return {
           success: true,
           correlationId: correlationId,
@@ -867,6 +939,38 @@ async function controlledExecuteWithFeedback(params) {
         protocol: protocol,
         resolved: false
       });
+
+      // ─── P9.2: Shared Memory Runtime - 记录故障 + 恢复 ───
+      var mw2 = _getMemoryWriter();
+      if (mw2) {
+        // 记录故障
+        mw2.appendIncident({
+          correlationId: correlationId,
+          timestamp: new Date().toISOString(),
+          incidentType: classification.type,
+          retryCount: totalRetries,
+          recoveryResult: 'recovery_planned',
+          executor: executorName,
+          command: params.command || '',
+          error: result.error || '',
+          protocol: protocol,
+          agent: agent
+        });
+
+        // 记录恢复
+        mw2.appendRecovery({
+          correlationId: correlationId,
+          timestamp: new Date().toISOString(),
+          recoveryType: classification.type,
+          recovered: false,
+          executor: executorName,
+          recoveryPlanId: recoveryPlan.correlationId,
+          totalSteps: recoveryPlan.totalSteps,
+          description: recoveryPlan.description || '',
+          agent: agent,
+          summary: 'Recovery plan generated for ' + classification.type
+        });
+      }
     } else {
       feedbackHistory.push({ phase: 'recovery', blocked: true, violations: validation.violations });
     }
@@ -884,6 +988,56 @@ async function controlledExecuteWithFeedback(params) {
     output: result.output
   });
 
+  // ─── P9.2: Shared Memory Runtime - 最终失败记录 + 上下文构建 ───
+  var mw3 = _getMemoryWriter();
+  var cb = _getContextBuilder();
+
+  if (mw3) {
+    // 记录故障（如果尚未在 recovery 阶段记录）
+    if (!recoveryPlanGenerated) {
+      mw3.appendIncident({
+        correlationId: correlationId,
+        timestamp: new Date().toISOString(),
+        incidentType: classification.type,
+        retryCount: totalRetries,
+        recoveryResult: 'failed',
+        executor: executorName,
+        command: params.command || '',
+        error: result.error || '',
+        protocol: protocol,
+        agent: agent
+      });
+    }
+
+    // 记录最终失败执行
+    mw3.appendExecution({
+      correlationId: correlationId,
+      timestamp: new Date().toISOString(),
+      executor: executorName,
+      command: params.command || '',
+      success: false,
+      durationMs: result.duration_ms || 0,
+      error: result.error || '',
+      agent: agent
+    });
+  }
+
+  // 构建重试/恢复上下文
+  var agentContext = null;
+  if (cb) {
+    try {
+      agentContext = cb.buildRetryContext({
+        correlationId: correlationId,
+        incidentType: classification.type,
+        executor: executorName,
+        agent: agent,
+        retryCount: totalRetries
+      });
+    } catch (_) {
+      // 上下文构建失败不阻塞返回
+    }
+  }
+
   return {
     success: false,
     correlationId: correlationId,
@@ -896,7 +1050,9 @@ async function controlledExecuteWithFeedback(params) {
       recoveryPlan: recoveryPlan,
       recoveryDag: recoveryDag,
       history: feedbackHistory
-    }
+    },
+    // P9.2: Agent 上下文
+    agentContext: agentContext
   };
 }
 
