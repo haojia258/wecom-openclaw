@@ -148,7 +148,8 @@ console.assert(CATEGORY_AGENT_MAP['finance'] === 'deepseek', '1.22: finance → 
 console.log('1.17-1.22: CATEGORY_AGENT_MAP — PASS');
 
 // 1.23: PRIORITY_LEVELS
-console.assert(PRIORITY_LEVELS.length === 3, '1.23: 3优先级');
+console.assert(PRIORITY_LEVELS.length === 4, '1.23: 4个优先级 (含critical)');
+console.assert(PRIORITY_LEVELS.includes('critical'), '1.23b: critical');
 console.assert(PRIORITY_LEVELS.includes('high'), '1.24: high');
 console.assert(PRIORITY_LEVELS.includes('medium'), '1.25: medium');
 console.assert(PRIORITY_LEVELS.includes('low'), '1.26: low');
