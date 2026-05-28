@@ -134,13 +134,18 @@ assertContains(aa.FORBIDDEN_MODES, 'execute', 'execute is forbidden');
 
 // Category map
 assert(aa.CATEGORY_CAPABILITY_MAP !== undefined, 'CATEGORY_CAPABILITY_MAP defined');
-assertEqual(aa.CATEGORY_VALUES.length, 6, '6 categories');
+assertEqual(aa.CATEGORY_VALUES.length, 11, '11 categories');
 assertContains(aa.CATEGORY_VALUES, 'devops', 'devops category');
 assertContains(aa.CATEGORY_VALUES, 'commerce', 'commerce category');
 assertContains(aa.CATEGORY_VALUES, 'marketing', 'marketing category');
 assertContains(aa.CATEGORY_VALUES, 'customer', 'customer category');
 assertContains(aa.CATEGORY_VALUES, 'finance', 'finance category');
 assertContains(aa.CATEGORY_VALUES, 'operations', 'operations category');
+assertContains(aa.CATEGORY_VALUES, 'reliability', 'reliability category');
+assertContains(aa.CATEGORY_VALUES, 'security', 'security category');
+assertContains(aa.CATEGORY_VALUES, 'cost', 'cost category');
+assertContains(aa.CATEGORY_VALUES, 'performance', 'performance category');
+assertContains(aa.CATEGORY_VALUES, 'compliance', 'compliance category');
 
 // Agent priority
 assert(aa.AGENT_PRIORITY !== undefined, 'AGENT_PRIORITY defined');

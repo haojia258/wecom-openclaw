@@ -130,7 +130,7 @@ const PRIORITY_RISK_MAP = {
 // ID Generator
 // ============================================================================
 function createTicketId() {
-  var ts = Date.now().toString(36);
+  var ts = Date.now();
   var rand = Math.random().toString(36).substring(2, 8);
   return 'ticket_' + ts + '_' + rand;
 }
