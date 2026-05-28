@@ -74,7 +74,12 @@ const CATEGORY_CAPABILITY_MAP = {
   marketing: ['marketing', 'content', 'campaign'],
   customer: ['customer', 'content', 'report'],
   finance: ['finance', 'risk', 'report'],
-  operations: ['ops', 'audit', 'staging']
+  operations: ['ops', 'audit', 'staging'],
+  reliability: ['ops', 'audit', 'report'],
+  security: ['audit', 'risk', 'analysis'],
+  cost: ['finance', 'report', 'analysis'],
+  performance: ['coding', 'testing', 'analysis'],
+  compliance: ['audit', 'report', 'risk']
 };
 
 const CATEGORY_VALUES = Object.keys(CATEGORY_CAPABILITY_MAP);
