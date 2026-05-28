@@ -61,7 +61,7 @@ const CATEGORY_AGENT_MAP = {
 // Priority levels (inherited from Mission Draft)
 // ---------------------------------------------------------------------------
 
-const PRIORITY_LEVELS = ['high', 'medium', 'low'];
+const PRIORITY_LEVELS = ['critical', 'high', 'medium', 'low'];
 
 // ---------------------------------------------------------------------------
 // Error codes
