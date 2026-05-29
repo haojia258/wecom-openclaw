@@ -216,6 +216,20 @@ var SMOKE_GRAPH = {
   });
   assert(validation6.valid, '无循环 DAG 校验通过');
 
+  // A8b: createAndValidate 拒绝循环依赖 graph (camelCase dependsOn)
+  console.log('\nA8b: createAndValidate 拒绝循环依赖');
+  var cycleCreateResult = graphRunner.createAndValidate({
+    graph_id: 'test-cycle-create',
+    mission_id: 'P10.5',
+    nodes: [
+      { id: 'a', type: 'skill', capability: 'server.audit', agent: 'workbuddy', dependsOn: ['c'] },
+      { id: 'b', type: 'skill', capability: 'risk.analysis', agent: 'deepseek', dependsOn: ['a'] },
+      { id: 'c', type: 'skill', capability: 'summary.write', agent: 'doubao', dependsOn: ['b'] }
+    ]
+  });
+  assert(!cycleCreateResult.success, 'createAndValidate 拒绝循环依赖 graph');
+  assertContains(JSON.stringify(cycleCreateResult.errors), '循环依赖', '错误信息包含循环依赖');
+
   // A9: artifact 路径穿越检测
   console.log('\nA9: 路径穿越检测');
   var validation7 = graphEngine.validateGraph({
@@ -737,6 +751,21 @@ var SMOKE_GRAPH = {
     }).then(function(resp) {
       assertEqual(resp.status, 409, '非法跳转返回 409');
       assertContains(JSON.stringify(resp.body), '非法', '响应包含非法跳转信息');
+
+      // H9: POST /mission/graphs 拒绝循环依赖 (snake_case depends_on → 规范化)
+      console.log('\nH9: POST /mission/graphs 拒绝循环依赖 (depends_on → dependsOn)');
+      return sendRequest('POST', '/mission/graphs', {
+        graph_id: 'test-cycle-api',
+        mission_id: 'P10.5',
+        nodes: [
+          { id: 'a', type: 'skill', capability: 'server.audit', agent: 'workbuddy', depends_on: ['c'] },
+          { id: 'b', type: 'skill', capability: 'risk.analysis', agent: 'deepseek', depends_on: ['a'] },
+          { id: 'c', type: 'skill', capability: 'summary.write', agent: 'doubao', depends_on: ['b'] }
+        ]
+      });
+    }).then(function(resp) {
+      assertEqual(resp.status, 400, '循环依赖 graph 返回 400');
+      assertContains(JSON.stringify(resp.body), '循环依赖', '错误信息包含循环依赖');
 
       console.log('\nH Group: All API tests complete');
 
