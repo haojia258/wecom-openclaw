@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v0.9</title>
+<title>AI Mission Control Dashboard v1.0</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -504,7 +504,7 @@ body {
 </head>
 <body>
 <div class="header">
-  <h1>AI Mission Control Dashboard v0.9</h1>
+  <h1>AI Mission Control Dashboard v1.0</h1>
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
@@ -669,6 +669,57 @@ body {
           <div class="icon">&#x1F504;</div>
           <div>Enter a graph ID and click Run Loop to start autonomous execution</div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P11.0 Commander Gateway Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>&#x1F6E1; Commander Gateway</span>
+      <button class="refresh-btn" onclick="loadCommanderStatus()">Refresh</button>
+    </div>
+    <div class="panel-body" id="commander-body">
+      <div class="cap-check-form">
+        <input type="text" id="commander-text" placeholder="输入任务描述..." style="flex:1;min-width:200px;">
+        <input type="text" id="commander-operator" placeholder="操作者" value="laohao" style="width:120px;">
+        <button onclick="createCommanderMission()">Create Mission</button>
+        <button onclick="loadCommanderMission()" style="background:#30363d;">Query Status</button>
+      </div>
+      <div id="commander-result" class="empty-state">
+        <div class="icon">&#x1F680;</div>
+        <div>Commander Gateway Ready</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P11.1 WeCom Mission Center Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>&#x1F4F1; WeCom Mission Center</span>
+      <button class="refresh-btn" onclick="loadWeComStatus()">Refresh</button>
+    </div>
+    <div class="panel-body" id="wecom-body">
+      <div class="cap-check-form">
+        <select id="wecom-command" style="width:150px;">
+          <option value="mission">/任务 创建</option>
+          <option value="status">/任务 状态</option>
+          <option value="detail">/任务 详情</option>
+          <option value="artifacts">/任务 artifacts</option>
+          <option value="approve">/审批</option>
+          <option value="reject">/拒绝</option>
+          <option value="help">/help</option>
+        </select>
+        <input type="text" id="wecom-mission-id" placeholder="Mission ID" style="width:200px;">
+        <button onclick="sendWeComCommand()">Send</button>
+      </div>
+      <div id="wecom-result" class="empty-state">
+        <div class="icon">&#x2709;</div>
+        <div>WeCom Mission Center Ready</div>
       </div>
     </div>
   </div>
@@ -2080,6 +2131,164 @@ function renderLoopResult(graphId, resp) {
 
   html += '</div>';
   body.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// P11.0 Commander Gateway Functions
+// ═══════════════════════════════════════════════════════════
+
+function createCommanderMission() {
+  var text = document.getElementById('commander-text').value.trim();
+  var operator = document.getElementById('commander-operator').value.trim();
+  var result = document.getElementById('commander-result');
+
+  if (!text) {
+    result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Please enter a mission description</div></div>';
+    return;
+  }
+
+  result.innerHTML = '<div class="loading">Creating mission...</div>';
+
+  fetch('/commander/mission', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source: 'dashboard', text: text, operator: operator || 'laohao', room: 'Mission Control', autoRun: true })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(resp) {
+    if (resp.success) {
+      var html = '<div style="padding:8px 0;">';
+      html += '<div style="color:#3fb950;font-weight:600;">&#x2705; Mission Created</div>';
+      html += '<div style="font-size:11px;margin-top:4px;">';
+      html += '<div>Mission: <code>' + escapeHtml(resp.mission_id) + '</code></div>';
+      html += '<div>Graph: <code>' + escapeHtml(resp.graph_id) + '</code></div>';
+      html += '<div>Type: ' + escapeHtml(resp.mission_type || 'N/A') + '</div>';
+      html += '<div>Status: ' + getStatusBadge(resp.status) + '</div>';
+      if (resp.capabilities) {
+        html += '<div>Capabilities: ' + (resp.capabilities.all_allowed ? 'ALLOWED' : 'BLOCKED') + '</div>';
+        if (resp.capabilities.requires_approval) {
+          html += '<div style="color:#d29922;">&#x26A0; Requires Approval</div>';
+        }
+      }
+      if (resp.loop) {
+        html += '<div>Loop: ' + resp.loop.status + ' (' + (resp.loop.steps || 0) + ' steps)</div>';
+      }
+      html += '</div></div>';
+      result.innerHTML = html;
+      loadTasks();
+    } else {
+      result.innerHTML = '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(resp.error || 'Unknown error') + '</div></div>';
+    }
+  })
+  .catch(function(e) {
+    result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+  });
+}
+
+function loadCommanderMission() {
+  var missionId = document.getElementById('commander-mission-id');
+  if (!missionId) {
+    var createEl = document.getElementById('commander-operator');
+    missionId = document.createElement('input');
+    missionId.type = 'text';
+    missionId.id = 'commander-mission-id';
+    missionId.placeholder = 'Mission ID';
+    missionId.style.cssText = 'width:200px;';
+    createEl.parentNode.insertBefore(missionId, createEl.nextSibling);
+  }
+
+  var id = missionId.value.trim();
+  var result = document.getElementById('commander-result');
+  if (!id) {
+    result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Enter a Mission ID</div></div>';
+    return;
+  }
+
+  result.innerHTML = '<div class="loading">Loading...</div>';
+  fetch('/commander/mission/' + encodeURIComponent(id) + '/status')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp.success) {
+        var html = '<div style="padding:8px 0;">';
+        html += '<div style="font-weight:600;">Mission: <code>' + escapeHtml(resp.mission_id) + '</code></div>';
+        html += '<div style="font-size:11px;">';
+        if (resp.status) {
+          html += '<div>Stage: ' + escapeHtml(resp.status.stage) + '</div>';
+          html += '<div>Progress: ' + (resp.status.progress || 0) + '%</div>';
+          html += '<div>Approval: ' + escapeHtml(resp.status.approval_status || 'N/A') + '</div>';
+        }
+        if (resp.graph) {
+          html += '<div>Graph: ' + escapeHtml(resp.graph.status) + ' (' + (resp.graph.node_count || 0) + ' nodes)</div>';
+        }
+        html += '<div>Artifacts: ' + (resp.artifact_count || 0) + '</div>';
+        html += '</div></div>';
+        result.innerHTML = html;
+      } else {
+        result.innerHTML = '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(resp.error || 'Not found') + '</div></div>';
+      }
+    })
+    .catch(function(e) {
+      result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+function loadCommanderStatus() {
+  loadCommanderMission();
+}
+
+// ═══════════════════════════════════════════════════════════
+// P11.1 WeCom Mission Center Functions
+// ═══════════════════════════════════════════════════════════
+
+function sendWeComCommand() {
+  var command = document.getElementById('wecom-command').value;
+  var missionId = document.getElementById('wecom-mission-id').value.trim();
+  var result = document.getElementById('wecom-result');
+  var content = '';
+
+  switch (command) {
+    case 'mission':
+      content = document.getElementById('commander-text') ? document.getElementById('commander-text').value.trim() : '';
+      if (!content) { content = '开始任务'; }
+      break;
+    case 'status': content = '/任务 状态 ' + missionId; break;
+    case 'detail': content = '/任务 详情 ' + missionId; break;
+    case 'artifacts': content = '/任务 artifacts ' + missionId; break;
+    case 'approve': content = '/审批 ' + missionId; break;
+    case 'reject': content = '/拒绝 ' + missionId; break;
+    case 'help': content = '/help'; break;
+  }
+
+  if (!content) {
+    result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Enter Mission ID</div></div>';
+    return;
+  }
+
+  result.innerHTML = '<div class="loading">Sending...</div>';
+
+  fetch('/wecom/mission', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ FromUserName: 'laohao', RoomId: 'Mission Control', Content: content })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(resp) {
+    if (resp.reply) {
+      result.innerHTML = '<div style="white-space:pre-wrap;font-size:13px;padding:8px;background:#161b22;border-radius:4px;">' + escapeHtml(resp.reply) + '</div>';
+    } else if (resp.success) {
+      result.innerHTML = '<div class="empty-state"><div class="icon">&#x2705;</div><div>Mission: ' + escapeHtml(resp.mission_id || 'OK') + '</div></div>';
+    } else {
+      result.innerHTML = '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(resp.error || 'Failed') + '</div></div>';
+    }
+    loadTasks();
+  })
+  .catch(function(e) {
+    result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+  });
+}
+
+function loadWeComStatus() {
+  // No-op: WeCom status is driven by sendWeComCommand
 }
 </script>
 </body>
