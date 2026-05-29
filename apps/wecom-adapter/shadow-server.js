@@ -10,6 +10,7 @@ const path = require('path');
 const missionRoutes = require('./src/mission/mission-routes');
 const commanderGateway = require('./src/commander/commander-gateway');
 const wecomMissionCenter = require('./src/wecom/wecom-mission-center');
+const workbuddyAdapter = require('./src/execution/workbuddy-adapter');
 
 const app = express();
 // NOTE: Do NOT add express.json() here - mission-routes has its own
@@ -37,10 +38,14 @@ commanderGateway.registerCommanderRoutes(app);
 // Register WeCom Mission Center routes (P11.1)
 wecomMissionCenter.registerWecomMissionRoutes(app);
 
+// Register WorkBuddy Execution routes (P11.2)
+app.use('/execution', express.json({ limit: '16kb' }));
+workbuddyAdapter.registerWorkBuddyRoutes(app);
+
 const PORT = process.env.WECOM_ADAPTER_PORT || 3001;
 const server = app.listen(PORT, () => {
   console.log('[shadow-server] Production server running on port', PORT);
-  console.log('[shadow-server] Endpoints: /health /mission/* /commander/* /wecom/*');
+  console.log('[shadow-server] Endpoints: /health /mission/* /commander/* /wecom/* /execution/*');
 });
 
 // Graceful shutdown
