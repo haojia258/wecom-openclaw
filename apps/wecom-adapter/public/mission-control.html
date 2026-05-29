@@ -19,15 +19,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .header h1 {
   font-size: 20px;
   font-weight: 600;
   color: #58a6ff;
 }
+.header .badge-version {
+  font-size: 11px;
+  background: #1c3a5c;
+  color: #58a6ff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
 .header .stats {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   font-size: 13px;
 }
 .header .stats span {
@@ -38,9 +48,9 @@ body {
 }
 .container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  padding: 16px 24px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  padding: 12px 24px;
   min-height: calc(100vh - 130px);
 }
 .panel {
@@ -48,23 +58,27 @@ body {
   border: 1px solid #30363d;
   border-radius: 8px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .panel-header {
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-bottom: 1px solid #30363d;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 .panel-body {
-  padding: 12px 16px;
+  padding: 10px 14px;
   overflow-y: auto;
+  flex: 1;
   max-height: calc(100vh - 200px);
 }
 .task-row {
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-bottom: 1px solid #21262d;
   cursor: pointer;
   transition: background 0.15s;
@@ -79,11 +93,11 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 .task-row .title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -91,8 +105,8 @@ body {
 }
 .task-row .meta {
   display: flex;
-  gap: 12px;
-  font-size: 12px;
+  gap: 10px;
+  font-size: 11px;
   color: #8b949e;
   flex-wrap: wrap;
 }
@@ -110,13 +124,19 @@ body {
 .badge-completed { background: #1a3d2e; color: #3fb950; }
 .badge-failed { background: #3d1a1a; color: #f85149; }
 .badge-blocked { background: #3d2e1a; color: #d29922; }
-.badge-rollback { background: #3d2a1a; color: #e39038; }
-.badge-stage { background: #1c2541; color: #58a6ff; font-size: 10px; }
+/* P10.2: Recovery badges */
+.badge-retrying { background: #1c3a5c; color: #58a6ff; }
+.badge-recovered { background: #1a3d2e; color: #3fb950; }
+.badge-retry_exhausted { background: #3d2e1a; color: #d29922; }
+.badge-rolling_back { background: #3d1a2e; color: #f0883e; }
+.badge-rolled_back { background: #2e1a3d; color: #bc8cff; }
+.badge-rollback_failed { background: #3d1a1a; color: #f85149; }
+.badge-unrecoverable { background: #3d1a1a; color: #f85149; }
 .event-item {
-  padding: 8px 0;
+  padding: 7px 0;
   border-bottom: 1px solid #21262d;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-start;
 }
 .event-item .dot {
@@ -130,151 +150,112 @@ body {
 .dot-success { background: #3fb950; }
 .dot-warn { background: #d29922; }
 .dot-error { background: #f85149; }
-.dot-transition { background: #a371f7; }
+.dot-retry { background: #79c0ff; }
+.dot-rollback { background: #bc8cff; }
+.dot-recovery { background: #3fb950; }
 .event-item .content {
   flex: 1;
-  font-size: 13px;
+  font-size: 12px;
 }
 .event-item .content .type {
   font-weight: 600;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 .event-item .content .stage {
-  font-size: 11px;
+  font-size: 10px;
   color: #8b949e;
 }
 .event-item .content .payload {
-  font-size: 11px;
+  font-size: 10px;
   color: #6e7681;
   margin-top: 2px;
   font-family: 'SF Mono', Consolas, monospace;
   background: #0d1117;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: 4px;
   overflow-x: auto;
-  max-height: 80px;
+  max-height: 60px;
   overflow-y: auto;
 }
-.event-item .content .transition-arrow {
-  color: #a371f7;
-  font-weight: bold;
-  font-size: 13px;
-}
 .event-item .time {
-  font-size: 11px;
+  font-size: 10px;
   color: #484f58;
   flex-shrink: 0;
 }
 .empty-state {
   text-align: center;
-  padding: 40px 20px;
+  padding: 30px 20px;
   color: #484f58;
-  font-size: 14px;
+  font-size: 13px;
 }
-.empty-state .icon { font-size: 32px; margin-bottom: 8px; }
+.empty-state .icon { font-size: 28px; margin-bottom: 6px; }
 .task-detail {
-  margin-bottom: 16px;
-  padding: 12px;
+  margin-bottom: 12px;
+  padding: 10px;
   background: #0d1117;
   border-radius: 6px;
   border: 1px solid #21262d;
 }
 .task-detail .row {
   display: flex;
-  gap: 16px;
-  font-size: 13px;
-  margin-bottom: 4px;
+  gap: 12px;
+  font-size: 12px;
+  margin-bottom: 3px;
 }
 .task-detail .row label {
   color: #8b949e;
-  min-width: 90px;
+  min-width: 80px;
 }
 .task-detail .row a {
   color: #58a6ff;
   text-decoration: none;
 }
-/* P10.1: Stage Progress Bar */
-.stage-progress {
-  margin-top: 10px;
-  padding: 10px 0;
-  border-top: 1px solid #21262d;
+/* P10.2: Recovery Panel styles */
+.recovery-card {
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #0d1117;
+  border-radius: 6px;
+  border: 1px solid #21262d;
 }
-.stage-progress .title {
-  font-size: 11px;
-  color: #8b949e;
-  margin-bottom: 8px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-.stage-bar {
-  display: flex;
-  align-items: center;
-  gap: 0;
-}
-.stage-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
-  position: relative;
-}
-.stage-step .node {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #21262d;
-  border: 2px solid #30363d;
-  z-index: 1;
-  transition: all 0.2s;
-}
-.stage-step .node.done { background: #3fb950; border-color: #2ea043; }
-.stage-step .node.current { background: #58a6ff; border-color: #58a6ff; box-shadow: 0 0 6px rgba(88,166,255,0.5); }
-.stage-step .node.failed { background: #f85149; border-color: #f85149; }
-.stage-step .node.rollback { background: #d29922; border-color: #d29922; }
-.stage-step .label {
-  font-size: 9px;
-  color: #484f58;
-  margin-top: 4px;
-  text-align: center;
-  white-space: nowrap;
-}
-.stage-step .label.active { color: #58a6ff; font-weight: 600; }
-.stage-step .label.done { color: #3fb950; }
-.stage-step .line {
-  position: absolute;
-  top: 5px;
-  left: 50%;
-  width: 100%;
-  height: 2px;
-  background: #21262d;
-  z-index: 0;
-}
-.stage-step .line.done { background: #3fb950; }
-.stage-step:last-child .line { display: none; }
-/* P10.1: Workflow History */
-.workflow-history {
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid #21262d;
-}
-.workflow-history .title {
-  font-size: 11px;
+.recovery-card h4 {
+  font-size: 12px;
   color: #8b949e;
   margin-bottom: 6px;
-  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
-.workflow-history .history-item {
+.recovery-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 12px;
+}
+.recovery-stat .label { color: #8b949e; }
+.recovery-stat .value { font-weight: 600; }
+.recovery-stat .value.retry { color: #58a6ff; }
+.recovery-stat .value.success { color: #3fb950; }
+.recovery-stat .value.warning { color: #d29922; }
+.recovery-stat .value.error { color: #f85149; }
+.recovery-stat .value.rollback { color: #bc8cff; }
+/* Timeline filter tabs */
+.timeline-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.timeline-tab {
+  padding: 3px 10px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 10px;
   font-size: 11px;
   color: #8b949e;
-  padding: 2px 0;
-  display: flex;
-  gap: 8px;
-  align-items: center;
+  cursor: pointer;
+  transition: all 0.15s;
 }
-.workflow-history .history-item .arrow {
-  color: #a371f7;
-}
+.timeline-tab:hover { background: #30363d; color: #c9d1d9; }
+.timeline-tab.active { background: #1c3a5c; color: #58a6ff; border-color: #58a6ff; }
 .loading {
   text-align: center;
   padding: 20px;
@@ -287,7 +268,7 @@ body {
   padding: 4px 12px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
 }
 .refresh-btn:hover { background: #30363d; }
 /* P10.3: Tabs */
@@ -468,6 +449,13 @@ body {
   overflow-y: auto;
   line-height: 1.4;
 }
+/* Responsive: stack panels on narrow screens */
+@media (max-width: 1200px) {
+  .container { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 800px) {
+  .container { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
@@ -476,6 +464,7 @@ body {
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
+  <!-- Panel 1: Mission Tasks -->
   <div class="panel" id="tasks-panel">
     <div class="tabs">
       <div class="tab active" onclick="switchTab('tasks')" id="tab-tasks">Tasks</div>
@@ -503,15 +492,42 @@ body {
       </div>
     </div>
   </div>
+  <!-- Panel 2: Event Timeline + Failure Timeline -->
   <div class="panel" id="events-panel">
     <div class="panel-header">
       <span id="events-title">Event Timeline</span>
       <button class="refresh-btn" onclick="loadEvents()">Refresh</button>
     </div>
-    <div class="panel-body" id="events-list">
-      <div class="empty-state">
+    <div class="panel-body" id="events-body">
+      <div class="timeline-tabs" id="timeline-tabs" style="display:none;">
+        <div class="timeline-tab active" onclick="switchTab('all')">All</div>
+        <div class="timeline-tab" onclick="switchTab('failure')">Failures</div>
+        <div class="timeline-tab" onclick="switchTab('recovery')">Recovery</div>
+      </div>
+      <div class="empty-state" id="events-list">
         <div class="icon">&#x1F4CB;</div>
         <div>Select a task to view its event timeline</div>
+      </div>
+      <div class="empty-state" id="failure-list" style="display:none;">
+        <div class="icon">&#x26A0;</div>
+        <div>No failure events found</div>
+      </div>
+      <div class="empty-state" id="recovery-list" style="display:none;">
+        <div class="icon">&#x1F504;</div>
+        <div>No recovery events found</div>
+      </div>
+    </div>
+  </div>
+  <!-- Panel 3: Recovery Panel (P10.2) -->
+  <div class="panel" id="recovery-panel">
+    <div class="panel-header">
+      <span>&#x1F6E1; Recovery Status</span>
+      <button class="refresh-btn" onclick="loadRecovery()">Refresh</button>
+    </div>
+    <div class="panel-body" id="recovery-body">
+      <div class="empty-state">
+        <div class="icon">&#x1F50D;</div>
+        <div>Select a task to view recovery info</div>
       </div>
     </div>
   </div>
@@ -553,7 +569,15 @@ body {
 
 <script>
 var currentTaskId = null;
-var STAGES = ['queued', 'running', 'testing', 'audit', 'staging', 'production', 'completed'];
+var allEvents = [];
+var currentTab = 'all';
+
+// ─── Event type filter lists ──────────────────────────────
+
+var FAILURE_EVENT_TYPES = ['FAILED', 'RETRY_EXHAUSTED', 'ROLLBACK_FAILED', 'RECOVERY_FAILED'];
+var RECOVERY_EVENT_TYPES = ['RETRY_SCHEDULED', 'RETRY_STARTED', 'RETRY_SUCCESS', 'RETRY_EXHAUSTED',
+  'ROLLBACK_TRIGGERED', 'ROLLBACK_COMPLETED', 'ROLLBACK_FAILED',
+  'RECOVERY_SUCCESS', 'RECOVERY_FAILED'];
 
 function getStatusBadge(status) {
   var cls = 'badge-';
@@ -564,7 +588,22 @@ function getStatusBadge(status) {
   else if (s === 'completed') cls += 'completed';
   else if (s === 'failed') cls += 'failed';
   else if (s === 'blocked') cls += 'blocked';
-  else if (s === 'rollback') cls += 'rollback';
+  else cls += 'pending';
+  return '<span class="badge ' + cls + '">' + escapeHtml(status) + '</span>';
+}
+
+// P10.2: Recovery status badge
+function getRecoveryBadge(status) {
+  if (!status) return '<span class="badge badge-pending">-</span>';
+  var cls = 'badge-';
+  var s = status.toLowerCase();
+  if (s === 'retrying') cls += 'retrying';
+  else if (s === 'recovered' || s === 'recovery_success') cls += 'recovered';
+  else if (s === 'retry_exhausted') cls += 'retry_exhausted';
+  else if (s === 'rolling_back') cls += 'rolling_back';
+  else if (s === 'rolled_back') cls += 'rolled_back';
+  else if (s === 'rollback_failed') cls += 'rollback_failed';
+  else if (s === 'unrecoverable') cls += 'unrecoverable';
   else cls += 'pending';
   return '<span class="badge ' + cls + '">' + escapeHtml(status) + '</span>';
 }
@@ -580,6 +619,90 @@ function formatTime(iso) {
   return d.toLocaleString('zh-CN', { hour12: false });
 }
 
+function getEventDotClass(eventType) {
+  if (!eventType) return 'dot-info';
+  var t = eventType.toLowerCase();
+  if (t.indexOf('error') >= 0 || t.indexOf('failed') >= 0 || t.indexOf('exhausted') >= 0)
+    return 'dot-error';
+  if (t.indexOf('retry') >= 0) return 'dot-retry';
+  if (t.indexOf('rollback') >= 0) return 'dot-rollback';
+  if (t.indexOf('recovery') >= 0) return 'dot-recovery';
+  if (t.indexOf('complete') >= 0 || t.indexOf('success') >= 0) return 'dot-success';
+  if (t.indexOf('warn') >= 0) return 'dot-warn';
+  return 'dot-info';
+}
+
+// ─── Tab switching ─────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  var tabs = document.querySelectorAll('.timeline-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.toggle('active', tabs[i].textContent.toLowerCase() === tab);
+  }
+  renderEvents();
+}
+
+// ─── Render events based on current tab ───────────────────
+function renderEvents() {
+  var eventsDiv = document.getElementById('events-list');
+  var failureDiv = document.getElementById('failure-list');
+  var recoveryDiv = document.getElementById('recovery-list');
+  var tabsDiv = document.getElementById('timeline-tabs');
+
+  // Hide all
+  eventsDiv.style.display = 'none';
+  failureDiv.style.display = 'none';
+  recoveryDiv.style.display = 'none';
+
+  if (!currentTaskId) {
+    eventsDiv.style.display = 'block';
+    tabsDiv.style.display = 'none';
+    return;
+  }
+
+  tabsDiv.style.display = 'flex';
+
+  if (currentTab === 'all') {
+    eventsDiv.style.display = 'block';
+    renderEventList(eventsDiv, allEvents);
+  } else if (currentTab === 'failure') {
+    failureDiv.style.display = 'block';
+    var failures = allEvents.filter(function(e) {
+      return FAILURE_EVENT_TYPES.indexOf(e.event_type) !== -1;
+    });
+    renderEventList(failureDiv, failures);
+  } else if (currentTab === 'recovery') {
+    recoveryDiv.style.display = 'block';
+    var recoveries = allEvents.filter(function(e) {
+      return RECOVERY_EVENT_TYPES.indexOf(e.event_type) !== -1;
+    });
+    renderEventList(recoveryDiv, recoveries);
+  }
+}
+
+function renderEventList(container, events) {
+  if (!events || events.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div>No events to display</div></div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < events.length; i++) {
+    var evt = events[i];
+    var dotClass = getEventDotClass(evt.event_type);
+    html += '<div class="event-item">';
+    html += '<div class="dot ' + dotClass + '"></div>';
+    html += '<div class="content">';
+    html += '<div class="type">' + escapeHtml(evt.event_type) + '</div>';
+    if (evt.stage) html += '<div class="stage">Stage: ' + escapeHtml(evt.stage) + '</div>';
+    if (evt.payload) html += '<div class="payload">' + escapeHtml(JSON.stringify(evt.payload, null, 2)) + '</div>';
+    html += '</div>';
+    html += '<div class="time">' + formatTime(evt.created_at) + '</div>';
+    html += '</div>';
+  }
+  container.innerHTML = html;
+}
+
+// ─── Load tasks ────────────────────────────────────────────
 function loadTasks() {
   var list = document.getElementById('tasks-list');
   list.innerHTML = '<div class="loading">Loading...</div>';
@@ -615,14 +738,14 @@ function loadTasks() {
         html += '<div class="top">';
         html += '<span class="title">' + escapeHtml(t.title || t.id) + '</span>';
         html += getStatusBadge(t.status);
-        if (t.current_stage) {
-          html += '<span class="badge badge-stage">' + escapeHtml(t.current_stage) + '</span>';
-        }
+        if (t.recovery_status) html += getRecoveryBadge(t.recovery_status);
         html += '</div>';
         html += '<div class="meta">';
-        html += '<span title="Agent">Agent: ' + escapeHtml(t.owner_agent) + '</span>';
-        if (t.github_pr) html += '<span title="PR">PR: ' + escapeHtml(t.github_pr) + '</span>';
-        if (t.last_event_at) html += '<span title="Last Event">Last: ' + formatTime(t.last_event_at) + '</span>';
+        html += '<span>Agent: ' + escapeHtml(t.owner_agent) + '</span>';
+        if (t.current_stage) html += '<span>Stage: ' + escapeHtml(t.current_stage) + '</span>';
+        if (t.github_pr) html += '<span>PR: ' + escapeHtml(t.github_pr) + '</span>';
+        if (t.retry_count > 0) html += '<span>Retries: ' + t.retry_count + '</span>';
+        if (t.last_event_at) html += '<span>Last: ' + formatTime(t.last_event_at) + '</span>';
         html += '</div>';
         html += '</div>';
       }
@@ -635,103 +758,12 @@ function loadTasks() {
 
 function selectTask(taskId) {
   currentTaskId = taskId;
-  loadTasks(); // re-render to highlight
+  loadTasks();
   loadEvents();
+  loadRecovery();
 }
 
-function renderStageProgress(currentStage) {
-  var html = '<div class="stage-progress">';
-  html += '<div class="title">Workflow Progress</div>';
-  html += '<div class="stage-bar">';
-
-  var currentIndex = STAGES.indexOf(currentStage);
-  if (currentIndex < 0 && currentStage) {
-    // Special states: failed, rollback
-    currentIndex = -1;
-  }
-
-  for (var i = 0; i < STAGES.length; i++) {
-    var stage = STAGES[i];
-    var nodeClass = 'node';
-    var labelClass = 'label';
-    var lastDoneStage = false;
-
-    if (currentStage === 'failed') {
-      // Mark current stage as failed
-      if (stage === currentStage) {
-        nodeClass += ' failed';
-        labelClass += ' active';
-      }
-    } else if (currentStage === 'rollback') {
-      if (stage === currentStage) {
-        nodeClass += ' rollback';
-        labelClass += ' active';
-      }
-    } else if (currentIndex >= 0) {
-      if (i < currentIndex) {
-        nodeClass += ' done';
-        labelClass += ' done';
-      } else if (i === currentIndex) {
-        nodeClass += ' current';
-        labelClass += ' active';
-      }
-    }
-
-    html += '<div class="stage-step">';
-    if (i < STAGES.length - 1) {
-      var lineClass = 'line';
-      if (currentIndex >= 0 && i < currentIndex) lineClass += ' done';
-      html += '<div class="' + lineClass + '"></div>';
-    }
-    html += '<div class="' + nodeClass + '"></div>';
-    html += '<div class="' + labelClass + '">' + escapeHtml(stage) + '</div>';
-    html += '</div>';
-  }
-
-  html += '</div></div>';
-  return html;
-}
-
-function renderWorkflowHistory(events) {
-  var transitions = [];
-  for (var i = 0; i < events.length; i++) {
-    if (events[i].event_type === 'TASK_STAGE_CHANGED' && events[i].payload) {
-      transitions.push({
-        from: events[i].payload.from_stage,
-        to: events[i].payload.to_stage,
-        trigger: events[i].payload.trigger_event,
-        time: events[i].created_at
-      });
-    }
-  }
-
-  if (transitions.length === 0) return '';
-
-  var html = '<div class="workflow-history">';
-  html += '<div class="title">Workflow History</div>';
-  for (var j = 0; j < transitions.length; j++) {
-    var t = transitions[j];
-    html += '<div class="history-item">';
-    html += '<span>' + escapeHtml(t.from) + '</span>';
-    html += '<span class="arrow">→</span>';
-    html += '<span>' + escapeHtml(t.to) + '</span>';
-    html += '<span style="margin-left:8px;color:#484f58;font-size:10px">via ' + escapeHtml(t.trigger) + ' @ ' + formatTime(t.time) + '</span>';
-    html += '</div>';
-  }
-  html += '</div>';
-  return html;
-}
-
-function getEventDotClass(eventType) {
-  if (!eventType) return 'dot-info';
-  var et = eventType.toLowerCase();
-  if (et === 'task_stage_changed') return 'dot-transition';
-  if (et.indexOf('error') >= 0 || et.indexOf('failed') >= 0) return 'dot-error';
-  if (et.indexOf('complete') >= 0 || et.indexOf('deployed') >= 0 || et.indexOf('passed') >= 0) return 'dot-success';
-  if (et.indexOf('warn') >= 0) return 'dot-warn';
-  return 'dot-info';
-}
-
+// ─── Load events ───────────────────────────────────────────
 function loadEvents() {
   var eventsDiv = document.getElementById('events-list');
   var titleEl = document.getElementById('events-title');
@@ -739,6 +771,7 @@ function loadEvents() {
   if (!currentTaskId) {
     eventsDiv.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4CB;</div><div>Select a task to view its event timeline</div></div>';
     titleEl.textContent = 'Event Timeline';
+    document.getElementById('timeline-tabs').style.display = 'none';
     return;
   }
 
@@ -750,11 +783,12 @@ function loadEvents() {
     .then(function(resp) {
       if (!resp.success) {
         eventsDiv.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(resp.error) + '</div></div>';
+        allEvents = [];
         return;
       }
 
       var task = resp.task;
-      var events = resp.events || [];
+      allEvents = resp.events || [];
 
       var html = '';
 
@@ -764,68 +798,140 @@ function loadEvents() {
         html += '<div class="row"><label>Task ID:</label><span>' + escapeHtml(task.id) + '</span></div>';
         html += '<div class="row"><label>Status:</label>' + getStatusBadge(task.status) + '</div>';
         html += '<div class="row"><label>Agent:</label><span>' + escapeHtml(task.owner_agent) + '</span></div>';
-        html += '<div class="row"><label>Stage:</label><span class="badge badge-stage">' + escapeHtml(task.current_stage || '-') + '</span></div>';
+        html += '<div class="row"><label>Stage:</label><span>' + escapeHtml(task.current_stage || '-') + '</span></div>';
+        // P10.2: Recovery fields
+        if (task.recovery_status) html += '<div class="row"><label>Recovery:</label>' + getRecoveryBadge(task.recovery_status) + '</div>';
+        if (task.retry_count > 0) html += '<div class="row"><label>Retries:</label><span>' + task.retry_count + '</span></div>';
+        if (task.last_failure_type) html += '<div class="row"><label>Failure:</label><span style="color:#f85149">' + escapeHtml(task.last_failure_type) + '</span></div>';
+        if (task.rollback_state) html += '<div class="row"><label>Rollback:</label><span>' + escapeHtml(task.rollback_state) + '</span></div>';
         if (task.github_pr) {
           html += '<div class="row"><label>GitHub PR:</label><a href="' + escapeHtml(task.github_pr) + '" target="_blank">' + escapeHtml(task.github_pr) + '</a></div>';
         }
-        if (task.description) {
-          html += '<div class="row"><label>Desc:</label><span>' + escapeHtml(task.description.slice(0, 200)) + '</span></div>';
-        }
         html += '<div class="row"><label>Created:</label><span>' + formatTime(task.created_at) + '</span></div>';
-        html += '<div class="row"><label>Last Event:</label><span>' + formatTime(task.last_event_at) + '</span></div>';
-
-        // P10.1: Stage progress bar
-        html += renderStageProgress(task.current_stage);
-
-        // P10.1: Workflow history
-        html += renderWorkflowHistory(events);
-
         html += '</div>';
       }
 
-      // Event timeline
-      if (events.length === 0) {
-        html += '<div class="empty-state"><div>No events recorded yet</div></div>';
-      } else {
-        for (var i = 0; i < events.length; i++) {
-          var evt = events[i];
-          var dotClass = getEventDotClass(evt.event_type);
-
-          var isStageChange = evt.event_type === 'TASK_STAGE_CHANGED';
-
-          html += '<div class="event-item">';
-          html += '<div class="dot ' + dotClass + '"></div>';
-          html += '<div class="content">';
-          if (isStageChange && evt.payload) {
-            html += '<div class="type">' + escapeHtml(evt.event_type) + '</div>';
-            html += '<div class="transition-arrow">' +
-              escapeHtml(evt.payload.from_stage || '?') + ' → ' +
-              escapeHtml(evt.payload.to_stage || '?') + '</div>';
-            if (evt.payload.trigger_event) {
-              html += '<div class="stage">Trigger: ' + escapeHtml(evt.payload.trigger_event) + '</div>';
-            }
-          } else {
-            html += '<div class="type">' + escapeHtml(evt.event_type) + '</div>';
-            if (evt.stage) html += '<div class="stage">Stage: ' + escapeHtml(evt.stage) + '</div>';
-            if (evt.payload) html += '<div class="payload">' + escapeHtml(JSON.stringify(evt.payload, null, 2)) + '</div>';
-          }
-          html += '</div>';
-          html += '<div class="time">' + formatTime(evt.created_at) + '</div>';
-          html += '</div>';
-        }
-      }
-
       eventsDiv.innerHTML = html;
+      // Render with current tab filter
+      renderEvents();
     })
     .catch(function(e) {
       eventsDiv.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+      allEvents = [];
+    });
+}
+
+// ─── Load recovery info (P10.2) ────────────────────────────
+function loadRecovery() {
+  var body = document.getElementById('recovery-body');
+
+  if (!currentTaskId) {
+    body.innerHTML = '<div class="empty-state"><div class="icon">&#x1F50D;</div><div>Select a task to view recovery info</div></div>';
+    return;
+  }
+
+  body.innerHTML = '<div class="loading">Loading...</div>';
+
+  fetch('/mission/tasks/' + encodeURIComponent(currentTaskId) + '/events')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        body.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(resp.error) + '</div></div>';
+        return;
+      }
+
+      var task = resp.task;
+      if (!task) {
+        body.innerHTML = '<div class="empty-state"><div class="icon">&#x1F50D;</div><div>Task not found</div></div>';
+        return;
+      }
+
+      // Count recovery events
+      var events = resp.events || [];
+      var recoveryEvents = events.filter(function(e) {
+        return RECOVERY_EVENT_TYPES.indexOf(e.event_type) !== -1;
+      });
+      var lastFailureEvent = null;
+      for (var i = events.length - 1; i >= 0; i--) {
+        if (FAILURE_EVENT_TYPES.indexOf(events[i].event_type) !== -1) {
+          lastFailureEvent = events[i];
+          break;
+        }
+      }
+
+      // Build recovery state display
+      var retryCount = task.retry_count || 0;
+      var recoveryStatus = task.recovery_status || 'none';
+      var failureType = task.last_failure_type || 'none';
+      var rollbackState = task.rollback_state || 'none';
+      var stage = task.current_stage || '-';
+      var retryValClass = retryCount > 0 ? 'warning' : 'success';
+      var failureValClass = failureType !== 'none' ? 'error' : 'success';
+      var recoveryValClass = (recoveryStatus === 'recovered' || recoveryStatus === 'rolled_back') ? 'success' :
+        (recoveryStatus === 'unrecoverable' || recoveryStatus === 'rollback_failed') ? 'error' :
+        (recoveryStatus === 'retrying' || recoveryStatus === 'rolling_back') ? 'retry' :
+        recoveryStatus === 'retry_exhausted' ? 'warning' : '';
+      var rollbackValClass = rollbackState === 'completed' ? 'rollback' : (rollbackState === 'failed' ? 'error' : '');
+
+      var html = '';
+      // Recovery status card
+      html += '<div class="recovery-card">';
+      html += '<h4>Recovery State</h4>';
+      html += '<div class="recovery-stat"><span class="label">Recovery Status</span>' + getRecoveryBadge(recoveryStatus) + '</div>';
+      html += '<div class="recovery-stat"><span class="label">Current Stage</span><span class="value">' + escapeHtml(stage) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Retry Count</span><span class="value ' + retryValClass + '">' + retryCount + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Last Failure</span><span class="value ' + failureValClass + '">' + escapeHtml(failureType) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Rollback State</span><span class="value ' + rollbackValClass + '">' + escapeHtml(rollbackState) + '</span></div>';
+      html += '</div>';
+
+      // Failure events card
+      html += '<div class="recovery-card">';
+      html += '<h4>Recovery Events (' + recoveryEvents.length + ')</h4>';
+      if (recoveryEvents.length === 0) {
+        html += '<div style="font-size:12px;color:#484f58;padding:8px 0;">No recovery events recorded</div>';
+      } else {
+        // Show last 5 recovery events
+        var recentRecovery = recoveryEvents.slice(-5).reverse();
+        for (var j = 0; j < recentRecovery.length; j++) {
+          var revt = recentRecovery[j];
+          var dotClass = getEventDotClass(revt.event_type);
+          html += '<div class="event-item">';
+          html += '<div class="dot ' + dotClass + '"></div>';
+          html += '<div class="content">';
+          html += '<div class="type">' + escapeHtml(revt.event_type) + '</div>';
+          html += '</div>';
+          html += '<div class="time">' + formatTime(revt.created_at) + '</div>';
+          html += '</div>';
+        }
+      }
+      html += '</div>';
+
+      // Last failure detail
+      if (lastFailureEvent) {
+        html += '<div class="recovery-card">';
+        html += '<h4>Last Failure Detail</h4>';
+        html += '<div style="font-size:11px;color:#f85149;">Type: ' + escapeHtml(lastFailureEvent.event_type) + '</div>';
+        html += '<div style="font-size:10px;color:#6e7681;margin-top:2px;">Time: ' + formatTime(lastFailureEvent.created_at) + '</div>';
+        if (lastFailureEvent.payload) {
+          html += '<div class="payload" style="margin-top:4px;font-size:10px;">' + escapeHtml(JSON.stringify(lastFailureEvent.payload, null, 2)) + '</div>';
+        }
+        html += '</div>';
+      }
+
+      body.innerHTML = html;
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
     });
 }
 
 // Auto-refresh every 10 seconds
 setInterval(function() {
   loadTasks();
-  if (currentTaskId) loadEvents();
+  if (currentTaskId) {
+    loadEvents();
+    loadRecovery();
+  }
 }, 10000);
 
 // Initial load

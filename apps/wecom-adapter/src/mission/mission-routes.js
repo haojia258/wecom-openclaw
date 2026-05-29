@@ -8,6 +8,7 @@
  *   GET  /mission/tasks/:id/events    → 获取某 task 的事件时间线
  *   POST /mission/events              → 创建 agent event（含自动流转）
  *   POST /mission/tasks/:id/transition → 显式触发 workflow 状态流转 (P10.1)
+ *   POST /mission/recovery            → 触发自动恢复流程 (P10.2)
  *   GET  /mission/:id/artifacts       → 列出 mission artifacts (P10.3)
  *   POST /mission/:id/artifacts       → 保存 artifact (P10.3)
  *   GET  /mission/:id/artifacts/:fn   → 获取 artifact 内容 (P10.3)
@@ -21,6 +22,7 @@
 
 var missionStore = require('./mission-store');
 var transitionEngine = require('./workflow-transition-engine');
+var recoveryEngine = require('./recovery-engine');
 var artifactStore = require('../artifacts/artifact-store');
 var artifactIndex = require('../artifacts/artifact-index');
 var capabilityRegistry = require('../agent-governance/capability-registry');
@@ -242,6 +244,71 @@ function handleTransitionTask(req, res) {
     res.status(500).json({
       success: false,
       error: '转换失败: ' + e.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+// ─── P10.2 Recovery Handler ─────────────────────────────────
+
+/**
+ * POST /mission/recovery (P10.2)
+ * Body: { mission_task_id, event_type?, error_message?, exit_code? }
+ *
+ * 触发 AI Runtime 自动恢复流程：
+ *   failure → classify → retry? → rollback? → recovery result
+ */
+function handleRecovery(req, res) {
+  var body = req._missionBody || {};
+
+  var missionTaskId = (body.mission_task_id || '').trim();
+
+  if (!missionTaskId) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少必填字段: mission_task_id'
+    });
+  }
+
+  try {
+    // 验证任务存在
+    var task = missionStore.getMissionTask(missionTaskId);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: 'Mission task 不存在: ' + missionTaskId
+      });
+    }
+
+    // 构建失败事件
+    var failureEvent = {
+      event_type: body.event_type || 'FAILED',
+      error_message: body.error_message || '',
+      exit_code: body.exit_code !== undefined ? body.exit_code : null
+    };
+
+    // 调用恢复引擎
+    recoveryEngine.handleFailure(task, failureEvent).then(function(recoveryResult) {
+      res.json({
+        success: recoveryResult.success,
+        action_taken: recoveryResult.action_taken,
+        failure_type: recoveryResult.failure_type,
+        recovery_status: recoveryResult.recovery_status,
+        retry_count: recoveryResult.retry_count,
+        error: recoveryResult.error || null,
+        timestamp: new Date().toISOString()
+      });
+    }).catch(function(e) {
+      res.status(500).json({
+        success: false,
+        error: '恢复流程异常: ' + e.message,
+        timestamp: new Date().toISOString()
+      });
+    });
+  } catch (e) {
+    res.status(500).json({
+      success: false,
+      error: '恢复触发失败: ' + e.message,
       timestamp: new Date().toISOString()
     });
   }
@@ -479,9 +546,10 @@ function handleGetAgent(req, res) {
  * @param {object} app - Express app 实例
  */
 function registerMissionRoutes(app) {
-  // Body parser for POST /mission/events, /mission/tasks, /mission/:id/artifacts, /mission/capability/check
+  // Body parser for POST endpoints
   app.use('/mission/events', parseMissionBody);
   app.use('/mission/tasks', parseMissionBody);
+  app.use('/mission/recovery', parseMissionBody);
   // P10.3 + P10.4: body parser for artifact and capability endpoints
   app.use('/mission/', function(req, res, next) {
     if (req.method === 'POST' && (req.path.includes('/artifacts') || req.path.includes('/capability'))) {
@@ -501,6 +569,9 @@ function registerMissionRoutes(app) {
 
   // POST /mission/tasks/:id/transition (P10.1)
   app.post('/mission/tasks/:id/transition', handleTransitionTask);
+
+  // POST /mission/recovery (P10.2)
+  app.post('/mission/recovery', handleRecovery);
 
   // ─── P10.3 Artifact Routes ─────────────────────────
   // GET  /mission/:id/artifacts
@@ -532,6 +603,7 @@ module.exports = {
   _handleGetTaskEvents: handleGetTaskEvents,
   _handleCreateAgentEvent: handleCreateAgentEvent,
   _handleTransitionTask: handleTransitionTask,
+  _handleRecovery: handleRecovery,
   _handleListArtifacts: handleListArtifacts,
   _handleSaveArtifact: handleSaveArtifact,
   _handleGetArtifact: handleGetArtifact,
