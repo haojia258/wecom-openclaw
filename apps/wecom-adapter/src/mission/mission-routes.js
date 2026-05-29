@@ -819,6 +819,11 @@ function registerMissionRoutes(app) {
   // POST /mission/graphs/:graph_id/nodes/:node_id/status
   app.post('/mission/graphs/:graph_id/nodes/:node_id/status', handleUpdateNodeStatus);
 
+  // ─── P10.8 Autonomous Loop Routes ──────────────────
+  // MUST be registered BEFORE GET /mission/graphs/:graph_id
+  var autonomousLoop = require('./autonomous-loop');
+  autonomousLoop.registerAutonomousLoopRoutes(app);
+
   // GET  /mission/graphs/:graph_id
   app.get('/mission/graphs/:graph_id', handleGetGraph);
 
