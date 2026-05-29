@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v0.4</title>
+<title>AI Mission Control Dashboard v0.5</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -271,6 +271,50 @@ body {
   font-size: 11px;
 }
 .refresh-btn:hover { background: #30363d; }
+/* P10.5: Task Graph Panel */
+.graph-card {
+  padding: 10px;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.graph-card h4 {
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: #e6edf3;
+}
+.graph-card .graph-meta {
+  font-size: 11px;
+  color: #8b949e;
+  margin-bottom: 8px;
+}
+.graph-node {
+  padding: 5px 8px;
+  border-left: 3px solid #30363d;
+  margin: 3px 0;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.graph-node .node-id { font-weight: 600; color: #58a6ff; min-width: 80px; }
+.graph-node .node-agent { color: #8b949e; }
+.graph-node .node-cap { color: #d2a8ff; }
+.graph-node .node-deps { font-size: 10px; color: #6e7681; }
+.graph-btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 3px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.graph-btn:hover { background: #30363d; }
+.graph-btn.run { color: #3fb950; border-color: #3fb950; }
+.graph-btn.run:hover { background: #1a3d2e; }
 /* P10.3: Tabs */
 .tabs {
   display: flex;
@@ -460,7 +504,7 @@ body {
 </head>
 <body>
 <div class="header">
-  <h1>AI Mission Control Dashboard v0.4</h1>
+  <h1>AI Mission Control Dashboard v0.5</h1>
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
@@ -552,6 +596,25 @@ body {
       </div>
       <div id="cap-result"></div>
       <div class="cap-agents-list" id="cap-agents-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- P10.5 Task Graph Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>Task Graph Engine (P10.5)</span>
+      <div style="display:flex;gap:8px;">
+        <button class="refresh-btn" onclick="loadGraphs()">Refresh</button>
+        <button class="refresh-btn" onclick="createSmokeGraph()">+ Smoke Graph</button>
+      </div>
+    </div>
+    <div class="panel-body" id="task-graph-body" style="max-height:400px;">
+      <div class="empty-state">
+        <div class="icon">&#x1F4CA;</div>
+        <div>Loading graphs...</div>
+      </div>
     </div>
   </div>
 </div>
@@ -1151,6 +1214,250 @@ loadEvents = function() {
     loadArtifacts();
   }
 };
+
+// ═══════════════════════════════════════════════════════════
+// P10.5 Task Graph Engine Dashboard
+// ═══════════════════════════════════════════════════════════
+
+var _graphsCache = [];
+
+function loadGraphs() {
+  var body = document.getElementById('task-graph-body');
+
+  fetch('/mission/graphs/' + (_graphsCache.length > 0 ? 'x' : 'x'), {})
+    .then(function() { return []; })
+    .catch(function() { return []; });
+
+  // Build graphs display from all known graphs via individual GET
+  // For now, use the cache; refresh fetches from mission tasks' graph data
+  body.innerHTML = '<div class="loading">Loading graphs...</div>';
+
+  // Try fetching graphs by listing missions and checking each
+  fetch('/mission/tasks')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success || !resp.data || resp.data.length === 0) {
+        body.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4CA;</div><div>No mission tasks found. Create a mission task first.</div></div>';
+        return;
+      }
+
+      // Check each mission for graph artifacts
+      var promises = [];
+      for (var i = 0; i < resp.data.length; i++) {
+        (function(missionId) {
+          promises.push(
+            fetch('/mission/' + missionId + '/artifacts/graph.json')
+              .then(function(r) { return r.json(); })
+              .then(function(ar) {
+                if (ar.success) {
+                  try {
+                    var graphData = typeof ar.content === 'string' ? JSON.parse(ar.content) : ar.content;
+                    graphData._mission_id = missionId;
+                    return graphData;
+                  } catch(e) { return null; }
+                }
+                return null;
+              })
+              .catch(function() { return null; })
+          );
+        })(resp.data[i].id);
+      }
+
+      return Promise.all(promises);
+    })
+    .then(function(graphs) {
+      if (!graphs) return;
+      var validGraphs = [];
+      for (var i = 0; i < graphs.length; i++) {
+        if (graphs[i]) validGraphs.push(graphs[i]);
+      }
+      renderGraphs(validGraphs);
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+function renderGraphs(graphs) {
+  var body = document.getElementById('task-graph-body');
+
+  if (!graphs || graphs.length === 0) {
+    body.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4CA;</div><div>No task graphs found. Click "+ Smoke Graph" to create one.</div></div>';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < graphs.length; i++) {
+    var g = graphs[i];
+    var statusBadge = getStatusBadge(g.status);
+
+    html += '<div class="graph-card">';
+    html += '<h4>' + escapeHtml(g.graph_id) + ' ' + statusBadge + '</h4>';
+    html += '<div class="graph-meta">Mission: ' + escapeHtml(g.mission_id || g._mission_id || '') +
+      ' | Nodes: ' + (g.nodes ? g.nodes.length : 0) +
+      ' | Updated: ' + formatTime(g.updated_at) + '</div>';
+
+    if (g.nodes) {
+      var readyNodes = [];
+      var failedNodes = [];
+
+      for (var j = 0; j < g.nodes.length; j++) {
+        var n = g.nodes[j];
+        if (n.status === 'pending' && (!n.dependsOn || n.dependsOn.length === 0)) {
+          // Simple check for ready: pending and all deps completed
+          var allDepsDone = true;
+          if (n.dependsOn) {
+            for (var d = 0; d < n.dependsOn.length; d++) {
+              var depNode = g.nodes.find(function(x) { return x.id === n.dependsOn[d]; });
+              if (!depNode || depNode.status !== 'completed') { allDepsDone = false; break; }
+            }
+          }
+          if (allDepsDone) readyNodes.push(n.id);
+        }
+        if (n.status === 'failed') failedNodes.push(n.id);
+      }
+
+      for (var k = 0; k < g.nodes.length; k++) {
+        var nd = g.nodes[k];
+        html += '<div class="graph-node">';
+        html += '<span class="node-id">' + escapeHtml(nd.id) + '</span>';
+        html += getStatusBadge(nd.status);
+        html += '<span class="node-agent">' + escapeHtml(nd.agent || '-') + '</span>';
+        html += '<span class="node-cap">' + escapeHtml(nd.capability || '-') + '</span>';
+        if (nd.dependsOn && nd.dependsOn.length > 0) {
+          html += '<span class="node-deps">depends: ' + nd.dependsOn.map(escapeHtml).join(', ') + '</span>';
+        }
+        html += '</div>';
+      }
+
+      if (readyNodes.length > 0) {
+        html += '<div style="margin-top:8px;font-size:11px;color:#3fb950;">&#x2713; Ready: ' + readyNodes.map(escapeHtml).join(', ') + '</div>';
+      }
+      if (failedNodes.length > 0) {
+        html += '<div style="margin-top:4px;font-size:11px;color:#f85149;">&#x2717; Failed: ' + failedNodes.map(escapeHtml).join(', ') + '</div>';
+      }
+
+      // Action buttons
+      if (g.status === 'pending' || g.status === 'running') {
+        html += '<div style="margin-top:8px;display:flex;gap:6px;">';
+        html += '<button class="graph-btn run" onclick="runGraphStep(\'' + escapeHtml(g.graph_id) + '\')">Run Step</button>';
+        html += '</div>';
+      }
+      if (g.status === 'failed') {
+        html += '<div style="margin-top:8px;display:flex;gap:6px;">';
+        html += '<button class="graph-btn" onclick="recoverGraph(\'' + escapeHtml(g.graph_id) + '\')">Recover</button>';
+        html += '</div>';
+      }
+    }
+
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+function createSmokeGraph() {
+  var body = document.getElementById('task-graph-body');
+  body.innerHTML = '<div class="loading">Creating smoke graph...</div>';
+
+  // First, find or create a mission task
+  fetch('/mission/tasks')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      var missionId;
+      if (resp.success && resp.data && resp.data.length > 0) {
+        missionId = resp.data[0].id;
+      } else {
+        // Create a test mission task
+        return fetch('/mission/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mission_task_id: 'P10.5',
+            event_type: 'MISSION_CREATED',
+            payload: { title: 'P10.5 Task Graph Smoke Test' }
+          })
+        }).then(function() { return 'P10.5'; });
+      }
+      return missionId;
+    })
+    .then(function(missionId) {
+      return fetch('/mission/graphs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          graph_id: 'graph-p10-5-smoke',
+          mission_id: missionId,
+          nodes: [
+            { id: 'collect_metrics', type: 'skill', skill: 'fetch-doudian-metrics', capability: 'server.audit', agent: 'workbuddy', status: 'pending' },
+            { id: 'risk_scan', type: 'skill', skill: 'risk-alert', capability: 'risk.analysis', agent: 'deepseek', dependsOn: ['collect_metrics'], status: 'pending' },
+            { id: 'ops_summary', type: 'skill', skill: 'ops-summary', capability: 'summary.write', agent: 'doubao', dependsOn: ['risk_scan'], status: 'pending' }
+          ]
+        })
+      });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp.success) {
+        loadGraphs();
+      } else {
+        body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml((resp.errors || [resp.error]).join('; ')) + '</div>';
+      }
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function runGraphStep(graphId) {
+  var body = document.getElementById('task-graph-body');
+  body.innerHTML = '<div class="loading">Running step for ' + escapeHtml(graphId) + '...</div>';
+
+  fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/run-step', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}'
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp.success) {
+        loadGraphs();
+      } else {
+        body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(resp.error) + '</div>';
+      }
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function recoverGraph(graphId) {
+  var body = document.getElementById('task-graph-body');
+  body.innerHTML = '<div class="loading">Recovering graph ' + escapeHtml(graphId) + '...</div>';
+
+  fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/nodes/failed_node/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}'
+  })
+    .then(function() {
+      return fetch('/mission/recovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mission_task_id: graphId, event_type: 'GRAPH_FAILED', error_message: 'Graph failed, requesting recovery' })
+      });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function() {
+      loadGraphs();
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+// Auto-load graphs on page ready
+setTimeout(function() { loadGraphs(); }, 500);
 </script>
 </body>
 </html>
