@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v0.2</title>
+<title>AI Mission Control Dashboard v0.4</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -290,21 +290,217 @@ body {
   font-size: 12px;
 }
 .refresh-btn:hover { background: #30363d; }
+/* P10.3: Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #30363d;
+  margin-bottom: 0;
+}
+.tab {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8b949e;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.tab:hover { color: #c9d1d9; }
+.tab.active {
+  color: #58a6ff;
+  border-bottom-color: #58a6ff;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+/* P10.3: Artifact row */
+.artifact-row {
+  padding: 10px 12px;
+  border-bottom: 1px solid #21262d;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.artifact-row:hover { background: #1c2128; }
+.artifact-row .icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.artifact-row .info {
+  flex: 1;
+  min-width: 0;
+}
+.artifact-row .name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.artifact-row .meta {
+  font-size: 11px;
+  color: #8b949e;
+  margin-top: 2px;
+}
+.artifact-row .size {
+  font-size: 11px;
+  color: #484f58;
+  flex-shrink: 0;
+}
+/* P10.4: Capability Check */
+.cap-panel {
+  margin-top: 16px;
+}
+.cap-check-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #0d1117;
+  border-radius: 6px;
+  border: 1px solid #21262d;
+}
+.cap-check-form select, .cap-check-form input {
+  background: #161b22;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.cap-check-form button {
+  background: #238636;
+  border: none;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+.cap-check-form button:hover { background: #2ea043; }
+.cap-result {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.cap-result.allowed { background: #1a3d2e; border: 1px solid #2ea043; color: #3fb950; }
+.cap-result.denied { background: #3d1a1a; border: 1px solid #f85149; color: #f85149; }
+.cap-result.approval { background: #3d2e1a; border: 1px solid #d29922; color: #d29922; }
+.cap-agents-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cap-agent-row {
+  padding: 8px 10px;
+  background: #0d1117;
+  border-radius: 4px;
+  border: 1px solid #21262d;
+  font-size: 12px;
+}
+.cap-agent-row .agent-name {
+  font-weight: 600;
+  color: #58a6ff;
+  margin-bottom: 4px;
+}
+.cap-agent-row .caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cap-agent-row .cap-tag {
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+.cap-tag.allowed { background: #1a3d2e; color: #3fb950; }
+.cap-tag.forbidden { background: #3d1a1a; color: #f85149; }
+.cap-tag.approval { background: #3d2e1a; color: #d29922; }
+/* Artifact popup */
+.artifact-popup {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.artifact-popup.show { display: flex; }
+.artifact-popup .popup-content {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 80vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  min-width: 400px;
+}
+.artifact-popup .popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #30363d;
+  padding-bottom: 8px;
+}
+.artifact-popup .popup-close {
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-size: 20px;
+  cursor: pointer;
+}
+.artifact-popup .popup-body {
+  font-family: 'SF Mono', Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  background: #0d1117;
+  padding: 12px;
+  border-radius: 4px;
+  max-height: 50vh;
+  overflow-y: auto;
+  line-height: 1.4;
+}
 </style>
 </head>
 <body>
 <div class="header">
-  <h1>AI Mission Control Dashboard v0.2</h1>
+  <h1>AI Mission Control Dashboard v0.4</h1>
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
   <div class="panel" id="tasks-panel">
-    <div class="panel-header">
-      <span>Mission Tasks</span>
-      <button class="refresh-btn" onclick="loadTasks()">Refresh</button>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('tasks')" id="tab-tasks">Tasks</div>
+      <div class="tab" onclick="switchTab('artifacts')" id="tab-artifacts">Artifacts</div>
     </div>
-    <div class="panel-body" id="tasks-list">
-      <div class="loading">Loading...</div>
+    <div class="tab-content active" id="tab-content-tasks">
+      <div class="panel-header">
+        <span>Mission Tasks</span>
+        <button class="refresh-btn" onclick="loadTasks()">Refresh</button>
+      </div>
+      <div class="panel-body" id="tasks-list">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-content-artifacts">
+      <div class="panel-header">
+        <span>Artifacts</span>
+        <button class="refresh-btn" onclick="loadArtifacts()">Refresh</button>
+      </div>
+      <div class="panel-body" id="artifacts-list">
+        <div class="empty-state">
+          <div class="icon">&#x1F4E6;</div>
+          <div>Select a task to view its artifacts</div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="panel" id="events-panel">
@@ -318,6 +514,40 @@ body {
         <div>Select a task to view its event timeline</div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- P10.4 Capability Check Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>Capability Check</span>
+      <button class="refresh-btn" onclick="loadAgents()">Refresh</button>
+    </div>
+    <div class="panel-body">
+      <div class="cap-check-form">
+        <select id="cap-agent-select">
+          <option value="">Select Agent...</option>
+        </select>
+        <input type="text" id="cap-input" placeholder="Capability (e.g. pm2.restart)" />
+        <div style="display:flex; gap:8px;">
+          <button onclick="checkCapability()">Check</button>
+        </div>
+      </div>
+      <div id="cap-result"></div>
+      <div class="cap-agents-list" id="cap-agents-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Artifact Content Popup -->
+<div class="artifact-popup" id="artifact-popup">
+  <div class="popup-content">
+    <div class="popup-header">
+      <span id="popup-title" style="font-weight:600;color:#58a6ff;">Artifact</span>
+      <button class="popup-close" onclick="closePopup()">&times;</button>
+    </div>
+    <div class="popup-body" id="popup-body"></div>
   </div>
 </div>
 
@@ -600,6 +830,221 @@ setInterval(function() {
 
 // Initial load
 loadTasks();
+loadAgents();
+
+// ─── P10.3 + P10.4: Tabs, Artifacts, Capability ─────────
+
+function switchTab(tabName) {
+  var tabs = document.querySelectorAll('.tab');
+  var contents = document.querySelectorAll('.tab-content');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.remove('active');
+  }
+  for (var j = 0; j < contents.length; j++) {
+    contents[j].classList.remove('active');
+  }
+  document.getElementById('tab-' + tabName).classList.add('active');
+  document.getElementById('tab-content-' + tabName).classList.add('active');
+
+  if (tabName === 'artifacts') {
+    loadArtifacts();
+  }
+}
+
+function loadArtifacts() {
+  var list = document.getElementById('artifacts-list');
+
+  if (!currentTaskId) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4E6;</div><div>Select a task to view its artifacts</div></div>';
+    return;
+  }
+
+  list.innerHTML = '<div class="loading">Loading...</div>';
+
+  fetch('/mission/' + encodeURIComponent(currentTaskId) + '/artifacts')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(resp.error) + '</div></div>';
+        return;
+      }
+
+      var artifacts = resp.artifacts || [];
+      if (artifacts.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4E6;</div><div>No artifacts for this mission</div></div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < artifacts.length; i++) {
+        var a = artifacts[i];
+        var iconEmoji = '&#x1F4C4;';
+        if (a.filename && a.filename.endsWith('.json')) iconEmoji = '&#x1F4CA;';
+        if (a.filename && a.filename.endsWith('.diff')) iconEmoji = '&#x1F527;';
+
+        html += '<div class="artifact-row" onclick="viewArtifact(\'' + escapeHtml(a.filename) + '\')">';
+        html += '<div class="icon">' + iconEmoji + '</div>';
+        html += '<div class="info">';
+        html += '<div class="name">' + escapeHtml(a.filename) + '</div>';
+        html += '<div class="meta">' + escapeHtml(a.agent || '-') + ' &middot; ' + (a.artifact_type || '') + ' &middot; ' + formatTime(a.created_at) + '</div>';
+        html += '</div>';
+        html += '<div class="size">' + formatSize(a.size) + '</div>';
+        html += '</div>';
+      }
+      list.innerHTML = html;
+    })
+    .catch(function(e) {
+      list.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+function viewArtifact(filename) {
+  if (!currentTaskId || !filename) return;
+
+  var popup = document.getElementById('artifact-popup');
+  var title = document.getElementById('popup-title');
+  var body = document.getElementById('popup-body');
+
+  title.textContent = 'Artifact: ' + filename;
+  body.textContent = 'Loading...';
+  popup.classList.add('show');
+
+  fetch('/mission/' + encodeURIComponent(currentTaskId) + '/artifacts/' + encodeURIComponent(filename))
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp.success) {
+        // For JSON, pretty-print
+        if (filename.endsWith('.json') && typeof resp.content === 'string') {
+          try {
+            var parsed = JSON.parse(resp.content);
+            body.textContent = JSON.stringify(parsed, null, 2);
+          } catch(e) {
+            body.textContent = resp.content;
+          }
+        } else {
+          body.textContent = resp.content;
+        }
+      } else {
+        body.textContent = 'Error: ' + resp.error;
+      }
+    })
+    .catch(function(e) {
+      body.textContent = 'Error: ' + e.message;
+    });
+}
+
+function closePopup() {
+  document.getElementById('artifact-popup').classList.remove('show');
+}
+
+function formatSize(bytes) {
+  if (!bytes && bytes !== 0) return '-';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function loadAgents() {
+  var select = document.getElementById('cap-agent-select');
+  var list = document.getElementById('cap-agents-list');
+
+  fetch('/mission/capability/agents')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) return;
+
+      var agents = resp.agents || [];
+
+      // Update select
+      var optHtml = '<option value="">Select Agent...</option>';
+      for (var i = 0; i < agents.length; i++) {
+        optHtml += '<option value="' + escapeHtml(agents[i].agent) + '">' + escapeHtml(agents[i].agent) + '</option>';
+      }
+      select.innerHTML = optHtml;
+
+      // Render agent cards
+      var html = '';
+      for (var j = 0; j < agents.length; j++) {
+        var a = agents[j];
+        html += '<div class="cap-agent-row">';
+        html += '<div class="agent-name">' + escapeHtml(a.agent) + '</div>';
+        html += '<div class="caps">';
+        for (var k = 0; k < a.capabilities.length; k++) {
+          html += '<span class="cap-tag allowed">' + escapeHtml(a.capabilities[k]) + '</span>';
+        }
+        for (var l = 0; l < a.forbidden.length; l++) {
+          html += '<span class="cap-tag forbidden">&#x1F6AB; ' + escapeHtml(a.forbidden[l]) + '</span>';
+        }
+        for (var m = 0; m < a.requiresApproval.length; m++) {
+          html += '<span class="cap-tag approval">&#x1F4CB; ' + escapeHtml(a.requiresApproval[m]) + '</span>';
+        }
+        html += '</div></div>';
+      }
+      list.innerHTML = html;
+    })
+    .catch(function(e) {
+      list.innerHTML = '<div style="color:#f85149;font-size:12px;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function checkCapability() {
+  var agent = document.getElementById('cap-agent-select').value;
+  var capability = document.getElementById('cap-input').value.trim();
+  var resultDiv = document.getElementById('cap-result');
+
+  if (!agent) {
+    resultDiv.innerHTML = '<div class="cap-result denied">Please select an agent</div>';
+    return;
+  }
+  if (!capability) {
+    resultDiv.innerHTML = '<div class="cap-result denied">Please enter a capability</div>';
+    return;
+  }
+
+  resultDiv.innerHTML = '<div style="padding:10px;color:#8b949e;">Checking...</div>';
+
+  fetch('/mission/capability/check', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agent: agent, capability: capability, mission_id: currentTaskId || '' })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        resultDiv.innerHTML = '<div class="cap-result denied">Error: ' + escapeHtml(resp.error || 'Unknown error') + '</div>';
+        return;
+      }
+
+      var cls = 'denied';
+      var icon = '&#x274C;';
+      if (resp.allowed && !resp.requiresApproval) {
+        cls = 'allowed';
+        icon = '&#x2705;';
+      } else if (resp.allowed && resp.requiresApproval) {
+        cls = 'approval';
+        icon = '&#x26A0;';
+      }
+
+      resultDiv.innerHTML = '<div class="cap-result ' + cls + '">' +
+        icon + ' <strong>' + escapeHtml(agent) + '</strong> → <strong>' + escapeHtml(capability) + '</strong><br>' +
+        (resp.allowed ? 'Allowed' : 'Denied') +
+        (resp.requiresApproval ? ' (Requires Approval)' : '') +
+        '<br><span style="font-size:11px;opacity:0.7;">' + escapeHtml(resp.reason) + '</span>' +
+        '</div>';
+    })
+    .catch(function(e) {
+      resultDiv.innerHTML = '<div class="cap-result denied">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+// Extend loadEvents to also refresh artifacts
+var _origLoadEvents = loadEvents;
+loadEvents = function() {
+  _origLoadEvents();
+  if (document.getElementById('tab-content-artifacts').classList.contains('active')) {
+    loadArtifacts();
+  }
+};
 </script>
 </body>
 </html>

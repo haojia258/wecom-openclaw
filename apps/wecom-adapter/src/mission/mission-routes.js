@@ -1,13 +1,19 @@
 'use strict';
 
 /**
- * mission-routes.js - AI Mission Control API Routes (P10.0)
+ * mission-routes.js - AI Mission Control API Routes (P10.0 - P10.4)
  *
- * 提供 4 个 API 端点:
+ * API 端点:
  *   GET  /mission/tasks               → 列出所有 mission tasks
  *   GET  /mission/tasks/:id/events    → 获取某 task 的事件时间线
  *   POST /mission/events              → 创建 agent event（含自动流转）
  *   POST /mission/tasks/:id/transition → 显式触发 workflow 状态流转 (P10.1)
+ *   GET  /mission/:id/artifacts       → 列出 mission artifacts (P10.3)
+ *   POST /mission/:id/artifacts       → 保存 artifact (P10.3)
+ *   GET  /mission/:id/artifacts/:fn   → 获取 artifact 内容 (P10.3)
+ *   POST /mission/capability/check    → 验证 dispatch (P10.4)
+ *   GET  /mission/capability/agents   → 列出所有 agent (P10.4)
+ *   GET  /mission/capability/agents/:agent → 获取 agent 能力 (P10.4)
  *
  * 复用 Express app 注册模式（与 ai-gateway.js 一致）。
  * 无需额外的 auth token（内部使用，非公网暴露）。
@@ -15,6 +21,9 @@
 
 var missionStore = require('./mission-store');
 var transitionEngine = require('./workflow-transition-engine');
+var artifactStore = require('../artifacts/artifact-store');
+var artifactIndex = require('../artifacts/artifact-index');
+var capabilityRegistry = require('../agent-governance/capability-registry');
 var path = require('path');
 
 // ─── JSON Body Parser for /mission/events ─────────────────
@@ -238,6 +247,230 @@ function handleTransitionTask(req, res) {
   }
 }
 
+// ─── P10.3 Artifact Workspace Handlers ─────────────────────
+
+/**
+ * GET /mission/:id/artifacts
+ * 列出指定 mission 的所有 artifacts
+ */
+function handleListArtifacts(req, res) {
+  var missionId = req.params.id;
+
+  if (!missionId) {
+    return res.status(400).json({ success: false, error: '缺少 mission_id' });
+  }
+
+  var result = artifactStore.listArtifacts(missionId);
+
+  if (result.success) {
+    // 同时获取索引统计
+    var indexStats = artifactIndex.getIndexStats();
+    res.json({
+      success: true,
+      mission_id: missionId,
+      artifacts: result.artifacts,
+      count: result.artifacts.length,
+      index_stats: indexStats,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    res.status(400).json({
+      success: false,
+      error: result.error,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+/**
+ * POST /mission/:id/artifacts
+ * Body: { filename, agent?, content }
+ */
+function handleSaveArtifact(req, res) {
+  var missionId = req.params.id;
+  var body = req._missionBody || {};
+
+  var filename = (body.filename || '').trim();
+  var agent = (body.agent || 'unknown').trim();
+  var content = body.content;
+
+  if (!missionId) {
+    return res.status(400).json({ success: false, error: '缺少 mission_id' });
+  }
+  if (!filename) {
+    return res.status(400).json({ success: false, error: '缺少必填字段: filename' });
+  }
+  if (content === undefined || content === null) {
+    return res.status(400).json({ success: false, error: '缺少必填字段: content' });
+  }
+
+  // JSON content 需要序列化
+  if (typeof content === 'object') {
+    content = JSON.stringify(content, null, 2);
+  }
+
+  var result = artifactStore.saveArtifact({
+    mission_id: missionId,
+    filename: filename,
+    agent: agent,
+    content: content
+  });
+
+  if (result.success) {
+    // 注册到全局索引
+    artifactIndex.indexArtifact(result.metadata);
+
+    res.status(201).json({
+      success: true,
+      metadata: result.metadata,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    res.status(400).json({
+      success: false,
+      error: result.error,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+/**
+ * GET /mission/:id/artifacts/:filename
+ * 获取指定 artifact 的内容
+ */
+function handleGetArtifact(req, res) {
+  var missionId = req.params.id;
+  var filename = req.params.filename;
+
+  if (!missionId || !filename) {
+    return res.status(400).json({ success: false, error: '缺少 mission_id 或 filename' });
+  }
+
+  var result = artifactStore.readArtifact(missionId, filename);
+
+  if (result.success) {
+    res.json({
+      success: true,
+      mission_id: missionId,
+      filename: filename,
+      content: result.content,
+      metadata: result.metadata,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    var statusCode = result.error.indexOf('不存在') !== -1 ? 404 : 400;
+    res.status(statusCode).json({
+      success: false,
+      error: result.error,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+// ─── P10.4 Capability Registry Handlers ────────────────────
+
+/**
+ * POST /mission/capability/check
+ * Body: { agent, capability, mission_id? }
+ *
+ * 执行 dispatch 验证，同时联动 P10.3 生成 dispatch artifact
+ */
+function handleCapabilityCheck(req, res) {
+  var body = req._missionBody || {};
+  var agent = (body.agent || '').trim();
+  var capability = (body.capability || '').trim();
+  var missionId = (body.mission_id || '').trim();
+
+  if (!agent) {
+    return res.status(400).json({ success: false, error: '缺少必填字段: agent' });
+  }
+  if (!capability) {
+    return res.status(400).json({ success: false, error: '缺少必填字段: capability' });
+  }
+
+  var result = capabilityRegistry.validateDispatch(agent, capability);
+
+  // P10.3 + P10.4 联动: 生成 dispatch artifact
+  if (missionId) {
+    try {
+      var dispatchRecord = {
+        mission_id: missionId,
+        agent: agent,
+        capability: capability,
+        allowed: result.allowed,
+        requiresApproval: result.requiresApproval,
+        reason: result.reason,
+        checked_at: result.checked_at
+      };
+
+      var saveResult = artifactStore.saveArtifact({
+        mission_id: missionId,
+        filename: 'dispatch.json',
+        agent: agent,
+        content: JSON.stringify(dispatchRecord, null, 2)
+      });
+
+      if (saveResult.success) {
+        artifactIndex.indexArtifact(saveResult.metadata);
+      }
+    } catch (e) {
+      // dispatch artifact 保存失败不影响主流程
+    }
+  }
+
+  res.json({
+    success: true,
+    allowed: result.allowed,
+    requiresApproval: result.requiresApproval,
+    reason: result.reason,
+    checked_at: result.checked_at,
+    timestamp: new Date().toISOString()
+  });
+}
+
+/**
+ * GET /mission/capability/agents
+ * 列出所有已注册 agent
+ */
+function handleListAgents(req, res) {
+  var agents = capabilityRegistry.listAllAgents();
+
+  res.json({
+    success: true,
+    agents: agents,
+    count: agents.length,
+    timestamp: new Date().toISOString()
+  });
+}
+
+/**
+ * GET /mission/capability/agents/:agent
+ * 获取指定 agent 的能力配置
+ */
+function handleGetAgent(req, res) {
+  var agentName = req.params.agent;
+
+  if (!agentName) {
+    return res.status(400).json({ success: false, error: '缺少 agent 名称' });
+  }
+
+  var result = capabilityRegistry.getAgentCapabilities(agentName);
+
+  if (result.success) {
+    res.json({
+      success: true,
+      agent: result.agent,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    res.status(404).json({
+      success: false,
+      error: result.error,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
 // ─── Express 路由注册 ────────────────────────────────────
 
 /**
@@ -246,9 +479,16 @@ function handleTransitionTask(req, res) {
  * @param {object} app - Express app 实例
  */
 function registerMissionRoutes(app) {
-  // Body parser for POST /mission/events and POST /mission/tasks/:id/transition
+  // Body parser for POST /mission/events, /mission/tasks, /mission/:id/artifacts, /mission/capability/check
   app.use('/mission/events', parseMissionBody);
   app.use('/mission/tasks', parseMissionBody);
+  // P10.3 + P10.4: body parser for artifact and capability endpoints
+  app.use('/mission/', function(req, res, next) {
+    if (req.method === 'POST' && (req.path.includes('/artifacts') || req.path.includes('/capability'))) {
+      return parseMissionBody(req, res, next);
+    }
+    next();
+  });
 
   // GET /mission/tasks
   app.get('/mission/tasks', handleListMissionTasks);
@@ -261,6 +501,28 @@ function registerMissionRoutes(app) {
 
   // POST /mission/tasks/:id/transition (P10.1)
   app.post('/mission/tasks/:id/transition', handleTransitionTask);
+
+  // ─── P10.3 Artifact Routes ─────────────────────────
+  // GET  /mission/:id/artifacts
+  app.get('/mission/:id/artifacts', handleListArtifacts);
+
+  // GET  /mission/:id/artifacts/:filename
+  // NOTE: must be registered BEFORE POST /mission/:id/artifacts
+  // because Express matches routes in order
+  app.get('/mission/:id/artifacts/:filename', handleGetArtifact);
+
+  // POST /mission/:id/artifacts
+  app.post('/mission/:id/artifacts', handleSaveArtifact);
+
+  // ─── P10.4 Capability Routes ───────────────────────
+  // POST /mission/capability/check
+  app.post('/mission/capability/check', handleCapabilityCheck);
+
+  // GET  /mission/capability/agents/:agent
+  app.get('/mission/capability/agents/:agent', handleGetAgent);
+
+  // GET  /mission/capability/agents
+  app.get('/mission/capability/agents', handleListAgents);
 }
 
 module.exports = {
@@ -270,4 +532,10 @@ module.exports = {
   _handleGetTaskEvents: handleGetTaskEvents,
   _handleCreateAgentEvent: handleCreateAgentEvent,
   _handleTransitionTask: handleTransitionTask,
+  _handleListArtifacts: handleListArtifacts,
+  _handleSaveArtifact: handleSaveArtifact,
+  _handleGetArtifact: handleGetArtifact,
+  _handleCapabilityCheck: handleCapabilityCheck,
+  _handleListAgents: handleListAgents,
+  _handleGetAgent: handleGetAgent,
 };
