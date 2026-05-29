@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * mission-routes.js - AI Mission Control API Routes (P10.0 - P10.4)
+ * mission-routes.js - AI Mission Control API Routes (P10.0 - P10.5)
  *
  * API 端点:
  *   GET  /mission/tasks               → 列出所有 mission tasks
@@ -15,6 +15,11 @@
  *   POST /mission/capability/check    → 验证 dispatch (P10.4)
  *   GET  /mission/capability/agents   → 列出所有 agent (P10.4)
  *   GET  /mission/capability/agents/:agent → 获取 agent 能力 (P10.4)
+ *   POST /mission/graphs              → 创建 task graph (P10.5)
+ *   GET  /mission/graphs/:graph_id    → 获取 graph (P10.5)
+ *   POST /mission/graphs/:graph_id/run-step → 推进一个 step (P10.5)
+ *   POST /mission/graphs/:graph_id/nodes/:node_id/status → 更新节点状态 (P10.5)
+ *   GET  /mission/graphs/:graph_id/ready → 获取就绪节点 (P10.5)
  *
  * 复用 Express app 注册模式（与 ai-gateway.js 一致）。
  * 无需额外的 auth token（内部使用，非公网暴露）。
@@ -26,6 +31,9 @@ var recoveryEngine = require('./recovery-engine');
 var artifactStore = require('../artifacts/artifact-store');
 var artifactIndex = require('../artifacts/artifact-index');
 var capabilityRegistry = require('../agent-governance/capability-registry');
+var graphStore = require('./task-graph-store');
+var graphEngine = require('./task-graph-engine');
+var graphRunner = require('./task-graph-runner');
 var path = require('path');
 
 // ─── JSON Body Parser for /mission/events ─────────────────
@@ -538,6 +546,190 @@ function handleGetAgent(req, res) {
   }
 }
 
+// ─── P10.5 Task Graph Engine Handlers ──────────────────
+
+/**
+ * POST /mission/graphs
+ * Body: { graph_id, mission_id, nodes }
+ *
+ * 创建 task graph（含全量校验）
+ */
+function handleCreateGraph(req, res) {
+  var body = req._missionBody || {};
+
+  var graphDef = {
+    graph_id: (body.graph_id || '').trim(),
+    mission_id: (body.mission_id || '').trim(),
+    nodes: body.nodes || []
+  };
+
+  if (!graphDef.graph_id) {
+    return res.status(400).json({ success: false, error: '缺少必填字段: graph_id' });
+  }
+  if (!graphDef.mission_id) {
+    return res.status(400).json({ success: false, error: '缺少必填字段: mission_id' });
+  }
+  if (!Array.isArray(graphDef.nodes) || graphDef.nodes.length === 0) {
+    return res.status(400).json({ success: false, error: 'nodes 必须是非空数组' });
+  }
+
+  var result = graphRunner.createAndValidate(graphDef);
+
+  if (result.success) {
+    res.status(201).json({
+      success: true,
+      graph: result.graph,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    res.status(400).json({
+      success: false,
+      errors: result.errors,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+/**
+ * GET /mission/graphs/:graph_id
+ * 获取单个 graph
+ */
+function handleGetGraph(req, res) {
+  var graphId = req.params.graph_id;
+
+  if (!graphId) {
+    return res.status(400).json({ success: false, error: '缺少 graph_id' });
+  }
+
+  var graph = graphStore.getGraph(graphId);
+  if (!graph) {
+    return res.status(404).json({
+      success: false,
+      error: 'Graph 不存在: ' + graphId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  var events = graphStore.getGraphEvents(graphId);
+
+  res.json({
+    success: true,
+    graph: graph,
+    events: events,
+    event_count: events.length,
+    timestamp: new Date().toISOString()
+  });
+}
+
+/**
+ * POST /mission/graphs/:graph_id/run-step
+ * 推进一个 step
+ */
+function handleRunGraphStep(req, res) {
+  var graphId = req.params.graph_id;
+
+  if (!graphId) {
+    return res.status(400).json({ success: false, error: '缺少 graph_id' });
+  }
+
+  var result = graphEngine.runGraphStep(graphId);
+
+  if (result.success) {
+    // 同时获取更新后的 graph
+    var graph = graphStore.getGraph(graphId);
+    res.json({
+      success: true,
+      step_result: result.step_result,
+      graph_status: graph ? graph.status : 'unknown',
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    var statusCode = result.error.indexOf('不存在') !== -1 ? 404 : 409;
+    res.status(statusCode).json({
+      success: false,
+      error: result.error,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+/**
+ * POST /mission/graphs/:graph_id/nodes/:node_id/status
+ * Body: { status }
+ *
+ * 更新节点状态（含 DAG 合法性校验 + 状态跳转校验）
+ */
+function handleUpdateNodeStatus(req, res) {
+  var graphId = req.params.graph_id;
+  var nodeId = req.params.node_id;
+  var body = req._missionBody || {};
+  var newStatus = (body.status || '').trim();
+
+  if (!graphId) {
+    return res.status(400).json({ success: false, error: '缺少 graph_id' });
+  }
+  if (!nodeId) {
+    return res.status(400).json({ success: false, error: '缺少 node_id' });
+  }
+  if (!newStatus) {
+    return res.status(400).json({ success: false, error: '缺少必填字段: status' });
+  }
+
+  var result = graphEngine.updateNodeStatus(graphId, nodeId, newStatus);
+
+  if (result.success) {
+    var graph = graphStore.getGraph(graphId);
+    res.json({
+      success: true,
+      from: result.from,
+      to: result.to,
+      graph_status: graph ? graph.status : 'unknown',
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    // 非法跳转 → 409
+    var statusCode = result.error.indexOf('非法状态跳转') !== -1 ? 409 : 400;
+    res.status(statusCode).json({
+      success: false,
+      error: result.error,
+      from: result.from || null,
+      to: result.to || null,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+/**
+ * GET /mission/graphs/:graph_id/ready
+ * 获取所有就绪节点
+ */
+function handleGetReadyNodes(req, res) {
+  var graphId = req.params.graph_id;
+
+  if (!graphId) {
+    return res.status(400).json({ success: false, error: '缺少 graph_id' });
+  }
+
+  var graph = graphStore.getGraph(graphId);
+  if (!graph) {
+    return res.status(404).json({
+      success: false,
+      error: 'Graph 不存在: ' + graphId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  var readyNodes = graphEngine.getReadyNodes(graph);
+
+  res.json({
+    success: true,
+    graph_id: graphId,
+    ready_nodes: readyNodes,
+    ready_count: readyNodes.length,
+    timestamp: new Date().toISOString()
+  });
+}
+
 // ─── Express 路由注册 ────────────────────────────────────
 
 /**
@@ -552,7 +744,7 @@ function registerMissionRoutes(app) {
   app.use('/mission/recovery', parseMissionBody);
   // P10.3 + P10.4: body parser for artifact and capability endpoints
   app.use('/mission/', function(req, res, next) {
-    if (req.method === 'POST' && (req.path.includes('/artifacts') || req.path.includes('/capability'))) {
+    if (req.method === 'POST' && (req.path.includes('/artifacts') || req.path.includes('/capability') || req.path.includes('/graphs'))) {
       return parseMissionBody(req, res, next);
     }
     next();
@@ -594,6 +786,23 @@ function registerMissionRoutes(app) {
 
   // GET  /mission/capability/agents
   app.get('/mission/capability/agents', handleListAgents);
+
+  // ─── P10.5 Task Graph Routes ────────────────────────
+  // POST /mission/graphs
+  app.post('/mission/graphs', handleCreateGraph);
+
+  // GET  /mission/graphs/:graph_id/ready
+  // NOTE: must be registered BEFORE /mission/graphs/:graph_id
+  app.get('/mission/graphs/:graph_id/ready', handleGetReadyNodes);
+
+  // POST /mission/graphs/:graph_id/run-step
+  app.post('/mission/graphs/:graph_id/run-step', handleRunGraphStep);
+
+  // POST /mission/graphs/:graph_id/nodes/:node_id/status
+  app.post('/mission/graphs/:graph_id/nodes/:node_id/status', handleUpdateNodeStatus);
+
+  // GET  /mission/graphs/:graph_id
+  app.get('/mission/graphs/:graph_id', handleGetGraph);
 }
 
 module.exports = {
@@ -610,4 +819,10 @@ module.exports = {
   _handleCapabilityCheck: handleCapabilityCheck,
   _handleListAgents: handleListAgents,
   _handleGetAgent: handleGetAgent,
+  // P10.5
+  _handleCreateGraph: handleCreateGraph,
+  _handleGetGraph: handleGetGraph,
+  _handleRunGraphStep: handleRunGraphStep,
+  _handleUpdateNodeStatus: handleUpdateNodeStatus,
+  _handleGetReadyNodes: handleGetReadyNodes,
 };
