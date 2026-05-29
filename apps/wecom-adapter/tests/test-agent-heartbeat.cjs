@@ -8,7 +8,7 @@
  *   B: Status Derivation ~6 assertions
  *   C: Health Report ~6 assertions
  *   D: API Routes (integration tests) ~10 assertions
- *   E: Dashboard v0.7 ~4 assertions
+ *   E: Dashboard v0.8 ~4 assertions
  */
 
 var http = require('http');
@@ -385,15 +385,15 @@ if (express) {
   assertEqual(mockResD10._status, 404, 'D10b: status code 404');
 }
 
-// ─── Group E: Dashboard v0.7 ───────────────────────────
+// ─── Group E: Dashboard v0.8 ───────────────────────────
 
-console.log('\n--- Group E: Dashboard v0.7 ---');
+console.log('\n--- Group E: Dashboard v0.8 ---');
 
 var dashboardPath = path.join(projectDir, 'public', 'mission-control.html');
 var dashboardHtml = fs.readFileSync(dashboardPath, 'utf-8');
 
-// E1: Dashboard contains v0.7
-assertContains(dashboardHtml, 'v0.7', 'E1: Dashboard HTML contains v0.7');
+// E1: Dashboard contains v0.8
+assertContains(dashboardHtml, 'v0.8', 'E1: Dashboard HTML contains v0.8');
 
 // E2: Dashboard contains Agent Health
 assertContains(dashboardHtml, 'Agent Health', 'E2: Dashboard HTML contains Agent Health');
