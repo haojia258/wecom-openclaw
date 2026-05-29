@@ -1,40 +1,32 @@
-/** execution-feedback-engine.js — P9.7.5 Recommendations only. No auto-fix. */
 'use strict';var t=require('./execution-analytics-types');
-function generateRecommendations(report){
-  var recs=[];
-  if(report.metrics){
-    if(report.metrics.failedSteps>0)recs.push('Address '+report.metrics.failedSteps+' failed steps');
-    if(report.metrics.skippedSteps>0)recs.push('Review '+report.metrics.skippedSteps+' skipped steps');
-    if(report.metrics.stepSuccessRate<80)recs.push('Step success rate below 80%: review validation pipeline');
-    if(report.metrics.invocationSuccessRate<80)recs.push('Invocation success rate below 80%: check agent adapters');
-    if(report.metrics.totalSteps>15)recs.push('Orchestration has >15 steps: consider reducing complexity');
-    if(report.metrics.executionHealthScore<70)recs.push('Execution health score low: increase validation coverage');
-    if(report.metrics.orchestrationQualityScore<70)recs.push('Orchestration quality score low: review dependency graph');
-    if(report.metrics.avgRiskScore>80)recs.push('Risk score high: add more guardrails');
-  }
+function generateRecommendations(metrics){var recs=[];
+  if(!metrics)return recs;
+  if(metrics.failedSteps>0)recs.push('Address '+metrics.failedSteps+' failed steps');
+  if(metrics.skippedSteps>0)recs.push('Review '+metrics.skippedSteps+' skipped steps');
+  if(metrics.totalSteps>0&&(metrics.validatedSteps/metrics.totalSteps)<0.8)recs.push('Step success rate below 80%: review validation');
+  if(metrics.totalInvocations>0&&(metrics.dryRunCompleted/metrics.totalInvocations)<0.8)recs.push('Invocation success rate below 80%: check adapters');
+  if(metrics.totalSteps>15)recs.push('Orchestration has >15 steps: reduce complexity');
+  if(metrics.executionHealthScore<70)recs.push('Health score low: increase validation coverage');
+  if(metrics.orchestrationQualityScore<70)recs.push('Quality score low: review dependency graph');
+  if(metrics.avgRiskScore>80)recs.push('Risk score high: add guardrails');
   return recs;}
-function generateWarnings(report){
-  var warns=[];
-  if(report.metrics){
-    if(report.metrics.failedSteps>3)warns.push('High failure count ('+report.metrics.failedSteps+')');
-    if(report.metrics.stepSuccessRate<50)warns.push('Critical: step success rate below 50%');
-    if(report.metrics.avgRiskScore>90)warns.push('Critical risk level');
-  }
-  if(report.trends&&report.trends.riskTrend===t.TREND.DEGRADING)warns.push('Risk trend is degrading');
-  if(report.status===t.ANALYTICS_STATUS.CRITICAL)warns.push('Analytics status is critical');
+function generateWarnings(metrics){
+  var warns=[];if(!metrics)return warns;
+  if(metrics.failedSteps>3)warns.push('High failure count ('+metrics.failedSteps+')');
+  if(metrics.totalSteps>0&&(metrics.validatedSteps/metrics.totalSteps)<0.5)warns.push('Critical: step success rate below 50%');
+  if(metrics.avgRiskScore>90)warns.push('Critical risk level');
   return warns;}
-function generateRiskFeedback(report){
-  var risks=[];
-  if(report.metrics&&report.metrics.avgRiskScore>60)risks.push({level:'medium',description:'Elevated risk score: '+report.metrics.avgRiskScore});
-  if(report.metrics&&report.metrics.avgRiskScore>85)risks.push({level:'high',description:'Critical risk score: '+report.metrics.avgRiskScore});
-  if(report.metrics&&report.metrics.failedSteps>0)risks.push({level:'medium',description:report.metrics.failedSteps+' failed steps in orchestration'});
-  if(report.trends&&report.trends.riskTrend===t.TREND.DEGRADING)risks.push({level:'high',description:'Risk trend is degrading over time'});
+function generateRiskFeedback(metrics){
+  var risks=[];if(!metrics)return risks;
+  if(metrics.avgRiskScore>60)risks.push({level:'medium',description:'Elevated risk score: '+metrics.avgRiskScore});
+  if(metrics.avgRiskScore>85)risks.push({level:'high',description:'Critical risk score: '+metrics.avgRiskScore});
+  if(metrics.failedSteps>0)risks.push({level:'medium',description:metrics.failedSteps+' failed steps'});
   return risks;}
-function generateHealthFeedback(report){
-  var score=report.metrics?report.metrics.executionHealthScore||0:0;
-  if(score>=90)return{level:'healthy',message:'Execution pipeline is healthy'};
-  if(score>=70)return{level:'warning',message:'Execution pipeline needs attention'};
-  return{level:'critical',message:'Execution pipeline requires immediate review'};}
-function generateFeedback(report){
-  return{recommendations:generateRecommendations(report),warnings:generateWarnings(report),risks:generateRiskFeedback(report),health:generateHealthFeedback(report)};}
+function generateHealthFeedback(metrics){
+  var h=metrics?metrics.executionHealthScore||0:0;
+  if(h>=90)return{level:'healthy',message:'Pipeline is healthy'};
+  if(h>=70)return{level:'warning',message:'Pipeline needs attention'};
+  return{level:'critical',message:'Pipeline requires immediate review'};}
+function generateFeedback(metrics){
+  return{recommendations:generateRecommendations(metrics),warnings:generateWarnings(metrics),risks:generateRiskFeedback(metrics),health:generateHealthFeedback(metrics)};}
 module.exports={generateRecommendations,generateWarnings,generateRiskFeedback,generateHealthFeedback,generateFeedback};
