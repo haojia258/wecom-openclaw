@@ -557,10 +557,28 @@ function handleGetAgent(req, res) {
 function handleCreateGraph(req, res) {
   var body = req._missionBody || {};
 
+  // 规范化 nodes: snake_case → camelCase (depends_on → dependsOn)
+  var rawNodes = body.nodes || [];
+  var nodes = [];
+  for (var ni = 0; ni < rawNodes.length; ni++) {
+    var rn = rawNodes[ni];
+    var nn = {};
+    var rnKeys = Object.keys(rn);
+    for (var ki = 0; ki < rnKeys.length; ki++) {
+      var key = rnKeys[ki];
+      if (key === 'depends_on') {
+        nn.dependsOn = rn.depends_on;
+      } else {
+        nn[key] = rn[key];
+      }
+    }
+    nodes.push(nn);
+  }
+
   var graphDef = {
     graph_id: (body.graph_id || '').trim(),
     mission_id: (body.mission_id || '').trim(),
-    nodes: body.nodes || []
+    nodes: nodes
   };
 
   if (!graphDef.graph_id) {
