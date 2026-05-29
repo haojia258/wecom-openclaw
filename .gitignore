@@ -15,6 +15,9 @@ storage/
 !apps/wecom-adapter/src/storage/
 data/
 !apps/wecom-adapter/data/
+apps/wecom-adapter/data/*.db
+apps/wecom-adapter/data/*.db-shm
+apps/wecom-adapter/data/*.db-wal
 cookies/
 screenshots/
 

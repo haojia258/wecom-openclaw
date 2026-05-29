@@ -1,0 +1,21 @@
+'use strict';var types=require('./execution-analytics-types'),validator=require('./execution-analytics-validator'),aggregator=require('./execution-metrics-aggregator'),feedback=require('./execution-feedback-engine'),runtime=require('./execution-analytics-runtime'),audit=require('./execution-analytics-audit');
+module.exports={
+  ANALYTICS_STATUS:types.ANALYTICS_STATUS,TREND_STATUS:types.TREND_STATUS,ERROR_CODES:types.ERROR_CODES,
+  createAnalyticsReport:runtime.createAnalyticsReport,createAnalyticsId:types.createAnalyticsId,
+  normalizeScore:types.normalizeScore,createEmptyMetrics:types.createEmptyMetrics,createEmptyFeedback:types.createEmptyFeedback,
+  validateAnalyticsReport:validator.validateAnalyticsReport,validateMetrics:validator.validateMetrics,
+  validateFeedback:validator.validateFeedback,validateTrend:validator.validateTrend,
+  validateScore:validator.validateScore,validateAnalyticsInput:validator.validateAnalyticsInput,
+  aggregateExecutionMetrics:aggregator.aggregateExecutionMetrics,aggregateOrchestrationMetrics:aggregator.aggregateOrchestrationMetrics,
+  aggregateInvocationMetrics:aggregator.aggregateInvocationMetrics,aggregateRiskMetrics:aggregator.aggregateRiskMetrics,
+  aggregateTrendMetrics:aggregator.aggregateTrendMetrics,aggregateAllMetrics:aggregator.aggregateAllMetrics,
+  generateRecommendations:feedback.generateRecommendations,generateWarnings:feedback.generateWarnings,
+  generateRiskFeedback:feedback.generateRiskFeedback,generateHealthFeedback:feedback.generateHealthFeedback,
+  generateFeedback:feedback.generateFeedback,
+  calculateExecutionHealthScore:runtime.calculateExecutionHealthScore,calculateRiskScore:runtime.calculateRiskScore,
+  generateExecutionFeedback:runtime.generateExecutionFeedback,generateAnalyticsSnapshot:runtime.generateAnalyticsSnapshot,
+  archiveAnalyticsReport:runtime.archiveAnalyticsReport,listAnalyticsReports:runtime.listAnalyticsReports,
+  getAnalyticsReport:runtime.getAnalyticsReport,
+  recordAnalyticsEvent:audit.recordAnalyticsEvent,listAnalyticsEvents:audit.listAnalyticsEvents,
+  generateAnalyticsAuditSnapshot:audit.generateAnalyticsAuditSnapshot
+};
