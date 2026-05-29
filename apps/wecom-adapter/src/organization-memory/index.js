@@ -1,7 +1,7 @@
-'use strict';var kt=require('./knowledge-types'),kv=require('./knowledge-validator'),ks=require('./knowledge-store'),kr=require('./knowledge-capture-runtime'),ka=require('./knowledge-audit'),lt=require('./learning-types'),lv=require('./learning-validator'),le=require('./learning-engine'),lr=require('./learning-runtime'),la=require('./learning-audit');
+'use strict';var kt=require('./knowledge-types'),kv=require('./knowledge-validator'),ks=require('./knowledge-store'),kr=require('./knowledge-capture-runtime'),ka=require('./knowledge-audit'),lt=require('./learning-types'),lv=require('./learning-validator'),le=require('./learning-engine'),lr=require('./learning-runtime'),la=require('./learning-audit'),mt=require('./memory-types'),mv=require('./memory-validator'),ms=require('./memory-store'),mq=require('./memory-query-engine'),mr=require('./memory-runtime');
 module.exports={
-  SOURCE_TYPE:kt.SOURCE_TYPE,CATEGORY:kt.CATEGORY,OUTCOME:kt.OUTCOME,INSIGHT_TYPE:lt.INSIGHT_TYPE,
-  ERROR_CODES:Object.assign({},kt.ERROR_CODES,lt.ERROR_CODES),
+  SOURCE_TYPE:kt.SOURCE_TYPE,CATEGORY:kt.CATEGORY,OUTCOME:kt.OUTCOME,INSIGHT_TYPE:lt.INSIGHT_TYPE,MEMORY_TYPE:mt.MEMORY_TYPE,
+  ERROR_CODES:Object.assign({},kt.ERROR_CODES,lt.ERROR_CODES,mt.ERROR_CODES),
   createKnowledgeRecord:kt.createKnowledgeRecord,validateKnowledge:kv.validateKnowledge,
   saveKnowledge:ks.saveKnowledge,getKnowledge:ks.getKnowledge,listKnowledge:ks.listKnowledge,
   captureKnowledge:kr.captureKnowledge,captureFromGoal:kr.captureFromGoal,captureFromExecutionAnalytics:kr.captureFromExecutionAnalytics,captureFromOrchestration:kr.captureFromOrchestration,
@@ -15,5 +15,8 @@ module.exports={
   generateLearningSnapshot:lr.generateLearningSnapshot,getLearningInsight:lr.getLearningInsight,
   listLearningInsights:lr.listLearningInsights,
   recordLearningEvent:la.recordLearningEvent,listLearningEvents:la.listLearningEvents,
-  _reset:function(){kr._reset();lr._reset();}
+  addMemory:mr.addMemory,getMemory:mr.getMemory,listMemory:mr.listMemory,
+  searchMemory:mr.searchMemory,findSimilarGoals:mr.findSimilarGoals,findRelevantInsights:mr.findRelevantInsights,
+  generateMemorySnapshot:mr.generateMemorySnapshot,addBulkKnowledge:mr.addBulkKnowledge,
+  _reset:function(){kr._reset();lr._reset();mr._reset();}
 };
