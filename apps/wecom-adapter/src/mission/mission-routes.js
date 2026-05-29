@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * mission-routes.js - AI Mission Control API Routes (P10.0 - P10.5)
+ * mission-routes.js - AI Mission Control API Routes (P10.0 - P10.8)
  *
  * API 端点:
  *   GET  /mission/tasks               → 列出所有 mission tasks
@@ -20,6 +20,9 @@
  *   POST /mission/graphs/:graph_id/run-step → 推进一个 step (P10.5)
  *   POST /mission/graphs/:graph_id/nodes/:node_id/status → 更新节点状态 (P10.5)
  *   GET  /mission/graphs/:graph_id/ready → 获取就绪节点 (P10.5)
+ *   POST /mission/graphs/:graph_id/run-loop → 运行自治执行闭环 (P10.8)
+ *   POST /mission/graphs/:graph_id/nodes/:node_id/run → 单节点自治执行 (P10.8)
+ *   GET  /mission/graphs/:graph_id/loop-report → 获取 loop 报告 (P10.8)
  *
  * 复用 Express app 注册模式（与 ai-gateway.js 一致）。
  * 无需额外的 auth token（内部使用，非公网暴露）。
@@ -34,6 +37,9 @@ var capabilityRegistry = require('../agent-governance/capability-registry');
 var graphStore = require('./task-graph-store');
 var graphEngine = require('./task-graph-engine');
 var graphRunner = require('./task-graph-runner');
+var autonomousEngine = require('./autonomous-loop-engine');
+var autonomousPolicy = require('./autonomous-loop-policy');
+var autonomousReport = require('./autonomous-loop-report');
 var path = require('path');
 
 // ─── JSON Body Parser for /mission/events ─────────────────
@@ -748,6 +754,212 @@ function handleGetReadyNodes(req, res) {
   });
 }
 
+// ─── P10.8 Autonomous Execution Loop Handlers ──────────────
+
+/**
+ * POST /mission/graphs/:graph_id/run-loop
+ * Body: { maxSteps?, verbose? }
+ *
+ * 启动自治执行闭环:
+ *   load → validate → policy → heartbeat → execute → artifact → recovery → repeat
+ */
+function handleRunLoop(req, res) {
+  var graphId = req.params.graph_id;
+  var body = req._missionBody || {};
+
+  if (!graphId) {
+    return res.status(400).json({ success: false, error: '缺少 graph_id' });
+  }
+
+  var graph = graphStore.getGraph(graphId);
+  if (!graph) {
+    return res.status(404).json({
+      success: false,
+      error: 'Graph 不存在: ' + graphId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  var options = {
+    maxSteps: typeof body.maxSteps === 'number' ? body.maxSteps : undefined,
+    verbose: body.verbose === true
+  };
+
+  try {
+    var result = autonomousEngine.runAutonomousLoop(graphId, options);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        graph_id: graphId,
+        status: result.status,
+        steps: result.steps,
+        loop_events: result.loop_events,
+        total_steps: result.total_steps,
+        message: result.message || null,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      var statusCode = (result.error && result.error.indexOf('不存在') !== -1) ? 404 : 400;
+      res.status(statusCode).json({
+        success: false,
+        error: result.error,
+        validation_errors: result.validation_errors || null,
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (e) {
+    res.status(500).json({
+      success: false,
+      error: 'Loop execution error: ' + e.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+/**
+ * POST /mission/graphs/:graph_id/nodes/:node_id/run
+ * Body: { verbose? }
+ *
+ * 单节点自治执行:
+ *   capability check → heartbeat check → forbidden blocking
+ *   → requiresApproval blocking → node status transition
+ *   → artifact write → agent_events write
+ */
+function handleRunNode(req, res) {
+  var graphId = req.params.graph_id;
+  var nodeId = req.params.node_id;
+  var body = req._missionBody || {};
+
+  if (!graphId) {
+    return res.status(400).json({ success: false, error: '缺少 graph_id' });
+  }
+  if (!nodeId) {
+    return res.status(400).json({ success: false, error: '缺少 node_id' });
+  }
+
+  var graph = graphStore.getGraph(graphId);
+  if (!graph) {
+    return res.status(404).json({
+      success: false,
+      error: 'Graph 不存在: ' + graphId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // Find node
+  var node = null;
+  var nodes = graph.nodes || [];
+  for (var ni = 0; ni < nodes.length; ni++) {
+    if (nodes[ni].id === nodeId) {
+      node = nodes[ni];
+      break;
+    }
+  }
+
+  if (!node) {
+    return res.status(404).json({
+      success: false,
+      error: 'Node 不存在: ' + nodeId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  var options = {
+    verbose: body.verbose === true
+  };
+
+  try {
+    var result = autonomousEngine.runAutonomousNode(graphId, nodeId, options);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        graph_id: graphId,
+        node_id: nodeId,
+        policy: result.policy || null,
+        execution: result.execution || null,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      // blocked / forbidden / offline
+      if (result.blocked) {
+        // Determine appropriate status code
+        var sc = result.requiresApproval ? 409 : 403;
+        res.status(sc).json({
+          success: false,
+          error: result.error,
+          blocked: true,
+          requiresApproval: result.requiresApproval || false,
+          policy: result.policy || null,
+          dispatch: result.dispatch || null,
+          agent_health: result.agent_health || null,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error,
+          blocked: false,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  } catch (e) {
+    res.status(500).json({
+      success: false,
+      error: 'Node execution error: ' + e.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+/**
+ * GET /mission/graphs/:graph_id/loop-report
+ *
+ * 获取 loop 执行报告（含 completed/failed/blocked/economics）
+ */
+function handleLoopReport(req, res) {
+  var graphId = req.params.graph_id;
+
+  if (!graphId) {
+    return res.status(400).json({ success: false, error: '缺少 graph_id' });
+  }
+
+  var graph = graphStore.getGraph(graphId);
+  if (!graph) {
+    return res.status(404).json({
+      success: false,
+      error: 'Graph 不存在: ' + graphId,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  try {
+    var result = autonomousReport.generateLoopReport(graphId);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        report: result.report,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.error,
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (e) {
+    res.status(500).json({
+      success: false,
+      error: 'Report generation error: ' + e.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
 // ─── Express 路由注册 ────────────────────────────────────
 
 /**
@@ -827,6 +1039,16 @@ function registerMissionRoutes(app) {
   // GET  /mission/graphs/:graph_id
   app.get('/mission/graphs/:graph_id', handleGetGraph);
 
+  // ─── P10.8 Autonomous Execution Loop Routes ──────────
+  // GET  /mission/graphs/:graph_id/loop-report (MUST be before /:graph_id/nodes/:node_id/run)
+  app.get('/mission/graphs/:graph_id/loop-report', handleLoopReport);
+
+  // POST /mission/graphs/:graph_id/run-loop
+  app.post('/mission/graphs/:graph_id/run-loop', handleRunLoop);
+
+  // POST /mission/graphs/:graph_id/nodes/:node_id/run
+  app.post('/mission/graphs/:graph_id/nodes/:node_id/run', handleRunNode);
+
   // ─── P10.7 Agent Heartbeat Routes ────────────────────
   var heartbeatRoutes = require('./agent-heartbeat-routes');
   heartbeatRoutes.registerAgentHeartbeatRoutes(app);
@@ -852,4 +1074,8 @@ module.exports = {
   _handleRunGraphStep: handleRunGraphStep,
   _handleUpdateNodeStatus: handleUpdateNodeStatus,
   _handleGetReadyNodes: handleGetReadyNodes,
+  // P10.8
+  _handleRunLoop: handleRunLoop,
+  _handleRunNode: handleRunNode,
+  _handleLoopReport: handleLoopReport,
 };

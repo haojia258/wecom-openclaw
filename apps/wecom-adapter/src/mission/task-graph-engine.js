@@ -25,9 +25,11 @@ var GRAPH_STATUSES = ['pending', 'running', 'completed', 'failed', 'blocked'];
 var NODE_STATUSES = ['pending', 'ready', 'running', 'completed', 'failed', 'blocked', 'skipped'];
 
 // 合法状态跳转表
+// P10.8: 追加 pending→failed, pending→blocked, ready→failed, ready→blocked
+// 允许自治执行闭环在策略评估阶段直接标记节点为失败/阻塞
 var VALID_TRANSITIONS = {
-  'pending':   ['ready'],
-  'ready':     ['running'],
+  'pending':   ['ready', 'failed', 'blocked'],
+  'ready':     ['running', 'failed', 'blocked'],
   'running':   ['completed', 'failed'],
   'failed':    ['pending'],      // retry
   'blocked':   ['pending'],      // unblock → retry
@@ -246,7 +248,8 @@ function getReadyNodes(graph) {
  * @param {string} newStatus
  * @returns {{ success: boolean, error?: string, from?: string, to?: string }}
  */
-function updateNodeStatus(graphId, nodeId, newStatus) {
+function updateNodeStatus(graphId, nodeId, newStatus, options) {
+  var opts = options || {};
   var graph = graphStore.getGraph(graphId);
   if (!graph) {
     return { success: false, error: 'Graph 不存在: ' + graphId };
@@ -308,8 +311,10 @@ function updateNodeStatus(graphId, nodeId, newStatus) {
     });
   } catch (e) { /* ignore */ }
 
-  // 自动触发 graph status 检查
-  _updateGraphStatus(graphId, graph);
+  // 自动触发 graph status 检查（除非调用方显式跳过）
+  if (!opts.skipAutoStatus) {
+    _updateGraphStatus(graphId, graph);
+  }
 
   return { success: true, from: fromStatus, to: newStatus };
 }

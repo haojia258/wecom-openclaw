@@ -268,6 +268,18 @@ module.exports = {
   _reset: function() {
     _agentStore = {};
     _initDefaults();
+  },
+
+  /**
+   * [TEST ONLY] 手动设置 agent 的 last_seen，用于模拟离线状态
+   * @param {string} agentName
+   * @param {string} isoTime - ISO 8601 时间字符串，如 new Date(0).toISOString()
+   */
+  _setAgentLastSeen: function(agentName, isoTime) {
+    var record = _agentStore[agentName];
+    if (record) {
+      record.last_seen = isoTime;
+    }
   }
 };
 
