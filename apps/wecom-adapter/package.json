@@ -39,6 +39,7 @@
     "test:artifact-workspace": "node tests/test-artifact-workspace.cjs",
     "test:capability-registry": "node tests/test-capability-registry.cjs",
     "test:task-graph-engine": "node tests/test-task-graph-engine.cjs",
+    "test:agent-heartbeat": "node tests/test-agent-heartbeat.cjs",
     "test:integrated-runtime-validation": "node tests/test-integrated-runtime-validation.cjs"
   },
   "dependencies": {
