@@ -70,8 +70,10 @@ assert(!unknown.success, 'A4: getAgent returns error for unknown agent');
 
 // A5: recordHeartbeat updates last_seen
 store._reset();
-// Save the timestamp string (not the reference) before heartbeat
 var beforeTs = store.getAgent('workbuddy').agent.last_seen;
+// Small delay to ensure timestamp changes
+var startTime = Date.now();
+while (Date.now() === startTime) { /* wait for next ms */ }
 var result = store.recordHeartbeat({ agent: 'workbuddy', cpu: 45.0, memory: 512.0 });
 assert(result.success, 'A5a: recordHeartbeat returns success');
 var afterTs = store.getAgent('workbuddy').agent.last_seen;
