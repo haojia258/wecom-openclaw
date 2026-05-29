@@ -1,0 +1,165 @@
+/**
+ * runtime-stability-runtime.js
+ * P9.7.1a Runtime Stability Layer — Main runtime API.
+ *
+ * Wraps heartbeat, timeout, deadlock, and watchdog into a unified API.
+ * Produces Markdown health snapshots for monitoring.
+ *
+ * Safety constraints:
+ *   - No shell, no exec, no spawn, no pm2, no deploy, no nginx, no .env
+ *   - No auto-recovery, no auto-restart, no auto-dispatch, no auto-retry
+ *   - Detect / analyze / report ONLY
+ */
+
+'use strict';
+
+var hb  = require('./runtime-heartbeat');
+var tm  = require('./runtime-timeout-manager');
+var dd  = require('./runtime-deadlock-detector');
+var wd  = require('./runtime-watchdog');
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+/**
+ * Update heartbeat for a session.
+ *
+ * @param {string} sessionId
+ * @returns {{ success: boolean, heartbeat?: Object, error?: string }}
+ */
+function updateHeartbeat(sessionId) {
+  return hb.updateHeartbeat(sessionId);
+}
+
+/**
+ * Detect session timeouts.
+ *
+ * @param {Object[]} sessions
+ * @param {Object} [options]
+ * @returns {{ timeoutSessions: Object[], healthySessions: Object[], summary: Object }}
+ */
+function detectTimeouts(sessions, options) {
+  return tm.detectTimeoutSessions(sessions, options);
+}
+
+/**
+ * Detect session deadlocks.
+ *
+ * @param {Object[]} sessions
+ * @param {Object[]} [checkpoints]
+ * @param {Object} [options]
+ * @returns {{ deadlocked: Object[], healthy: Object[], summary: Object }}
+ */
+function detectDeadlocks(sessions, checkpoints, options) {
+  return dd.detectDeadlocks(sessions, checkpoints, options);
+}
+
+/**
+ * Scan overall runtime health.
+ *
+ * @param {Object[]} sessions
+ * @param {Object[]} [checkpoints]
+ * @param {Object} [options]
+ * @returns {{ healthy, staleSessions, timeoutSessions, deadlockedSessions, orphanedCheckpoints, snapshot }}
+ */
+function scanHealth(sessions, checkpoints, options) {
+  return wd.scanRuntimeHealth(sessions, checkpoints, options);
+}
+
+/**
+ * Generate a Markdown-formatted runtime health snapshot.
+ *
+ * @param {Object[]} sessions
+ * @param {Object[]} [checkpoints]
+ * @param {Object} [options]
+ * @returns {string} Markdown report
+ */
+function generateRuntimeHealthSnapshot(sessions, checkpoints, options) {
+  var health = wd.scanRuntimeHealth(sessions, checkpoints, options);
+  var snap   = health.snapshot;
+  var lines  = [];
+
+  lines.push('# Runtime Health Report');
+  lines.push('');
+  lines.push('**Generated**: ' + snap.checkedAt);
+  lines.push('**Healthy**: ' + (health.healthy ? 'YES ✅' : 'NO ⚠️'));
+  lines.push('');
+  lines.push('## Summary');
+  lines.push('');
+  lines.push('| Metric | Value |');
+  lines.push('|---|---|');
+  lines.push('| Total Sessions | ' + snap.totalSessions + ' |');
+  lines.push('| Running | ' + snap.runningSessions + ' |');
+  lines.push('| Timeouts | ' + snap.timeoutSessions + ' |');
+  lines.push('| Deadlocks | ' + snap.deadlockedSessions + ' |');
+  lines.push('| Stale | ' + snap.staleSessions + ' |');
+  lines.push('| Orphaned Checkpoints | ' + snap.orphanedCheckpoints + ' |');
+  lines.push('');
+  lines.push('## Heartbeat Stats');
+  lines.push('');
+  lines.push('| Metric | Value |');
+  lines.push('|---|---|');
+  lines.push('| Total Heartbeats | ' + snap.heartbeatStats.total + ' |');
+  lines.push('| Max Lag (ms) | ' + snap.heartbeatStats.maxLag + ' |');
+  lines.push('| Min Lag (ms) | ' + snap.heartbeatStats.minLag + ' |');
+  lines.push('| Avg Lag (ms) | ' + snap.heartbeatStats.avgLag + ' |');
+  lines.push('| Stale Count | ' + snap.heartbeatStats.staleCount + ' |');
+
+  if (health.timeoutSessions.length > 0) {
+    lines.push('');
+    lines.push('## Timeout Sessions');
+    lines.push('');
+    health.timeoutSessions.forEach(function (ts, idx) {
+      lines.push((idx + 1) + '. `' + ts.sessionId + '` — ' + ts.reason);
+    });
+  }
+
+  if (health.deadlockedSessions.length > 0) {
+    lines.push('');
+    lines.push('## Deadlocked Sessions');
+    lines.push('');
+    health.deadlockedSessions.forEach(function (ds, idx) {
+      lines.push((idx + 1) + '. `' + ds.sessionId + '` — score: ' + ds.score + ', suspicion: ' + ds.suspicion);
+      ds.reasons.forEach(function (r) {
+        lines.push('   - ' + r);
+      });
+    });
+  }
+
+  if (health.staleSessions.length > 0) {
+    lines.push('');
+    lines.push('## Stale Sessions');
+    lines.push('');
+    health.staleSessions.forEach(function (ss, idx) {
+      lines.push((idx + 1) + '. `' + ss.sessionId + '` — lag: ' + Math.round(ss.lagMs / 1000) + 's');
+    });
+  }
+
+  if (health.orphanedCheckpoints.length > 0) {
+    lines.push('');
+    lines.push('## Orphaned Checkpoints');
+    lines.push('');
+    health.orphanedCheckpoints.forEach(function (oc, idx) {
+      lines.push((idx + 1) + '. `' + oc.checkpointId + '` → session `' + oc.sessionId + '`');
+    });
+  }
+
+  lines.push('');
+  lines.push('---');
+  lines.push('*Report generated by runtime-stability P9.7.1a. Dry-run only. No actions taken.*');
+
+  return lines.join('\n');
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+module.exports = {
+  updateHeartbeat:               updateHeartbeat,
+  detectTimeouts:                detectTimeouts,
+  detectDeadlocks:               detectDeadlocks,
+  scanHealth:                    scanHealth,
+  generateRuntimeHealthSnapshot: generateRuntimeHealthSnapshot
+};
