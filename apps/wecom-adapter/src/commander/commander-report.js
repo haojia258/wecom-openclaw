@@ -264,6 +264,19 @@ function generateStatusSummary(missionId, mission, graph, approvalLog) {
   };
 }
 
+// ─── WorkBuddy Artifact ────────────────────────────────────
+
+/**
+ * P11.2: Write a generic artifact for a mission (used by WorkBuddy adapter).
+ * @param {string} missionId
+ * @param {string} filename - e.g. "workbuddy-result.json"
+ * @param {string} content - string content to write
+ * @returns {{ success: boolean, path?: string, error?: string }}
+ */
+function writeMissionArtifact(missionId, filename, content) {
+  return safeWriteArtifact(missionId, filename, content);
+}
+
 // ─── 导出 ──────────────────────────────────────────────────
 
 module.exports = {
@@ -272,5 +285,6 @@ module.exports = {
   appendApprovalLog: appendApprovalLog,
   writeCommanderReport: writeCommanderReport,
   generateStatusSummary: generateStatusSummary,
-  safeWriteArtifact: safeWriteArtifact
+  safeWriteArtifact: safeWriteArtifact,
+  writeMissionArtifact: writeMissionArtifact
 };

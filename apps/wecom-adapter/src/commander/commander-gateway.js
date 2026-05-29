@@ -28,6 +28,7 @@ var autonomousReport = require('../mission/autonomous-loop-report');
 var capabilityRegistry = require('../agent-governance/capability-registry');
 var heartbeatStore = require('../mission/agent-heartbeat-store');
 var artifactStore = require('../artifacts/artifact-store');
+var workbuddyJobStore = require('../execution/workbuddy-job-store');
 
 // ─── 计数器 ───────────────────────────────────────────────
 
@@ -223,6 +224,29 @@ function handleCreateMission(req, res) {
     // Step 8: 写入 Commander Report
     commanderReport.writeCommanderReport(missionId, routeResult.mission, graph, null);
 
+    // Step 8.5: 为 WorkBuddy 代理节点创建 WorkBuddy Jobs (P11.2)
+    var workbuddyJobs = [];
+    if (graph && graph.nodes) {
+      for (var gi = 0; gi < graph.nodes.length; gi++) {
+        var node = graph.nodes[gi];
+        if (node.agent === 'workbuddy') {
+          var wbResult = workbuddyJobStore.createWorkBuddyJob({
+            mission_id: missionId,
+            graph_id: graphId,
+            node_id: node.id,
+            action: node.capability || 'general.execute',
+            agent: 'workbuddy',
+            status: requiresApproval ? 'waiting_approval' : 'created',
+            requiresApproval: requiresApproval,
+            payload: { node: node.id, mission_type: routeResult.mission.mission_type }
+          });
+          if (wbResult.success) {
+            workbuddyJobs.push(wbResult.job);
+          }
+        }
+      }
+    }
+
     // Step 9: 如果需要审批，写入初始审批日志
     if (requiresApproval) {
       commanderReport.writeApprovalLog(missionId, 'pending', {
@@ -272,6 +296,9 @@ function handleCreateMission(req, res) {
         status: loopResult.status,
         steps: loopResult.total_steps || 0
       } : null,
+      workbuddy_jobs: workbuddyJobs.length > 0 ? workbuddyJobs.map(function(j) {
+        return { job_id: j.job_id, action: j.action, status: j.status };
+      }) : [],
       timestamp: now()
     });
   } catch (e) {

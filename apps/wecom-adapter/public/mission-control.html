@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v1.0</title>
+<title>AI Mission Control Dashboard v1.1</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -504,7 +504,7 @@ body {
 </head>
 <body>
 <div class="header">
-  <h1>AI Mission Control Dashboard v1.0</h1>
+  <h1>AI Mission Control Dashboard v1.1</h1>
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
@@ -720,6 +720,29 @@ body {
       <div id="wecom-result" class="empty-state">
         <div class="icon">&#x2709;</div>
         <div>WeCom Mission Center Ready</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P11.2 WorkBuddy Execution Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>&#x1F916; WorkBuddy Execution Panel</span>
+      <button class="refresh-btn" onclick="loadWorkBuddyJobs()">Load Jobs</button>
+    </div>
+    <div class="panel-body" id="workbuddy-body">
+      <div class="cap-check-form">
+        <button onclick="createWorkBuddyJob()">Create Job</button>
+        <button onclick="approveWorkBuddyJob()">Approve Job</button>
+        <button onclick="rejectWorkBuddyJob()">Reject Job</button>
+        <button onclick="dispatchWorkBuddyJob()">Dispatch Job</button>
+        <input type="text" id="wb-job-id" placeholder="Job ID (wb_xxx)" style="width:200px;margin-left:8px;">
+      </div>
+      <div id="workbuddy-result" class="empty-state">
+        <div class="icon">&#x1F916;</div>
+        <div>WorkBuddy Execution Panel Ready</div>
       </div>
     </div>
   </div>
@@ -2289,6 +2312,105 @@ function sendWeComCommand() {
 
 function loadWeComStatus() {
   // No-op: WeCom status is driven by sendWeComCommand
+}
+
+// ─── P11.2 WorkBuddy Execution Panel ─────────────────────────
+
+function loadWorkBuddyJobs() {
+  var result = document.getElementById('workbuddy-result');
+  result.innerHTML = '<div class="loading">Loading WorkBuddy jobs...</div>';
+  fetch('/execution/workbuddy/jobs')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success || !data.jobs || data.jobs.length === 0) {
+        result.innerHTML = '<div class="empty-state"><div class="icon">&#x1F916;</div><div>No WorkBuddy jobs yet</div></div>';
+        return;
+      }
+      var html = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
+      html += '<tr style="border-bottom:1px solid #30363d;color:#8b949e;">';
+      html += '<th style="padding:4px 8px;text-align:left;">Job ID</th>';
+      html += '<th style="padding:4px 8px;text-align:left;">Action</th>';
+      html += '<th style="padding:4px 8px;text-align:left;">Status</th>';
+      html += '<th style="padding:4px 8px;text-align:left;">Approval</th>';
+      html += '</tr>';
+      data.jobs.forEach(function(j) {
+        html += '<tr style="border-bottom:1px solid #21262d;">';
+        html += '<td style="padding:4px 8px;">' + escapeHtml(j.job_id) + '</td>';
+        html += '<td style="padding:4px 8px;">' + escapeHtml(j.action) + '</td>';
+        html += '<td style="padding:4px 8px;">' + getStatusBadge(j.status) + '</td>';
+        html += '<td style="padding:4px 8px;">' + (j.requiresApproval ? '⚠️ Yes' : '✅ No') + '</td>';
+        html += '</tr>';
+      });
+      html += '</table>';
+      result.innerHTML = html;
+    })
+    .catch(function(e) {
+      result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+function createWorkBuddyJob() {
+  var result = document.getElementById('workbuddy-result');
+  result.innerHTML = '<div class="loading">Creating job...</div>';
+  fetch('/execution/workbuddy/jobs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mission_id: 'dashboard_test', action: 'test.run' })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        result.innerHTML = '<div class="empty-state"><div class="icon">&#x2705;</div><div>Job: ' + escapeHtml(data.job.job_id) + ' (' + data.job.status + ')</div></div>';
+        loadWorkBuddyJobs();
+      } else {
+        result.innerHTML = '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(data.error || 'Failed') + '</div></div>';
+      }
+    });
+}
+
+function approveWorkBuddyJob() {
+  var jobId = document.getElementById('wb-job-id').value.trim();
+  if (!jobId) { alert('Enter Job ID'); return; }
+  var result = document.getElementById('workbuddy-result');
+  result.innerHTML = '<div class="loading">Approving...</div>';
+  fetch('/execution/workbuddy/jobs/' + encodeURIComponent(jobId) + '/approve', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      result.innerHTML = data.success
+        ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Approved: ' + escapeHtml(jobId) + '</div></div>'
+        : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(data.error || 'Failed') + '</div></div>';
+      loadWorkBuddyJobs();
+    });
+}
+
+function rejectWorkBuddyJob() {
+  var jobId = document.getElementById('wb-job-id').value.trim();
+  if (!jobId) { alert('Enter Job ID'); return; }
+  var result = document.getElementById('workbuddy-result');
+  result.innerHTML = '<div class="loading">Rejecting...</div>';
+  fetch('/execution/workbuddy/jobs/' + encodeURIComponent(jobId) + '/reject', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      result.innerHTML = data.success
+        ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Rejected: ' + escapeHtml(jobId) + '</div></div>'
+        : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(data.error || 'Failed') + '</div></div>';
+      loadWorkBuddyJobs();
+    });
+}
+
+function dispatchWorkBuddyJob() {
+  var jobId = document.getElementById('wb-job-id').value.trim();
+  if (!jobId) { alert('Enter Job ID'); return; }
+  var result = document.getElementById('workbuddy-result');
+  result.innerHTML = '<div class="loading">Dispatching...</div>';
+  fetch('/execution/workbuddy/jobs/' + encodeURIComponent(jobId) + '/dispatch', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      result.innerHTML = data.success
+        ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Dispatched: ' + escapeHtml(jobId) + '</div></div>'
+        : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(data.error || 'Failed') + '</div></div>';
+      loadWorkBuddyJobs();
+    });
 }
 </script>
 </body>
