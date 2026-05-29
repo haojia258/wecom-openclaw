@@ -609,7 +609,7 @@ var SMOKE_GRAPH = {
   var htmlContent = fs.readFileSync(htmlPath, 'utf-8');
   assertContains(htmlContent, 'Task Graph', '包含 Task Graph 标题');
   assertContains(htmlContent, 'P10.5', '包含 P10.5 标识');
-  assertContains(htmlContent, 'v0.5', '版本显示 v0.5');
+  assertContains(htmlContent, 'v0.7', '版本显示 v0.7');
   assertContains(htmlContent, 'graph-btn', '包含 graph 按钮样式');
   assertContains(htmlContent, 'createSmokeGraph', '包含 createSmokeGraph 函数');
   assertContains(htmlContent, 'runGraphStep', '包含 runGraphStep 函数');

@@ -821,6 +821,10 @@ function registerMissionRoutes(app) {
 
   // GET  /mission/graphs/:graph_id
   app.get('/mission/graphs/:graph_id', handleGetGraph);
+
+  // ─── P10.7 Agent Heartbeat Routes ────────────────────
+  var heartbeatRoutes = require('./agent-heartbeat-routes');
+  heartbeatRoutes.registerAgentHeartbeatRoutes(app);
 }
 
 module.exports = {

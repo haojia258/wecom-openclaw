@@ -38,7 +38,8 @@
     "test:passive-monitoring": "node tests/test-passive-monitoring-runtime.cjs",
     "test:artifact-workspace": "node tests/test-artifact-workspace.cjs",
     "test:capability-registry": "node tests/test-capability-registry.cjs",
-    "test:task-graph-engine": "node tests/test-task-graph-engine.cjs"
+    "test:task-graph-engine": "node tests/test-task-graph-engine.cjs",
+    "test:agent-heartbeat": "node tests/test-agent-heartbeat.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",

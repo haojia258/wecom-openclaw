@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v0.5</title>
+<title>AI Mission Control Dashboard v0.8</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -504,7 +504,7 @@ body {
 </head>
 <body>
 <div class="header">
-  <h1>AI Mission Control Dashboard v0.5</h1>
+  <h1>AI Mission Control Dashboard v0.8</h1>
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
@@ -615,6 +615,38 @@ body {
         <div class="icon">&#x1F4CA;</div>
         <div>Loading graphs...</div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Integration Validation Panel (P10.6) -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel" style="margin-top: 16px;">
+    <div class="panel-header">
+      <span>Integration Validation (P10.6)</span>
+      <div style="display:flex;gap:8px;">
+        <button onclick="runIntegrationFlow('happy')" class="refresh-btn" style="font-size:12px;padding:4px 10px;border-color:#3fb950;">&#9654; Happy Path</button>
+        <button onclick="runIntegrationFlow('recovery')" class="refresh-btn" style="font-size:12px;padding:4px 10px;border-color:#f0883e;">&#9654; Recovery</button>
+        <button onclick="runIntegrationFlow('forbidden')" class="refresh-btn" style="font-size:12px;padding:4px 10px;border-color:#f85149;">&#9654; Forbidden</button>
+        <button onclick="runIntegrationFlow('approval')" class="refresh-btn" style="font-size:12px;padding:4px 10px;border-color:#d29922;">&#9654; Approval</button>
+        <button onclick="refreshIntegrationStatus()" class="refresh-btn" style="font-size:12px;padding:4px 10px;">&#8635; Refresh</button>
+      </div>
+    </div>
+    <div class="panel-body" id="integration-panel-body">
+      <div style="color:#8b949e;padding:20px;text-align:center;">Click a flow button to run integration validation</div>
+    </div>
+  </div>
+</div>
+
+<!-- Agent Health Panel (P10.7) -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>Agent Health (P10.7)</span>
+      <button class="refresh-btn" onclick="loadAgentHealth()" style="font-size:12px;padding:4px 10px;">Refresh</button>
+    </div>
+    <div class="panel-body" id="agent-health-panel-body">
+      <div style="color:#8b949e;padding:20px;text-align:center;">Loading agent health data...</div>
     </div>
   </div>
 </div>
@@ -1458,6 +1490,174 @@ function recoverGraph(graphId) {
 
 // Auto-load graphs on page ready
 setTimeout(function() { loadGraphs(); }, 500);
+
+// ═══════════════════════════════════════════════════════════
+// P10.7 Agent Health Dashboard
+// ═══════════════════════════════════════════════════════════
+
+function loadAgentHealth() {
+  var body = document.getElementById('agent-health-panel-body');
+  body.innerHTML = '<div style="color:#8b949e;padding:20px;text-align:center;">Loading...</div>';
+
+  // First, fetch all agents
+  fetch('/mission/agents')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success || !resp.agents) {
+        body.innerHTML = '<div style="color:#f85149;padding:20px;text-align:center;">Failed to load agents</div>';
+        return;
+      }
+
+      var agents = resp.agents;
+
+      // For each agent, fetch health data
+      var healthPromises = [];
+      for (var i = 0; i < agents.length; i++) {
+        (function(agentName) {
+          healthPromises.push(
+            fetch('/mission/agents/' + encodeURIComponent(agentName) + '/health')
+              .then(function(r) { return r.json(); })
+              .then(function(hr) {
+                if (hr.success) {
+                  return hr.health;
+                }
+                return { agent: agentName, status: 'unknown', error: hr.error };
+              })
+              .catch(function() {
+                return { agent: agentName, status: 'unknown', error: 'fetch failed' };
+              })
+          );
+        })(agents[i].agent);
+      }
+
+      return Promise.all(healthPromises);
+    })
+    .then(function(healthData) {
+      if (!healthData) return;
+      renderAgentHealth(healthData);
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div style="color:#f85149;padding:20px;text-align:center;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function getStatusColor(status) {
+  switch (status) {
+    case 'online': case 'idle': return '#3fb950';
+    case 'busy': return '#58a6ff';
+    case 'degraded': return '#d29922';
+    case 'offline': return '#f85149';
+    case 'unknown': return '#484f58';
+    default: return '#8b949e';
+  }
+}
+
+function getStatusBgColor(status) {
+  switch (status) {
+    case 'online': case 'idle': return '#1a3d2e';
+    case 'busy': return '#1c3a5c';
+    case 'degraded': return '#3d2e1a';
+    case 'offline': return '#3d1a1a';
+    case 'unknown': return '#21262d';
+    default: return '#21262d';
+  }
+}
+
+function renderAgentHealth(healthData) {
+  var body = document.getElementById('agent-health-panel-body');
+
+  if (!healthData || healthData.length === 0) {
+    body.innerHTML = '<div style="color:#8b949e;padding:20px;text-align:center;">No agent data available</div>';
+    return;
+  }
+
+  var html = '';
+
+  for (var i = 0; i < healthData.length; i++) {
+    var h = healthData[i];
+    var color = getStatusColor(h.status);
+    var bgColor = getStatusBgColor(h.status);
+    var canDispatch = h.can_dispatch !== undefined ? h.can_dispatch : true;
+
+    html += '<div class="graph-card" style="margin-bottom: 12px;">';
+
+    // Header row: agent name + status badge + can_dispatch
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+    html += '<div style="display:flex;align-items:center;gap:8px;">';
+    html += '<h4 style="margin:0;">' + escapeHtml(h.agent) + '</h4>';
+    html += '<span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;background:' + bgColor + ';color:' + color + ';">' + escapeHtml(h.status) + '</span>';
+    html += '</div>';
+    html += '<span style="font-size:11px;color:' + (canDispatch ? '#3fb950' : '#f85149') + ';">' + (canDispatch ? 'can dispatch' : 'no dispatch') + '</span>';
+    html += '</div>';
+
+    // Metrics row
+    html += '<div style="display:flex;gap:16px;font-size:12px;color:#8b949e;margin-bottom:6px;flex-wrap:wrap;">';
+    html += '<span>Last seen: ' + formatTime(h.last_seen) + '</span>';
+    html += '<span>Uptime: ' + (h.uptime_seconds || 0) + 's</span>';
+    html += '<span>Tasks: ' + (h.active_tasks || 0) + '</span>';
+    html += '<span>Heartbeats: ' + (h.total_heartbeats || 0) + '</span>';
+    html += '<span>Errors: ' + (h.error_count || 0) + '</span>';
+    html += '</div>';
+
+    // CPU / Memory bars
+    html += '<div style="display:flex;gap:8px;margin-bottom:4px;align-items:center;">';
+    html += '<span style="font-size:11px;color:#8b949e;min-width:36px;">CPU</span>';
+    html += '<div style="flex:1;height:6px;background:#21262d;border-radius:3px;overflow:hidden;">';
+    var cpuPct = Math.min((h.cpu || 0), 100);
+    html += '<div style="width:' + cpuPct + '%;height:100%;background:' + (cpuPct > 80 ? '#f85149' : cpuPct > 50 ? '#d29922' : '#3fb950') + ';border-radius:3px;"></div>';
+    html += '</div>';
+    html += '<span style="font-size:11px;color:#8b949e;min-width:44px;text-align:right;">' + (h.cpu || 0).toFixed(1) + '%</span>';
+    html += '</div>';
+
+    html += '<div style="display:flex;gap:8px;margin-bottom:4px;align-items:center;">';
+    html += '<span style="font-size:11px;color:#8b949e;min-width:36px;">MEM</span>';
+    html += '<div style="flex:1;height:6px;background:#21262d;border-radius:3px;overflow:hidden;">';
+    var memMb = h.memory || 0;
+    var memPct = Math.min(memMb / 10, 100); // 0-1000MB → 0-100%
+    html += '<div style="width:' + memPct + '%;height:100%;background:' + (memMb > 800 ? '#f85149' : memMb > 500 ? '#d29922' : '#3fb950') + ';border-radius:3px;"></div>';
+    html += '</div>';
+    html += '<span style="font-size:11px;color:#8b949e;min-width:44px;text-align:right;">' + memMb.toFixed(0) + ' MB</span>';
+    html += '</div>';
+
+    // Current mission
+    if (h.current_mission) {
+      html += '<div style="font-size:11px;color:#58a6ff;margin-top:4px;">Mission: ' + escapeHtml(h.current_mission) + '</div>';
+    }
+
+    // Capabilities
+    if (h.capabilities && h.capabilities.length > 0) {
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">';
+      for (var c = 0; c < h.capabilities.length; c++) {
+        html += '<span style="padding:1px 6px;border-radius:8px;font-size:10px;background:#1a3d2e;color:#3fb950;">' + escapeHtml(h.capabilities[c]) + '</span>';
+      }
+      html += '</div>';
+    }
+
+    // Warnings
+    if (h.warnings && h.warnings.length > 0) {
+      html += '<div style="margin-top:6px;">';
+      for (var w = 0; w < h.warnings.length; w++) {
+        html += '<div style="font-size:11px;color:#d29922;padding:2px 0;">&#x26A0; ' + escapeHtml(h.warnings[w]) + '</div>';
+      }
+      html += '</div>';
+    }
+
+    // Degraded reason
+    if (h.degraded_reason) {
+      html += '<div style="font-size:11px;color:#f0883e;margin-top:2px;">Reason: ' + escapeHtml(h.degraded_reason) + '</div>';
+    }
+
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+// Auto-refresh agent health every 15 seconds
+setInterval(function() { loadAgentHealth(); }, 15000);
+
+// Initial load of agent health
+setTimeout(function() { loadAgentHealth(); }, 800);
 </script>
 </body>
 </html>
