@@ -18,6 +18,7 @@ const aiGateway = require('./gateway/ai-gateway');
 const missionRoutes = require('./mission/mission-routes');
 const commanderGateway = require('./commander/commander-gateway');
 const wecomMissionCenter = require('./wecom/wecom-mission-center');
+const workbuddyAdapter = require('./execution/workbuddy-adapter');
 const vault = require('./lib/vault-client');
 
 const app = express();
@@ -258,6 +259,9 @@ commanderGateway.registerCommanderRoutes(app);
 
 // ─── P11.1 WeCom Mission Center ──────────────────
 wecomMissionCenter.registerWecomMissionRoutes(app);
+
+// ─── P11.2 WorkBuddy Execution Adapter ───────────
+workbuddyAdapter.registerWorkBuddyRoutes(app);
 
 // 静态文件: Dashboard 页面
 app.use('/mission', express.static(require('path').resolve(__dirname, '../public'), {
