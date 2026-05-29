@@ -117,7 +117,10 @@ test('Policy: validateFilename - hidden files blocked', function() {
 test('Policy: resolveArtifactPath - valid path', function() {
   var result = policy.resolveArtifactPath('P10.3', 'plan.md');
   assert(result.valid, 'path should be valid');
-  assert(result.fullPath.indexOf('workspace') !== -1, 'path should contain workspace');
+  // Normalize both for platform-independent comparison (Git Bash Windows: /tmp → C:\tmp)
+  var root = path.normalize(process.env.ARTIFACT_WORKSPACE_ROOT || policy.getWorkspaceRoot());
+  var fullPath = path.normalize(result.fullPath);
+  assert(fullPath.indexOf(root) !== -1, 'path should contain workspace root: root=' + root + ' full=' + fullPath);
   assert(result.fullPath.endsWith('plan.md'), 'path should end with filename');
 });
 
