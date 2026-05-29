@@ -25,7 +25,7 @@ var VALID_STATUSES = [
 var STATUS_TRANSITIONS = {
   'created':          ['queued', 'waiting_approval', 'cancelled'],
   'queued':           ['dispatched', 'cancelled'],
-  'dispatched':       ['running', 'failed', 'cancelled'],
+  'dispatched':       ['running', 'completed', 'failed', 'cancelled'],
   'running':          ['completed', 'failed', 'waiting_approval'],
   'waiting_approval': ['queued', 'dispatched', 'cancelled', 'failed'],
   'completed':        [],
@@ -315,5 +315,6 @@ module.exports = {
   VALID_STATUSES: VALID_STATUSES,
   STATUS_TRANSITIONS: STATUS_TRANSITIONS,
   validateJobId: validateJobId,
+  validateMissionId: validateMissionId,
   validateAction: validateAction
 };

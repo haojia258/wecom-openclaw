@@ -169,6 +169,15 @@ function registerWorkBuddyRoutes(app) {
       }
     }
 
+    // If job is in 'created' status, transition to 'queued' first
+    if (job.status === 'created') {
+      var queuedResult = jobStore.updateWorkBuddyJob(req.params.job_id, { status: 'queued' });
+      if (!queuedResult.success) {
+        return res.status(400).json(queuedResult);
+      }
+      job = queuedResult.job;
+    }
+
     // Update status to dispatched
     var updateResult = jobStore.updateWorkBuddyJob(req.params.job_id, { status: 'dispatched' });
     if (!updateResult.success) {

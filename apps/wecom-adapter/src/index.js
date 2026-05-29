@@ -261,6 +261,7 @@ commanderGateway.registerCommanderRoutes(app);
 wecomMissionCenter.registerWecomMissionRoutes(app);
 
 // ─── P11.2 WorkBuddy Execution Adapter ───────────
+app.use('/execution', express.json({ limit: '16kb' }));
 workbuddyAdapter.registerWorkBuddyRoutes(app);
 
 // 静态文件: Dashboard 页面
