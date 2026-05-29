@@ -8,12 +8,14 @@
  * - 建表 (tasks + events) 和索引
  * - 提供 getDb / isAvailable / close / migrateFromJSONL
  * - better-sqlite3 不可用时优雅降级
+ *
+ * P10.2: 新增 runMigrations() 支持 retry/recovery 列安全迁移
  */
 
 const fs = require('fs');
 const path = require('path');
 
-// ─── 模块级状态 ────────────────────────────────────────────
+// 模块级状态
 
 var _db = null;
 var _available = null; // null = 未检测, true = 可用, false = 不可用
@@ -21,7 +23,7 @@ var _available = null; // null = 未检测, true = 可用, false = 不可用
 // 数据库路径: apps/wecom-adapter/data/tasks.db
 var DB_PATH = process.env.TASK_DB_PATH || path.resolve(__dirname, '../../data/tasks.db');
 
-// ─── better-sqlite3 加载 ───────────────────────────────────
+// better-sqlite3 加载
 
 var Database = null;
 
@@ -32,7 +34,7 @@ try {
   Database = null;
 }
 
-// ─── 表 DDL ───────────────────────────────────────────────
+// 表 DDL
 
 var CREATE_TASKS_TABLE = [
   'CREATE TABLE IF NOT EXISTS tasks (',
@@ -60,6 +62,7 @@ var CREATE_EVENTS_TABLE = [
 ].join('\n');
 
 // ─── P10.0: AI Mission Control Dashboard v0.1 表 ──────────
+// ─── P10.2: 新增 retry/recovery 列 ────────────────────────
 
 var CREATE_MISSION_TASKS_TABLE = [
   'CREATE TABLE IF NOT EXISTS mission_tasks (',
@@ -71,6 +74,10 @@ var CREATE_MISSION_TASKS_TABLE = [
   '  github_pr    TEXT,',
   '  current_stage TEXT,',
   '  last_event_at TEXT,',
+  '  retry_count      INTEGER NOT NULL DEFAULT 0,',
+  '  last_failure_type TEXT DEFAULT \'\',',
+  '  recovery_status  TEXT DEFAULT \'\',',
+  '  rollback_state   TEXT DEFAULT \'\',',
   '  created_at   TEXT NOT NULL,',
   '  updated_at   TEXT NOT NULL',
   ');'
@@ -99,6 +106,41 @@ var INDEXES = [
   'CREATE INDEX IF NOT EXISTS idx_agent_events_created_at ON agent_events(created_at);'
 ];
 
+// ─── P10.2: Schema 迁移 ───────────────────────────────────
+
+/**
+ * 安全 ALTER TABLE 迁移：添加列（若已存在则忽略错误）
+ * SQLite 不支持 ADD COLUMN IF NOT EXISTS，使用 try/catch 包裹
+ */
+var P10_2_MIGRATIONS = [
+  'ALTER TABLE mission_tasks ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE mission_tasks ADD COLUMN last_failure_type TEXT DEFAULT \'\'',
+  'ALTER TABLE mission_tasks ADD COLUMN recovery_status TEXT DEFAULT \'\'',
+  'ALTER TABLE mission_tasks ADD COLUMN rollback_state TEXT DEFAULT \'\''
+];
+
+/**
+ * 执行向后兼容的 Schema 迁移
+ * - ALTER TABLE ADD COLUMN 对已有数据库添加新列
+ * - 如果列已存在（SQLite 报错），静默忽略
+ *
+ * @param {object} db - better-sqlite3 Database 实例
+ */
+function runMigrations(db) {
+  for (var i = 0; i < P10_2_MIGRATIONS.length; i++) {
+    try {
+      db.exec(P10_2_MIGRATIONS[i]);
+    } catch (e) {
+      // SQLite duplicate column 错误码未知，按消息判别
+      if (e.message && e.message.indexOf('duplicate column') === -1) {
+        // 非重复列错误，记录但不阻塞
+        console.error('[task-db] Migration warning:', e.message);
+      }
+      // 重复列 → 静默跳过（向后兼容）
+    }
+  }
+}
+
 // ─── 初始化 ───────────────────────────────────────────────
 
 function ensureDataDir() {
@@ -117,6 +159,8 @@ function initTables(db) {
   for (var i = 0; i < INDEXES.length; i++) {
     db.exec(INDEXES[i]);
   }
+  // P10.2: 执行向后兼容的列迁移
+  runMigrations(db);
 }
 
 function createDb() {
@@ -139,7 +183,7 @@ function createDb() {
   }
 }
 
-// ─── 公共接口 ─────────────────────────────────────────────
+// 公共接口
 
 /**
  * 获取数据库实例（延迟初始化）
@@ -174,7 +218,7 @@ function close() {
   }
 }
 
-// ─── 数据迁移 ─────────────────────────────────────────────
+// 数据迁移
 
 /**
  * 从 JSONL 日志迁移到 SQLite（默认不自动调用）
@@ -254,13 +298,14 @@ function migrateFromJSONL(logDir) {
   return result;
 }
 
-// ─── 导出 ─────────────────────────────────────────────────
+// 导出
 
 module.exports = {
   getDb: getDb,
   isAvailable: isAvailable,
   close: close,
   migrateFromJSONL: migrateFromJSONL,
+  runMigrations: runMigrations,
   // 导出路径供测试
   _DB_PATH: DB_PATH,
 };
