@@ -10,7 +10,7 @@
  *   Group D: runGraphStep
  *   Group E: Artifact 集成
  *   Group F: Recovery 集成
- *   Group G: Dashboard v0.5
+ *   Group G: Dashboard v0.6
  *   Group H: API Routes
  */
 
@@ -593,11 +593,11 @@ var SMOKE_GRAPH = {
 })();
 
 // ═══════════════════════════════════════════════════════════
-// Group G: Dashboard v0.5
+// Group G: Dashboard v0.6
 // ═══════════════════════════════════════════════════════════
 
 (function testGroupG() {
-  console.log('\n── Group G: Dashboard v0.5 ──');
+  console.log('\n── Group G: Dashboard v0.6 ──');
 
   // G1: HTML 文件存在
   console.log('\nG1: mission-control.html 存在');
