@@ -1,10 +1,19 @@
-'use strict';var types=require('./knowledge-types'),valid=require('./knowledge-validator'),store=require('./knowledge-store'),runtime=require('./knowledge-capture-runtime'),audit=require('./knowledge-audit');
+'use strict';var kt=require('./knowledge-types'),kv=require('./knowledge-validator'),ks=require('./knowledge-store'),kr=require('./knowledge-capture-runtime'),ka=require('./knowledge-audit'),lt=require('./learning-types'),lv=require('./learning-validator'),le=require('./learning-engine'),lr=require('./learning-runtime'),la=require('./learning-audit');
 module.exports={
-  SOURCE_TYPE:types.SOURCE_TYPE,CATEGORY:types.CATEGORY,OUTCOME:types.OUTCOME,ERROR_CODES:types.ERROR_CODES,createKnowledgeRecord:types.createKnowledgeRecord,
-  validateKnowledge:valid.validateKnowledge,
-  saveKnowledge:store.saveKnowledge,getKnowledge:store.getKnowledge,listKnowledge:store.listKnowledge,
-  captureKnowledge:runtime.captureKnowledge,captureFromGoal:runtime.captureFromGoal,captureFromExecutionAnalytics:runtime.captureFromExecutionAnalytics,captureFromOrchestration:runtime.captureFromOrchestration,
-  getKnowledgeRecord:runtime.getKnowledgeRecord,listKnowledgeRecords:runtime.listKnowledgeRecords,generateKnowledgeSnapshot:runtime.generateKnowledgeSnapshot,
-  recordKnowledgeEvent:audit.recordKnowledgeEvent,listKnowledgeEvents:audit.listKnowledgeEvents,
-  _reset:runtime._reset,_clearAll:store._clearAll
+  SOURCE_TYPE:kt.SOURCE_TYPE,CATEGORY:kt.CATEGORY,OUTCOME:kt.OUTCOME,INSIGHT_TYPE:lt.INSIGHT_TYPE,
+  ERROR_CODES:Object.assign({},kt.ERROR_CODES,lt.ERROR_CODES),
+  createKnowledgeRecord:kt.createKnowledgeRecord,validateKnowledge:kv.validateKnowledge,
+  saveKnowledge:ks.saveKnowledge,getKnowledge:ks.getKnowledge,listKnowledge:ks.listKnowledge,
+  captureKnowledge:kr.captureKnowledge,captureFromGoal:kr.captureFromGoal,captureFromExecutionAnalytics:kr.captureFromExecutionAnalytics,captureFromOrchestration:kr.captureFromOrchestration,
+  getKnowledgeRecord:kr.getKnowledgeRecord,listKnowledgeRecords:kr.listKnowledgeRecords,generateKnowledgeSnapshot:kr.generateKnowledgeSnapshot,
+  recordKnowledgeEvent:ka.recordKnowledgeEvent,listKnowledgeEvents:ka.listKnowledgeEvents,
+  createLearningInsight:lt.createLearningInsight,validateLearningInsight:lv.validateLearningInsight,
+  generateLearningInsights:lr.generateLearningInsights,
+  analyzeSuccessPatterns:lr.analyzeSuccessPatterns,analyzeFailurePatterns:lr.analyzeFailurePatterns,
+  analyzeAgentPerformance:lr.analyzeAgentPerformance,analyzeApprovalRisk:lr.analyzeApprovalRisk,
+  analyzeStrategyEffectiveness:lr.analyzeStrategyEffectiveness,
+  generateLearningSnapshot:lr.generateLearningSnapshot,getLearningInsight:lr.getLearningInsight,
+  listLearningInsights:lr.listLearningInsights,
+  recordLearningEvent:la.recordLearningEvent,listLearningEvents:la.listLearningEvents,
+  _reset:function(){kr._reset();lr._reset();}
 };
