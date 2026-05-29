@@ -41,6 +41,11 @@ function rowToMissionTask(row) {
     github_pr: row.github_pr || null,
     current_stage: row.current_stage || null,
     last_event_at: row.last_event_at || null,
+    // P10.2: Retry & Recovery Engine 字段
+    retry_count: typeof row.retry_count === 'number' ? row.retry_count : 0,
+    last_failure_type: row.last_failure_type || '',
+    recovery_status: row.recovery_status || '',
+    rollback_state: row.rollback_state || '',
     created_at: row.created_at,
     updated_at: row.updated_at
   };
