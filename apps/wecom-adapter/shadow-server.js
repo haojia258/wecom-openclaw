@@ -11,6 +11,7 @@ const missionRoutes = require('./src/mission/mission-routes');
 const commanderGateway = require('./src/commander/commander-gateway');
 const wecomMissionCenter = require('./src/wecom/wecom-mission-center');
 const workbuddyAdapter = require('./src/execution/workbuddy-adapter');
+const agentBusRoutes = require('./src/agent-bus/agent-bus-routes');
 
 const app = express();
 // NOTE: Do NOT add express.json() here - mission-routes has its own
@@ -42,10 +43,14 @@ wecomMissionCenter.registerWecomMissionRoutes(app);
 app.use('/execution', express.json({ limit: '16kb' }));
 workbuddyAdapter.registerWorkBuddyRoutes(app);
 
+// Register Agent Bus routes (P11.3)
+app.use('/agent-bus', express.json({ limit: '16kb' }));
+agentBusRoutes.registerAgentBusRoutes(app);
+
 const PORT = process.env.WECOM_ADAPTER_PORT || 3001;
 const server = app.listen(PORT, () => {
   console.log('[shadow-server] Production server running on port', PORT);
-  console.log('[shadow-server] Endpoints: /health /mission/* /commander/* /wecom/* /execution/*');
+  console.log('[shadow-server] Endpoints: /health /mission/* /commander/* /wecom/* /execution/* /agent-bus/*');
 });
 
 // Graceful shutdown
