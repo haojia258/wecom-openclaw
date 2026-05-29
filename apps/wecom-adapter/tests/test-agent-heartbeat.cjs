@@ -387,15 +387,15 @@ if (express) {
   assertEqual(mockResD10._status, 404, 'D10b: status code 404');
 }
 
-// ─── Group E: Dashboard v0.9 ───────────────────────────
+// ─── Group E: Dashboard v1.0 ───────────────────────────
 
-console.log('\n--- Group E: Dashboard v0.9 ---');
+console.log('\n--- Group E: Dashboard v1.0 ---');
 
 var dashboardPath = path.join(projectDir, 'public', 'mission-control.html');
 var dashboardHtml = fs.readFileSync(dashboardPath, 'utf-8');
 
-// E1: Dashboard contains v0.9
-assertContains(dashboardHtml, 'v0.9', 'E1: Dashboard HTML contains v0.9');
+// E1: Dashboard contains v1.0
+assertContains(dashboardHtml, 'v1.0', 'E1: Dashboard HTML contains v1.0');
 
 // E2: Dashboard contains Agent Health
 assertContains(dashboardHtml, 'Agent Health', 'E2: Dashboard HTML contains Agent Health');

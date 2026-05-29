@@ -16,6 +16,8 @@ const pushScheduler = require('./lib/push-scheduler');
 const commandIngress = require('./runtime/command-ingress');
 const aiGateway = require('./gateway/ai-gateway');
 const missionRoutes = require('./mission/mission-routes');
+const commanderGateway = require('./commander/commander-gateway');
+const wecomMissionCenter = require('./wecom/wecom-mission-center');
 const vault = require('./lib/vault-client');
 
 const app = express();
@@ -251,6 +253,12 @@ aiGateway.registerGatewayRoutes(app);
 // ─── AI Mission Control Dashboard (P10.0) ────────
 missionRoutes.registerMissionRoutes(app);
 
+// ─── P11.0 Commander Gateway ─────────────────────
+commanderGateway.registerCommanderRoutes(app);
+
+// ─── P11.1 WeCom Mission Center ──────────────────
+wecomMissionCenter.registerWecomMissionRoutes(app);
+
 // 静态文件: Dashboard 页面
 app.use('/mission', express.static(require('path').resolve(__dirname, '../public'), {
   index: 'mission-control.html'
@@ -265,18 +273,26 @@ app.get('/health', function(req, res) {
 // ─── 启动 ──────────────────────────────────────
 
 async function start() {
-  // 1. 从 Vault 加载密钥
-  try {
-    logger.info('Loading secrets from Vault...');
-    await vault.init();
-    WECOM_TOKEN = vault.get('WECOM_TOKEN');
-    WECOM_ENCODING_AES_KEY = vault.get('WECOM_ENCODING_AES_KEY');
-    WECOM_CORP_ID = vault.get('WECOM_CORP_ID');
-    WECOM_SECRET = vault.get('WECOM_SECRET');
-    logger.info('Vault secrets loaded successfully');
-  } catch (e) {
-    logger.error('FATAL: Vault init failed: ' + e.message);
-    process.exit(1);
+  // 1. 从 Vault 加载密钥 (staging/CI 模式可跳过)
+  if (process.env.VAULT_SKIP === 'true' || process.env.NODE_ENV === 'staging') {
+    logger.info('VAULT_SKIP mode: loading secrets from env');
+    WECOM_TOKEN = process.env.WECOM_TOKEN || 'staging-token';
+    WECOM_ENCODING_AES_KEY = process.env.WECOM_ENCODING_AES_KEY || '';
+    WECOM_CORP_ID = process.env.WECOM_CORP_ID || 'staging-corp';
+    WECOM_SECRET = process.env.WECOM_SECRET || 'staging-secret';
+  } else {
+    try {
+      logger.info('Loading secrets from Vault...');
+      await vault.init();
+      WECOM_TOKEN = vault.get('WECOM_TOKEN');
+      WECOM_ENCODING_AES_KEY = vault.get('WECOM_ENCODING_AES_KEY');
+      WECOM_CORP_ID = vault.get('WECOM_CORP_ID');
+      WECOM_SECRET = vault.get('WECOM_SECRET');
+      logger.info('Vault secrets loaded successfully');
+    } catch (e) {
+      logger.error('FATAL: Vault init failed: ' + e.message);
+      process.exit(1);
+    }
   }
 
   // 2. 启动 HTTP 服务
