@@ -35,7 +35,9 @@
     "test:workflow-state-machine": "node tests/test-workflow-state-machine.cjs",
     "test:retry-recovery": "node tests/test-retry-recovery-engine.cjs",
     "test:shared-memory-runtime": "node tests/test-shared-memory-runtime.cjs",
-    "test:passive-monitoring": "node tests/test-passive-monitoring-runtime.cjs"
+    "test:passive-monitoring": "node tests/test-passive-monitoring-runtime.cjs",
+    "test:artifact-workspace": "node tests/test-artifact-workspace.cjs",
+    "test:capability-registry": "node tests/test-capability-registry.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",
