@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v0.5</title>
+<title>AI Mission Control Dashboard v0.6</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -504,7 +504,7 @@ body {
 </head>
 <body>
 <div class="header">
-  <h1>AI Mission Control Dashboard v0.5</h1>
+  <h1>AI Mission Control Dashboard v0.6</h1>
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
@@ -614,6 +614,26 @@ body {
       <div class="empty-state">
         <div class="icon">&#x1F4CA;</div>
         <div>Loading graphs...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Integration Validation Panel (P10.6) -->
+  <div class="panel" style="margin-top:16px;">
+    <div class="panel-header">
+      <span>Integration Validation (P10.6)</span>
+      <div style="display:flex;gap:8px;">
+        <button class="refresh-btn" onclick="runIntegrationFlow('happy')" style="font-size:12px;padding:4px 10px;">Happy Path</button>
+        <button class="refresh-btn" onclick="runIntegrationFlow('recovery')" style="font-size:12px;padding:4px 10px;border-color:#f0883e;">Recovery</button>
+        <button class="refresh-btn" onclick="runIntegrationFlow('forbidden')" style="font-size:12px;padding:4px 10px;border-color:#f85149;">Forbidden</button>
+        <button class="refresh-btn" onclick="runIntegrationFlow('approval')" style="font-size:12px;padding:4px 10px;border-color:#d29922;">Approval</button>
+        <button class="refresh-btn" onclick="refreshIntegrationStatus()">Refresh</button>
+      </div>
+    </div>
+    <div class="panel-body" id="integration-panel-body" style="max-height:500px;">
+      <div class="empty-state">
+        <div class="icon">&#x1F517;</div>
+        <div>Click a flow button to run integration validation</div>
       </div>
     </div>
   </div>
@@ -1454,6 +1474,145 @@ function recoverGraph(graphId) {
     .catch(function(e) {
       body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
     });
+}
+
+// ─── P10.6 Integration Validation ────────────────────────
+
+var INTEGRATION_GRAPHS = {
+  happy: {
+    graph_id: 'integration-happy-path',
+    mission_id: 'P10.6-HAPPY',
+    nodes: [
+      { id: 'collect', agent: 'workbuddy', capability: 'server.audit' },
+      { id: 'analyze', agent: 'deepseek', capability: 'reasoning.review', depends_on: ['collect'] },
+      { id: 'report', agent: 'doubao', capability: 'summary.write', depends_on: ['analyze'] }
+    ]
+  },
+  recovery: {
+    graph_id: 'integration-failure-recovery',
+    mission_id: 'P10.6-RECOVERY',
+    nodes: [
+      { id: 'collect', agent: 'workbuddy', capability: 'server.audit' },
+      { id: 'fragile', agent: 'workbuddy', capability: 'server.audit', depends_on: ['collect'] }
+    ]
+  },
+  forbidden: {
+    graph_id: 'integration-forbidden',
+    mission_id: 'P10.6-FORBIDDEN',
+    nodes: [
+      { id: 'collect', agent: 'workbuddy', capability: 'server.audit' },
+      { id: 'dangerous', agent: 'codex', capability: 'env.write', depends_on: ['collect'] }
+    ]
+  },
+  approval: {
+    graph_id: 'integration-approval',
+    mission_id: 'P10.6-APPROVAL',
+    nodes: [
+      { id: 'collect', agent: 'workbuddy', capability: 'server.audit' },
+      { id: 'restart', agent: 'workbuddy', capability: 'pm2.restart', depends_on: ['collect'] }
+    ]
+  }
+};
+
+function runIntegrationFlow(flowType) {
+  var body = document.getElementById('integration-panel-body');
+  var graphDef = INTEGRATION_GRAPHS[flowType];
+  if (!graphDef) return;
+
+  body.innerHTML = '<div class="loading">Running ' + escapeHtml(flowType) + ' flow...</div>';
+
+  fetch('/mission/graphs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(graphDef)
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      var html = '<div style="padding:12px;">';
+      html += '<div style="margin-bottom:12px;"><strong>Flow:</strong> ' + escapeHtml(flowType);
+      html += ' <span class="badge" style="background:' + (resp.success ? '#238636' : '#f85149') + ';">' + (resp.success ? 'OK' : 'FAIL') + '</span>';
+      html += '</div>';
+
+      if (resp.graph && resp.graph.nodes) {
+        html += '<div style="margin-bottom:8px;"><strong>Nodes:</strong></div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">';
+        for (var i = 0; i < resp.graph.nodes.length; i++) {
+          var n = resp.graph.nodes[i];
+          var nc = n.status === 'completed' ? '#238636' : n.status === 'failed' ? '#f85149' : n.status === 'blocked' ? '#d29922' : '#30363d';
+          html += '<span class="graph-node" style="border-color:' + nc + ';">' + escapeHtml(n.id) + ' (' + escapeHtml(n.status || 'pending') + ')</span>';
+        }
+        html += '</div>';
+      }
+
+      if (resp.errors) {
+        html += '<div style="color:#f85149;margin-top:8px;">' + escapeHtml(JSON.stringify(resp.errors)) + '</div>';
+      }
+
+      html += '</div>';
+      body.innerHTML = html;
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function refreshIntegrationStatus() {
+  var body = document.getElementById('integration-panel-body');
+  body.innerHTML = '<div class="loading">Refreshing integration graphs...</div>';
+
+  var flowTypes = Object.keys(INTEGRATION_GRAPHS);
+  var allResults = [];
+  var done = 0;
+
+  for (var i = 0; i < flowTypes.length; i++) {
+    (function(ft) {
+      fetch('/mission/graphs/' + encodeURIComponent(INTEGRATION_GRAPHS[ft].graph_id))
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+          allResults.push({ flow: ft, data: resp });
+          done++;
+          if (done >= flowTypes.length) {
+            renderIntegrationStatus(allResults);
+          }
+        })
+        .catch(function() {
+          allResults.push({ flow: ft, data: null });
+          done++;
+          if (done >= flowTypes.length) {
+            renderIntegrationStatus(allResults);
+          }
+        });
+    })(flowTypes[i]);
+  }
+}
+
+function renderIntegrationStatus(results) {
+  var body = document.getElementById('integration-panel-body');
+  var html = '<div style="padding:12px;">';
+
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
+    var g = r.data;
+    if (g && g.success !== false && g.graph) {
+      var status = g.graph.status || 'unknown';
+      var sc = status === 'completed' ? '#238636' : status === 'failed' ? '#f85149' : status === 'blocked' ? '#d29922' : '#30363d';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #21262d;">';
+      html += '<span style="min-width:80px;font-weight:500;">' + escapeHtml(r.flow) + '</span>';
+      html += '<span class="badge" style="background:' + sc + ';">' + escapeHtml(status) + '</span>';
+      if (g.graph.nodes) {
+        html += '<span style="color:#8b949e;font-size:11px;">(' + g.graph.nodes.length + ' nodes)</span>';
+      }
+      html += '</div>';
+    } else {
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #21262d;">';
+      html += '<span style="min-width:80px;font-weight:500;">' + escapeHtml(r.flow) + '</span>';
+      html += '<span class="badge" style="background:#30363d;">not found</span>';
+      html += '</div>';
+    }
+  }
+
+  html += '</div>';
+  body.innerHTML = html;
 }
 
 // Auto-load graphs on page ready
