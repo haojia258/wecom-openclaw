@@ -33,6 +33,10 @@ var ALLOWED_MIME_TYPES = {
  * @returns {string}
  */
 function getWorkspaceRoot() {
+  // 支持测试注入：优先使用环境变量 ARTIFACT_WORKSPACE_ROOT
+  if (process.env.ARTIFACT_WORKSPACE_ROOT) {
+    return process.env.ARTIFACT_WORKSPACE_ROOT;
+  }
   // workspace/artifacts/ at repo root
   return path.resolve(__dirname, '..', '..', '..', '..', '..', 'workspace', 'artifacts');
 }

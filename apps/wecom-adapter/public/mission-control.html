@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v0.8</title>
+<title>AI Mission Control Dashboard v0.9</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -504,7 +504,7 @@ body {
 </head>
 <body>
 <div class="header">
-  <h1>AI Mission Control Dashboard v0.8</h1>
+  <h1>AI Mission Control Dashboard v0.9</h1>
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
@@ -647,6 +647,28 @@ body {
       </div>
       <div class="panel-body" id="agent-health-panel-body">
         <div style="color:#8b949e;padding:20px;text-align:center;">Loading agent health data...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Autonomous Execution Loop Panel (P10.8) -->
+  <div style="padding: 0 24px 16px;">
+    <div class="panel">
+      <div class="panel-header">
+        <span>Autonomous Loop (P10.8)</span>
+        <div style="display:flex;gap:8px;">
+          <input id="loop-graph-id" type="text" placeholder="Graph ID" style="background:#0d1117;border:1px solid #30363d;color:#c9d1d9;padding:4px 8px;border-radius:4px;font-size:12px;width:160px;" />
+          <button class="graph-btn run" onclick="runAutonomousLoop()" style="font-size:12px;padding:4px 10px;">Run Loop</button>
+          <button class="graph-btn" onclick="runAutoNode()" style="font-size:12px;padding:4px 10px;">Run Node</button>
+          <button class="refresh-btn" onclick="loadLoopReport()" style="font-size:12px;padding:4px 10px;">Load Report</button>
+          <button class="refresh-btn" onclick="refreshLoopPanel()" style="font-size:12px;padding:4px 10px;">Refresh</button>
+        </div>
+      </div>
+      <div class="panel-body" id="autonomous-loop-panel-body" style="max-height:500px;">
+        <div class="empty-state">
+          <div class="icon">&#x1F504;</div>
+          <div>Enter a graph ID and click Run Loop to start autonomous execution</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1798,6 +1820,267 @@ setInterval(function() { loadAgentHealth(); }, 15000);
 
 // Initial load of agent health
 setTimeout(function() { loadAgentHealth(); }, 800);
+
+// ═══════════════════════════════════════════════════════════
+// P10.8 Autonomous Execution Loop
+// ═══════════════════════════════════════════════════════════
+
+function runAutonomousLoop() {
+  var graphId = document.getElementById('loop-graph-id').value.trim();
+  var body = document.getElementById('autonomous-loop-panel-body');
+
+  if (!graphId) {
+    body.innerHTML = '<div class="empty-state" style="color:#f85149;">Please enter a graph ID</div>';
+    return;
+  }
+
+  body.innerHTML = '<div class="loading">Running autonomous loop for ' + escapeHtml(graphId) + '...</div>';
+
+  fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/run-loop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ maxSteps: 20, verbose: true })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      renderLoopResult(graphId, resp);
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function runAutoNode() {
+  var graphId = document.getElementById('loop-graph-id').value.trim();
+  var body = document.getElementById('autonomous-loop-panel-body');
+
+  if (!graphId) {
+    body.innerHTML = '<div class="empty-state" style="color:#f85149;">Please enter a graph ID</div>';
+    return;
+  }
+
+  // Attempt to find a ready node from the graph
+  body.innerHTML = '<div class="loading">Finding ready node in ' + escapeHtml(graphId) + '...</div>';
+
+  fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/ready')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success || !resp.ready_nodes || resp.ready_nodes.length === 0) {
+        renderLoopResult(graphId, { success: false, error: 'No ready nodes found' });
+        return;
+      }
+
+      var nodeId = resp.ready_nodes[0].id;
+      body.innerHTML = '<div class="loading">Running node ' + escapeHtml(nodeId) + '...</div>';
+
+      return fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/nodes/' + encodeURIComponent(nodeId) + '/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verbose: true })
+      });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      renderLoopResult(graphId, resp);
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function loadLoopReport() {
+  var graphId = document.getElementById('loop-graph-id').value.trim();
+  var body = document.getElementById('autonomous-loop-panel-body');
+
+  if (!graphId) {
+    body.innerHTML = '<div class="empty-state" style="color:#f85149;">Please enter a graph ID</div>';
+    return;
+  }
+
+  body.innerHTML = '<div class="loading">Loading loop report for ' + escapeHtml(graphId) + '...</div>';
+
+  fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/loop-report')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(resp.error) + '</div>';
+        return;
+      }
+
+      var report = resp.report;
+      var html = '<div style="padding:12px;">';
+
+      // Report header
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+      html += '<strong>Graph:</strong> ' + escapeHtml(report.graph_id);
+      html += getStatusBadge(report.status);
+      html += '</div>';
+
+      // Stats grid
+      html += '<div class="recovery-card">';
+      html += '<h4>Execution Stats</h4>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">';
+      html += '<div class="recovery-stat"><span class="label">Completed</span><span class="value success">' + (report.completed_nodes || 0) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Failed</span><span class="value error">' + (report.failed_nodes || 0) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Blocked</span><span class="value warning">' + (report.blocked_nodes || 0) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Running</span><span class="value retry">' + (report.running_nodes || 0) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Pending</span><span class="value">' + (report.pending_nodes || 0) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Total</span><span class="value">' + (report.total_nodes || 0) + '</span></div>';
+      html += '</div>';
+      html += '</div>';
+
+      // Summary
+      html += '<div class="recovery-card">';
+      html += '<h4>Summary</h4>';
+      html += '<div style="font-size:12px;color:#c9d1d9;">' + escapeHtml(report.summary || '') + '</div>';
+      html += '<div style="font-size:11px;color:#484f58;margin-top:4px;">Generated: ' + formatTime(report.generated_at) + '</div>';
+      html += '</div>';
+
+      // Events (latest 5)
+      if (report.events && report.events.length > 0) {
+        html += '<div class="recovery-card">';
+        html += '<h4>Events (' + report.events.length + ')</h4>';
+        var recentEvents = report.events.slice(-5).reverse();
+        for (var i = 0; i < recentEvents.length; i++) {
+          var evt = recentEvents[i];
+          html += '<div class="event-item">';
+          html += '<div class="dot ' + getEventDotClass(evt.type || 'info') + '"></div>';
+          html += '<div class="content">';
+          html += '<div class="type">' + escapeHtml(evt.type || 'EVENT') + '</div>';
+          if (evt.node_id) html += '<div class="stage">Node: ' + escapeHtml(evt.node_id) + '</div>';
+          if (evt.detail) html += '<div class="payload">' + escapeHtml(JSON.stringify(evt.detail)) + '</div>';
+          html += '</div>';
+          html += '<div class="time">' + formatTime(evt.timestamp) + '</div>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      // Artifacts
+      if (report.artifacts && report.artifacts.length > 0) {
+        html += '<div class="recovery-card">';
+        html += '<h4>Artifacts (' + report.artifacts.length + ')</h4>';
+        for (var j = 0; j < report.artifacts.length; j++) {
+          var a = report.artifacts[j];
+          html += '<div style="font-size:11px;padding:2px 0;display:flex;align-items:center;gap:6px;">';
+          html += '<span style="color:#58a6ff;">' + escapeHtml(a.filename) + '</span>';
+          html += '<span style="color:#484f58;">' + formatSize(a.size) + '</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      html += '</div>';
+      body.innerHTML = html;
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function refreshLoopPanel() {
+  var graphId = document.getElementById('loop-graph-id').value.trim();
+  if (graphId) {
+    loadLoopReport();
+  } else {
+    var body = document.getElementById('autonomous-loop-panel-body');
+    body.innerHTML = '<div class="empty-state"><div class="icon">&#x1F504;</div><div>Enter a graph ID and click Run Loop to start autonomous execution</div></div>';
+  }
+}
+
+function renderLoopResult(graphId, resp) {
+  var body = document.getElementById('autonomous-loop-panel-body');
+
+  if (!resp) {
+    body.innerHTML = '<div class="empty-state" style="color:#f85149;">No response received</div>';
+    return;
+  }
+
+  var html = '<div style="padding:12px;">';
+
+  if (resp.success) {
+    // Status header
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+    html += '<strong>' + escapeHtml(graphId) + '</strong>';
+    if (resp.status) {
+      html += getStatusBadge(resp.status);
+    }
+    html += '</div>';
+
+    // Step count
+    if (resp.total_steps !== undefined) {
+      html += '<div style="margin-bottom:8px;font-size:13px;color:#c9d1d9;">Steps executed: ' + resp.total_steps + '</div>';
+    }
+
+    // Message
+    if (resp.message) {
+      html += '<div style="margin-bottom:8px;font-size:12px;color:#8b949e;">' + escapeHtml(resp.message) + '</div>';
+    }
+
+    // Steps detail
+    if (resp.steps && resp.steps.length > 0) {
+      html += '<div class="recovery-card">';
+      html += '<h4>Execution Steps</h4>';
+      for (var i = 0; i < resp.steps.length; i++) {
+        var step = resp.steps[i];
+        html += '<div style="font-size:12px;padding:3px 0;display:flex;align-items:center;gap:8px;">';
+        html += '<span style="color:#484f58;">#' + step.step + '</span>';
+        html += '<span style="color:#58a6ff;">' + escapeHtml(step.node_id) + '</span>';
+        var stepClass = step.action === 'executed' ? 'success' : step.action === 'failed' ? 'error' : step.action === 'blocked' ? 'warning' : '';
+        html += '<span class="value ' + stepClass + '">' + escapeHtml(step.action) + '</span>';
+        if (step.policy) {
+          html += '<span style="font-size:10px;color:#8b949e;">[' + escapeHtml(step.policy) + ']</span>';
+        }
+        if (step.reason) {
+          html += '<span style="font-size:10px;color:#d29922;">' + escapeHtml(step.reason) + '</span>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    // Loop events
+    if (resp.loop_events && resp.loop_events.length > 0) {
+      html += '<div class="recovery-card">';
+      html += '<h4>Loop Events (' + resp.loop_events.length + ')</h4>';
+      for (var j = 0; j < resp.loop_events.length; j++) {
+        var levt = resp.loop_events[j];
+        html += '<div style="font-size:11px;padding:2px 0;color:#8b949e;">';
+        html += '#' + levt.step + ' ' + escapeHtml(levt.node_id || '(graph)') + ' → ' + escapeHtml(levt.action);
+        if (levt.reason) html += ' <span style="color:#d29922;">' + escapeHtml(levt.reason) + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+  } else {
+    // Error display
+    html += '<div style="margin-bottom:12px;">';
+    html += '<strong>' + escapeHtml(graphId) + '</strong>';
+    html += ' <span class="badge badge-failed">ERROR</span>';
+    html += '</div>';
+    html += '<div style="color:#f85149;font-size:13px;margin-bottom:8px;">' + escapeHtml(resp.error) + '</div>';
+
+    if (resp.validation_errors) {
+      html += '<div style="color:#d29922;font-size:12px;">Validation errors: ' + escapeHtml(JSON.stringify(resp.validation_errors)) + '</div>';
+    }
+
+    if (resp.blocked) {
+      html += '<div style="margin-top:8px;">';
+      html += '<span class="badge badge-blocked">BLOCKED</span>';
+      if (resp.requiresApproval) {
+        html += ' <span class="badge badge-warning">REQUIRES APPROVAL</span>';
+      }
+      html += '</div>';
+    }
+
+    if (resp.policy) {
+      html += '<div style="font-size:11px;color:#8b949e;margin-top:4px;">Policy: ' + escapeHtml(JSON.stringify(resp.policy)) + '</div>';
+    }
+  }
+
+  html += '</div>';
+  body.innerHTML = html;
+}
 </script>
 </body>
 </html>
