@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v1.1</title>
+<title>AI Mission Control Dashboard v1.2</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -504,7 +504,7 @@ body {
 </head>
 <body>
 <div class="header">
-  <h1>AI Mission Control Dashboard v1.1</h1>
+  <h1>AI Mission Control Dashboard v1.2</h1>
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
@@ -743,6 +743,32 @@ body {
       <div id="workbuddy-result" class="empty-state">
         <div class="icon">&#x1F916;</div>
         <div>WorkBuddy Execution Panel Ready</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P11.3 Agent Bus Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>&#x1F68C; Agent Bus Panel</span>
+      <button class="refresh-btn" onclick="loadAgentBus()">Refresh</button>
+    </div>
+    <div class="panel-body" id="agent-bus-body">
+      <div class="cap-check-form">
+        <select id="ab-agent-type" style="width:150px;">
+          <option value="workbuddy">WorkBuddy</option>
+          <option value="codex">Codex</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="doubao">Doubao</option>
+        </select>
+        <button onclick="createAgentJob()">Create Job</button>
+        <button onclick="loadAgentBus()">Load Agents</button>
+      </div>
+      <div id="agentbus-result" class="empty-state">
+        <div class="icon">&#x1F68C;</div>
+        <div>Agent Bus Ready</div>
       </div>
     </div>
   </div>
@@ -2410,6 +2436,42 @@ function dispatchWorkBuddyJob() {
         ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Dispatched: ' + escapeHtml(jobId) + '</div></div>'
         : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(data.error || 'Failed') + '</div></div>';
       loadWorkBuddyJobs();
+    });
+}
+
+// ─── P11.3 Agent Bus Panel ──────────────────────────────────
+
+function loadAgentBus() {
+  var r = document.getElementById('agentbus-result');
+  r.innerHTML = '<div class="loading">Loading agent bus...</div>';
+  fetch('/agent-bus/agents')
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+      if (!data.agents || data.agents.length === 0) {
+        r.innerHTML = '<div class="empty-state"><div class="icon">&#x1F68C;</div><div>No agents registered</div></div>';
+        return;
+      }
+      var h = '<table style="width:100%;font-size:12px;"><tr style="border-bottom:1px solid #30363d;color:#8b949e;"><th>Agent</th><th>Type</th><th>Status</th></tr>';
+      data.agents.forEach(function(a) {
+        h += '<tr style="border-bottom:1px solid #21262d;">';
+        h += '<td>' + escapeHtml(a.agent_id || '?') + '</td><td>' + escapeHtml(a.agent_type) + '</td><td>' + getStatusBadge(a.status) + '</td>';
+        h += '</tr>';
+      });
+      h += '</table>';
+      r.innerHTML = h;
+    });
+}
+
+function createAgentJob() {
+  var r = document.getElementById('agentbus-result');
+  var at = document.getElementById('ab-agent-type').value;
+  r.innerHTML = '<div class="loading">Creating ' + at + ' job...</div>';
+  fetch('/agent-bus/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent_type: at, action: 'test.run', mission_id: 'db_' + Date.now() }) })
+    .then(function(resp) { return resp.json(); })
+    .then(function(d) {
+      r.innerHTML = d.success
+        ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Job: ' + escapeHtml(d.job.job_id) + ' (' + d.job.status + ')</div></div>'
+        : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(d.error || 'Failed') + '</div></div>';
     });
 }
 </script>

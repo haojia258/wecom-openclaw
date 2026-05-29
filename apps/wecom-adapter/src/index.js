@@ -19,6 +19,7 @@ const missionRoutes = require('./mission/mission-routes');
 const commanderGateway = require('./commander/commander-gateway');
 const wecomMissionCenter = require('./wecom/wecom-mission-center');
 const workbuddyAdapter = require('./execution/workbuddy-adapter');
+const agentBusRoutes = require('./agent-bus/agent-bus-routes');
 const vault = require('./lib/vault-client');
 
 const app = express();
@@ -263,6 +264,10 @@ wecomMissionCenter.registerWecomMissionRoutes(app);
 // ─── P11.2 WorkBuddy Execution Adapter ───────────
 app.use('/execution', express.json({ limit: '16kb' }));
 workbuddyAdapter.registerWorkBuddyRoutes(app);
+
+// ─── P11.3 Agent Bus ────────────────────────────
+app.use('/agent-bus', express.json({ limit: '16kb' }));
+agentBusRoutes.registerAgentBusRoutes(app);
 
 // 静态文件: Dashboard 页面
 app.use('/mission', express.static(require('path').resolve(__dirname, '../public'), {
