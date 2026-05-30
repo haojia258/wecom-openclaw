@@ -31,6 +31,10 @@ const { listAssignees } = require('../orchestrator/worker-dispatcher');
 let openaiWorker = null;
 try { openaiWorker = require('../orchestrator/workers/openai-worker'); } catch (e) { /* 可选依赖 */ }
 
+// 延迟加载 deepseek-worker (P12.4)
+let deepseekWorker = null;
+try { deepseekWorker = require('../orchestrator/workers/deepseek-worker'); } catch (e) { /* 可选依赖 */ }
+
 const desc = 'AI任务管理: 创建/派发/审查/批准任务';
 
 const HELP_TEXT =
@@ -257,7 +261,70 @@ async function handleDispatchAsync(taskId) {
       }
     }
 
-    // 7. 其他 assignee（workbuddy/deepseek/doubao）→ 保持 mock 行为
+    // 3b. assignee 是 deepseek → 调用真实 DeepSeek Runtime (P12.4)
+    if (task.assignee === 'deepseek' && deepseekWorker) {
+      try {
+        var deepseekArtifact = await deepseekWorker.executeDeepSeekWorker(task);
+
+        if (deepseekArtifact.error) {
+          return [
+            '🚀 任务已派发（DeepSeek Runtime）',
+            '',
+            'Task ID:  ' + taskId,
+            '⚠️ DeepSeek Worker 调用失败：' + deepseekArtifact.error,
+            '',
+            '任务保持 dispatched 状态，可重试：/ai任务 派发 ' + taskId,
+          ].join('\n');
+        }
+
+        // 写入 artifact
+        var artifactDir2 = getArtifactDir(taskId);
+        if (deepseekArtifact.outputText) {
+          fs.writeFileSync(path.join(artifactDir2, 'deepseek-output.md'), deepseekArtifact.outputText, 'utf-8');
+        }
+        // 写入 runtime-meta.json
+        var runtimeMeta = {
+          worker: 'deepseek',
+          model: deepseekArtifact.model || 'deepseek-chat',
+          latency_ms: deepseekArtifact.latency,
+          usage: deepseekArtifact.usage || null,
+          generated_at: new Date().toISOString(),
+          safety_note: deepseekArtifact.safetyNote || 'REVIEW_ONLY__NO_AUTO_APPLY',
+        };
+        fs.writeFileSync(path.join(artifactDir2, 'runtime-meta.json'), JSON.stringify(runtimeMeta, null, 2), 'utf-8');
+
+        // 接收产物 → 自动进入 review_pending
+        runtimeCore.receiveArtifact(taskId, {
+          review: deepseekArtifact.outputText
+            ? deepseekArtifact.outputText.substring(0, 200) + '...'
+            : 'DeepSeek Runtime 已完成任务，等待审查',
+          model: deepseekArtifact.model || 'deepseek-chat',
+          safetyNote: deepseekArtifact.safetyNote || 'REVIEW_ONLY__NO_AUTO_APPLY',
+        });
+
+        return [
+          '✅ 任务已派发（DeepSeek Runtime）',
+          '',
+          'Task ID:  ' + taskId,
+          'Model:    ' + (deepseekArtifact.model || 'deepseek-chat'),
+          '延迟:     ' + (deepseekArtifact.latency || '?') + 'ms',
+          '产物:    deepseek-output.md + runtime-meta.json',
+          '',
+          '📌 下一步: /ai任务 审查 ' + taskId,
+        ].join('\n');
+      } catch (e) {
+        return [
+          '🚀 任务已派发（DeepSeek Runtime）',
+          '',
+          'Task ID:  ' + taskId,
+          '⚠️ DeepSeek Worker 异常：' + e.message,
+          '',
+          '任务保持 dispatched 状态，可重试：/ai任务 派发 ' + taskId,
+        ].join('\n');
+      }
+    }
+
+    // 7. 其他 assignee（workbuddy/doubao）→ 保持 mock 行为
     const dispatch = result.dispatch;
     const payload = dispatch.payload;
 

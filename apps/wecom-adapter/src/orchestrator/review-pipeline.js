@@ -75,18 +75,24 @@ function reviewTask(task) {
       const files = [];
       if (task.patchFile) files.push(task.patchFile);
 
-      // 读取 WorkBuddy artifact 输出
+      // 读取 WorkBuddy / DeepSeek artifact 输出
       let aiOutput = '';
-      const workbuddyArtifactPath = path.join(
-        __dirname, '..', '..', 'storage', 'orchestrator', 'artifacts',
-        task.taskId, 'workbuddy-output.md'
-      );
+      const artifactPaths = [
+        path.join(__dirname, '..', '..', 'storage', 'orchestrator', 'artifacts', task.taskId, 'workbuddy-output.md'),
+        path.join(__dirname, '..', '..', 'storage', 'orchestrator', 'artifacts', task.taskId, 'deepseek-output.md'),
+      ];
       try {
-        if (fs.existsSync(workbuddyArtifactPath)) {
-          aiOutput = fs.readFileSync(workbuddyArtifactPath, 'utf-8');
+        for (var ai = 0; ai < artifactPaths.length; ai++) {
+          if (fs.existsSync(artifactPaths[ai])) {
+            var content = fs.readFileSync(artifactPaths[ai], 'utf-8');
+            if (content && content.trim().length > 0) {
+              aiOutput = content;
+              break; // 使用第一个可读的 artifact
+            }
+          }
         }
       } catch (_) {
-        // 文件读取失败，静默回退
+        // 静默回退
       }
 
       const riskInput = {
