@@ -22,6 +22,7 @@ const workbuddyAdapter = require('./execution/workbuddy-adapter');
 const agentBusRoutes = require('./agent-bus/agent-bus-routes');
 const multiAgentRoutes = require('./multi-agent/multi-agent-routes');
 const domainRoutes = require('./domain/domain-routes');
+const eventBusRoutes = require('./event-bus/event-routes');
 const vault = require('./lib/vault-client');
 
 const app = express();
@@ -278,6 +279,10 @@ multiAgentRoutes.registerMultiAgentRoutes(app);
 // ─── P12.0 Domain Runtime ──────────────────────────
 app.use('/domain', express.json({ limit: '16kb' }));
 domainRoutes.registerDomainRoutes(app);
+
+// ─── P13.0 Event Bus ──────────────────────────────
+app.use('/event-bus', express.json({ limit: '16kb' }));
+eventBusRoutes.registerEventBusRoutes(app);
 
 // 静态文件: Dashboard 页面
 app.use('/mission', express.static(require('path').resolve(__dirname, '../public'), {
