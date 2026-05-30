@@ -75,11 +75,13 @@ function reviewTask(task) {
       const files = [];
       if (task.patchFile) files.push(task.patchFile);
 
-      // 读取 WorkBuddy / DeepSeek artifact 输出
+      // 读取 WorkBuddy / DeepSeek / Doubao artifact 输出
       let aiOutput = '';
       const artifactPaths = [
+        path.join(__dirname, '..', '..', 'storage', 'orchestrator', 'artifacts', task.taskId, 'openai-output.md'),
         path.join(__dirname, '..', '..', 'storage', 'orchestrator', 'artifacts', task.taskId, 'workbuddy-output.md'),
         path.join(__dirname, '..', '..', 'storage', 'orchestrator', 'artifacts', task.taskId, 'deepseek-output.md'),
+        path.join(__dirname, '..', '..', 'storage', 'orchestrator', 'artifacts', task.taskId, 'doubao-output.md'),
       ];
       try {
         for (var ai = 0; ai < artifactPaths.length; ai++) {
