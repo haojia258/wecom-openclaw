@@ -12,6 +12,9 @@ const commanderGateway = require('./src/commander/commander-gateway');
 const wecomMissionCenter = require('./src/wecom/wecom-mission-center');
 const workbuddyAdapter = require('./src/execution/workbuddy-adapter');
 const agentBusRoutes = require('./src/agent-bus/agent-bus-routes');
+const multiAgentRoutes = require('./src/multi-agent/multi-agent-routes');
+const domainRoutes = require('./src/domain/domain-routes');
+const eventBusRoutes = require('./src/event-bus/event-routes');
 
 const app = express();
 // NOTE: Do NOT add express.json() here - mission-routes has its own
@@ -46,6 +49,18 @@ workbuddyAdapter.registerWorkBuddyRoutes(app);
 // Register Agent Bus routes (P11.3)
 app.use('/agent-bus', express.json({ limit: '16kb' }));
 agentBusRoutes.registerAgentBusRoutes(app);
+
+// Register Multi-Agent Runtime (P11.4)
+app.use('/multi-agent', express.json({ limit: '16kb' }));
+multiAgentRoutes.registerMultiAgentRoutes(app);
+
+// Register Domain Runtime (P12.0)
+app.use('/domain', express.json({ limit: '16kb' }));
+domainRoutes.registerDomainRoutes(app);
+
+// Register Event Bus (P13.0)
+app.use('/event-bus', express.json({ limit: '16kb' }));
+eventBusRoutes.registerEventBusRoutes(app);
 
 const PORT = process.env.WECOM_ADAPTER_PORT || 3001;
 const server = app.listen(PORT, () => {
