@@ -1,0 +1,57 @@
+{
+  "agents": {
+    "codex": {
+      "name": "Codex",
+      "provider": "OpenAI",
+      "model": "gpt-4o",
+      "capabilities": ["code_generation", "code_review", "patch_creation", "refactoring", "debugging"],
+      "permissions": ["read_code", "write_patch", "suggest_fix", "docstring"],
+      "status": "online",
+      "executor": "openai-worker",
+      "requiresHumanApproval": true,
+      "maxTokens": 4096,
+      "description": "OpenAI GPT-4o for code generation and review"
+    },
+    "workbuddy": {
+      "name": "WorkBuddy",
+      "provider": "WorkBuddy Built-in",
+      "model": "claude-sonnet",
+      "capabilities": ["task_planning", "ops_analysis", "report_generation", "orchestration", "monitoring"],
+      "permissions": ["read_data", "plan_tasks", "generate_report", "schedule_jobs"],
+      "status": "online",
+      "executor": "workbuddy-dispatcher",
+      "requiresHumanApproval": false,
+      "maxTokens": 8192,
+      "description": "Built-in orchestration and planning agent"
+    },
+    "deepseek": {
+      "name": "DeepSeek",
+      "provider": "DeepSeek",
+      "model": "deepseek-chat",
+      "capabilities": ["data_analysis", "trend_prediction", "anomaly_detection", "risk_assessment"],
+      "permissions": ["analyze_data", "predict_trends", "flag_anomalies", "audit_review"],
+      "status": "online",
+      "executor": "deepseek-dispatcher",
+      "requiresHumanApproval": true,
+      "maxTokens": 8192,
+      "description": "DeepSeek for data analysis and risk assessment"
+    },
+    "doubao": {
+      "name": "Doubao",
+      "provider": "ByteDance",
+      "model": "doubao-pro",
+      "capabilities": ["summary_writing", "report_writing", "wecom_reply", "copywriting", "content_creation"],
+      "permissions": ["write_summary", "compose_reply", "generate_content"],
+      "status": "online",
+      "executor": "doubao-dispatcher",
+      "requiresHumanApproval": false,
+      "maxTokens": 4096,
+      "description": "ByteDance Doubao for content generation and copywriting"
+    }
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "updated_at": "#UPDATED_AT#",
+    "total_agents": 4
+  }
+}
