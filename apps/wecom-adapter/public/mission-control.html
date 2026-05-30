@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v1.4</title>
+<title>AI Mission Control Dashboard v1.3</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -504,7 +504,7 @@ body {
 </head>
 <body>
 <div class="header">
-  <h1>AI Mission Control Dashboard v1.4</h1>
+  <h1>AI Mission Control Dashboard v1.3</h1>
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
@@ -774,17 +774,28 @@ body {
   </div>
 </div>
 
-<!-- P12.0 Domain Runtime Panel -->
+<!-- P11.4 Multi-Agent Runtime Panel -->
 <div style="padding: 0 24px 16px;">
   <div class="panel">
-    <div class="panel-header"><span>&#x1F310; Domain Runtime Panel</span><button class="refresh-btn" onclick="loadDomainMissions()">Refresh</button></div>
-    <div class="panel-body" id="domain-body">
+    <div class="panel-header">
+      <span>&#x1F3AF; Multi-Agent Runtime Panel</span>
+      <button class="refresh-btn" onclick="loadMultiAgentMissions()">Refresh</button>
+    </div>
+    <div class="panel-body" id="multi-agent-body">
       <div class="cap-check-form">
-        <select id="domain-select" style="width:120px;"><option value="commerce">Commerce</option><option value="marketing">Marketing</option><option value="customer">Customer</option><option value="devops">DevOps</option><option value="trading">Trading</option></select>
-        <button onclick="createDomainMission()">Create</button>
-        <button onclick="loadDomainMissions()">Load</button>
+        <select id="ma-mission-type" style="width:150px;">
+          <option value="development">Development</option>
+          <option value="audit">Audit</option>
+          <option value="deployment">Deployment</option>
+          <option value="full_cycle">Full Cycle</option>
+        </select>
+        <button onclick="createMultiAgentMission()">Create Mission</button>
+        <button onclick="loadMultiAgentMissions()">Load Missions</button>
       </div>
-      <div id="domain-result" class="empty-state"><div class="icon">&#x1F310;</div><div>Domain Runtime Ready</div></div>
+      <div id="multiagent-result" class="empty-state">
+        <div class="icon">&#x1F3AF;</div>
+        <div>Multi-Agent Runtime Ready</div>
+      </div>
     </div>
   </div>
 </div>
@@ -2490,25 +2501,38 @@ function createAgentJob() {
     });
 }
 
-// ─── P12.0 Domain Runtime ────────────────────────────────────
+// ─── P11.4 Multi-Agent Runtime Panel ────────────────────────
 
-function createDomainMission() {
-  var r = document.getElementById('domain-result');
-  var dom = document.getElementById('domain-select').value;
-  r.innerHTML = '<div class="loading">Creating ' + dom + ' mission...</div>';
-  fetch('/domain/' + dom + '/missions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: dom + ' task' }) })
+function createMultiAgentMission() {
+  var r = document.getElementById('multiagent-result');
+  var mt = document.getElementById('ma-mission-type').value;
+  r.innerHTML = '<div class="loading">Creating ' + mt + ' mission...</div>';
+  fetch('/multi-agent/missions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_type: mt }) })
     .then(function(resp) { return resp.json(); })
-    .then(function(d) { r.innerHTML = d.success ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Mission: ' + escapeHtml(d.mission.mission_id) + ' (' + d.mission.domain + ')</div></div>' : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(d.error||'Failed') + '</div></div>'; });
+    .then(function(d) {
+      r.innerHTML = d.success
+        ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Mission: ' + escapeHtml(d.mission.mission_id) + ' (' + d.plan.nodes.length + ' nodes, ' + (d.plan.agents || []).join(',') + ')</div></div>'
+        : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(d.error || 'Failed') + '</div></div>';
+    });
 }
 
-function loadDomainMissions() {
-  var r = document.getElementById('domain-result');
-  r.innerHTML = '<div class="loading">Loading...</div>';
-  fetch('/domain/list').then(function(resp){return resp.json();}).then(function(data) {
-    var h='<table style="width:100%;font-size:12px;"><tr style="border-bottom:1px solid #30363d;color:#8b949e;"><th>Domain</th><th>Agents</th></tr>';
-    data.domains.forEach(function(d){h+='<tr><td>'+escapeHtml(d.name)+'</td><td>'+(d.agents||[]).join(',')+'</td></tr>';});
-    h+='</table>';r.innerHTML=h;
-  });
+function loadMultiAgentMissions() {
+  var r = document.getElementById('multiagent-result');
+  r.innerHTML = '<div class="loading">Loading missions...</div>';
+  fetch('/multi-agent/missions')
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+      if (!data.missions || data.missions.length === 0) {
+        r.innerHTML = '<div class="empty-state"><div class="icon">&#x1F3AF;</div><div>No missions yet</div></div>';
+        return;
+      }
+      var h = '<table style="width:100%;font-size:12px;"><tr style="border-bottom:1px solid #30363d;color:#8b949e;"><th>Mission</th><th>Type</th><th>Status</th><th>Progress</th><th>Agents</th></tr>';
+      data.missions.forEach(function(m) {
+        h += '<tr style="border-bottom:1px solid #21262d;"><td>' + escapeHtml(m.mission_id) + '</td><td>' + escapeHtml(m.mission_type) + '</td><td>' + getStatusBadge(m.status) + '</td><td>' + m.progress + '%</td><td>' + (m.agents||[]).join(',') + '</td></tr>';
+      });
+      h += '</table>';
+      r.innerHTML = h;
+    });
 }
 </script>
 </body>
