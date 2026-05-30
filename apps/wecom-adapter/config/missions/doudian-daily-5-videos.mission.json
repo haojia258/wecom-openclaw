@@ -135,11 +135,24 @@
         "outputs": ["knowledge_context"]
       },
       {
+        "id": "fetch_google_drive_assets",
+        "name": "拉取 Google Drive 素材",
+        "agent": "google_drive_asset_agent",
+        "type": "fetch",
+        "depends_on": ["load_knowledge"],
+        "outputs": ["google_drive_assets"],
+        "retry_policy": {
+          "max_retries": 2,
+          "retry_delay_minutes": 10,
+          "on_failure": "alert_risk"
+        }
+      },
+      {
         "id": "generate_5_scripts",
         "name": "生成5条差异化短视频脚本",
         "agent": "doubao",
         "type": "content_generation",
-        "depends_on": ["load_knowledge"],
+        "depends_on": ["load_knowledge", "fetch_google_drive_assets"],
         "outputs": ["video_scripts"],
         "count": 5
       },

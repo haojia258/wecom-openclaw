@@ -164,6 +164,8 @@ test('advanceNode 检查依赖', function () {
   // 完成第一个节点后推进第二个
   mm.advanceNode(run, 'load_knowledge');
   mm.advanceNode(run, 'load_knowledge'); // 变为 completed
+  mm.advanceNode(run, 'fetch_google_drive_assets');
+  mm.advanceNode(run, 'fetch_google_drive_assets'); // 变为 completed（新增 DAG 节点依赖）
   var result2 = mm.advanceNode(run, 'generate_5_scripts');
   assert(result2.success === true, '依赖满足后应成功');
 });

@@ -45,6 +45,7 @@ const REGISTRY = {
   '/视频任务': { file: '../commands/video-mission-command', aliases: ['/酸辣粉视频', '/每日视频', '/生成视频'] },
   '/视频进度': { file: '../commands/video-mission-command', aliases: ['/视频状态', '/内容进度'] },
   '/视频复盘': { file: '../commands/video-mission-command', aliases: ['/内容复盘', '/短视频复盘'] },
+  '/同步素材': { file: '../commands/asset-sync-command', aliases: ['/更新素材', '/拉取素材', '/素材同步'] },
 };
 
 // 缓存已加载的 handler（懒加载）
