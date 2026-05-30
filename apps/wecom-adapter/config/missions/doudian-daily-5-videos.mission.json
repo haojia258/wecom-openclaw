@@ -1,0 +1,319 @@
+{
+  "version": "mission.doudian.video.daily.v1",
+  "mission": {
+    "id": "mission_doudian_suanlafen_daily_5_videos",
+    "name": "酸辣粉每日5条视频自治流水线",
+    "domain": "marketing",
+    "owner_role": "CMO",
+    "review_mode": "REVIEW_ONLY",
+    "requires_human_approval": true,
+    "enabled": true,
+    "description": "每日自动生成5条酸辣粉短视频脚本、标题、封面文案、发布时间计划，并在审批后进入发布/投流流程。"
+  },
+  "triggers": {
+    "wecom_commands": [
+      {
+        "command": "/视频任务",
+        "aliases": ["/酸辣粉视频", "/每日视频", "/生成视频"],
+        "action": "create_or_run_mission",
+        "mission_id": "mission_doudian_suanlafen_daily_5_videos"
+      },
+      {
+        "command": "/视频进度",
+        "aliases": ["/视频状态", "/内容进度"],
+        "action": "query_mission_status",
+        "mission_id": "mission_doudian_suanlafen_daily_5_videos"
+      },
+      {
+        "command": "/视频复盘",
+        "aliases": ["/内容复盘", "/短视频复盘"],
+        "action": "generate_video_report",
+        "mission_id": "mission_doudian_suanlafen_daily_5_videos"
+      }
+    ],
+    "scheduler": {
+      "enabled": true,
+      "timezone": "Asia/Shanghai",
+      "cron": "0 6 * * *",
+      "description": "每天06:00自动启动视频生产任务"
+    }
+  },
+  "kpi_bindings": {
+    "video_daily_output": {
+      "target": 5,
+      "warning_below": 3,
+      "critical_below": 1
+    },
+    "video_play_avg": {
+      "target_gte": 4000,
+      "warning_below": 2000,
+      "critical_below": 800
+    },
+    "video_completion_rate": {
+      "target_gte": 0.3,
+      "warning_below": 0.2,
+      "critical_below": 0.1
+    },
+    "ads_roi": {
+      "target_gte": 2.5,
+      "warning_below": 2.0,
+      "critical_below": 1.5
+    },
+    "budget_usage": {
+      "target_lte": 0.8,
+      "warning_above": 0.85,
+      "critical_above": 0.95
+    }
+  },
+  "budget_bindings": {
+    "monthly_total": 35000,
+    "ads_budget": {
+      "amount": 20000,
+      "owner_role": "CMO",
+      "daily_limit": 800,
+      "single_video_test_limit": 50,
+      "roi_below_1_8_action": "reduce_budget_review"
+    },
+    "activity_budget": {
+      "amount": 5000,
+      "owner_roles": ["CMO", "CFO"]
+    },
+    "system_token_budget": {
+      "amount": 3000,
+      "owner_role": "CTO"
+    },
+    "reserve_budget": {
+      "amount": 7000,
+      "owner_role": "CEO"
+    }
+  },
+  "approval_rules": {
+    "auto_approve": [
+      "generate_video_script",
+      "generate_title",
+      "generate_cover_copy",
+      "generate_hashtags",
+      "content_minor_variation",
+      "single_video_test_ads<=50"
+    ],
+    "ceo_approval_required": [
+      "single_video_ads>50",
+      "daily_ads>800",
+      "change_product_price",
+      "change_inventory",
+      "join_activity",
+      "bulk_modify_sales_copy",
+      "new_video_template",
+      "change_overall_content_style",
+      "content_compliance_warning",
+      "real_publish_to_douyin",
+      "real_ads_launch"
+    ],
+    "forbidden_without_approval": [
+      "place_order",
+      "change_price",
+      "change_inventory",
+      "delete_product",
+      "join_activity",
+      "deploy",
+      "pm2_restart",
+      "modify_env",
+      "modify_nginx",
+      "modify_vault",
+      "modify_secret"
+    ]
+  },
+  "dag": {
+    "graph_id": "dag_doudian_daily_5_video_pipeline",
+    "nodes": [
+      {
+        "id": "load_knowledge",
+        "name": "读取酸辣粉知识库",
+        "agent": "memory-agent",
+        "type": "read",
+        "inputs": ["products", "selling_points", "faq", "video_templates", "historical_video_performance"],
+        "outputs": ["knowledge_context"]
+      },
+      {
+        "id": "generate_5_scripts",
+        "name": "生成5条差异化短视频脚本",
+        "agent": "doubao",
+        "type": "content_generation",
+        "depends_on": ["load_knowledge"],
+        "outputs": ["video_scripts"],
+        "count": 5
+      },
+      {
+        "id": "generate_titles_and_covers",
+        "name": "生成标题、封面文案、话题标签",
+        "agent": "codex",
+        "type": "content_generation",
+        "depends_on": ["generate_5_scripts"],
+        "outputs": ["titles", "cover_copy", "hashtags"]
+      },
+      {
+        "id": "compliance_check",
+        "name": "内容合规检查",
+        "agent": "risk-agent",
+        "type": "review",
+        "depends_on": ["generate_titles_and_covers"],
+        "checks": ["forbidden_words", "exaggerated_claims", "platform_risk", "duplicate_content"],
+        "on_fail": "block_and_alert"
+      },
+      {
+        "id": "build_publish_plan",
+        "name": "生成分时段发布计划",
+        "agent": "planner-agent",
+        "type": "planning",
+        "depends_on": ["compliance_check"],
+        "publish_slots": ["08:00", "12:00", "17:30", "20:00", "22:00"],
+        "outputs": ["publish_plan"]
+      },
+      {
+        "id": "human_approval_gate",
+        "name": "CEO发布审批门",
+        "agent": "approval-center",
+        "type": "approval",
+        "depends_on": ["build_publish_plan"],
+        "required_for": ["real_publish_to_douyin", "real_ads_launch"]
+      },
+      {
+        "id": "publish_or_review_output",
+        "name": "发布或输出待发布清单",
+        "agent": "workbuddy",
+        "type": "execution",
+        "depends_on": ["human_approval_gate"],
+        "mode": "review_only_by_default",
+        "outputs": ["wecom_markdown_report", "publish_queue"]
+      },
+      {
+        "id": "collect_video_metrics",
+        "name": "回收视频播放/点击/转化数据",
+        "agent": "marketing-agent",
+        "type": "observe",
+        "depends_on": ["publish_or_review_output"],
+        "delay_hours": 24,
+        "outputs": ["video_metrics"]
+      },
+      {
+        "id": "classify_video_performance",
+        "name": "标记爆款/普通/低效",
+        "agent": "strategy-agent",
+        "type": "analysis",
+        "depends_on": ["collect_video_metrics"],
+        "rules": {
+          "viral": "play>=8000 OR roi>=3",
+          "normal": "play>=2000 AND play<8000",
+          "low_efficiency": "play<2000 OR completion_rate<0.2"
+        },
+        "outputs": ["video_tags", "next_day_recommendations"]
+      },
+      {
+        "id": "write_memory_knowledge",
+        "name": "写入Memory与Knowledge Graph",
+        "agent": "memory-agent",
+        "type": "write",
+        "depends_on": ["classify_video_performance"],
+        "outputs": ["memory_record", "knowledge_update"]
+      }
+    ]
+  },
+  "video_templates": [
+    {
+      "template_id": "fast_cook_15s",
+      "name": "极速冲泡款",
+      "duration_seconds": 15,
+      "structure": ["开盖", "加水", "焖泡", "成品嗦粉"],
+      "selling_points": ["懒人速食", "3分钟搞定", "夜宵方便"]
+    },
+    {
+      "template_id": "ingredients_20s",
+      "name": "食材卖点款",
+      "duration_seconds": 20,
+      "structure": ["展示料包", "展示粉条", "展示花生腐竹", "成品特写"],
+      "selling_points": ["料足", "真材实料", "酸辣过瘾"]
+    },
+    {
+      "template_id": "scenario_22s",
+      "name": "场景剧情款",
+      "duration_seconds": 22,
+      "structure": ["加班/宿舍/夜宵场景", "快速冲泡", "满足感反馈"],
+      "selling_points": ["解馋", "方便", "不用洗碗"]
+    },
+    {
+      "template_id": "creative_recipe_20s",
+      "name": "花式吃法款",
+      "duration_seconds": 20,
+      "structure": ["加鸡蛋", "加火腿", "加青菜", "成品展示"],
+      "selling_points": ["性价比", "好吃升级", "吃法多样"]
+    },
+    {
+      "template_id": "conversion_16s",
+      "name": "带货转化款",
+      "duration_seconds": 16,
+      "structure": ["口播卖点", "优惠提示", "小黄车引导"],
+      "selling_points": ["实惠", "囤货", "下单方便"]
+    }
+  ],
+  "publish_strategy": {
+    "daily_count": 5,
+    "slots": [
+      { "index": 1, "time": "08:00", "scene": "早高峰" },
+      { "index": 2, "time": "12:00", "scene": "午间休闲" },
+      { "index": 3, "time": "17:30", "scene": "下班时段" },
+      { "index": 4, "time": "20:00", "scene": "晚间高峰" },
+      { "index": 5, "time": "22:00", "scene": "夜宵窗口" }
+    ],
+    "anti_duplicate_rules": {
+      "no_exact_reuse": true,
+      "vary_opening_lines": true,
+      "vary_scene": true,
+      "vary_hook": true,
+      "vary_cover_copy": true
+    }
+  },
+  "retry_recovery": {
+    "video_generation_failed": {
+      "retry": 2,
+      "then": "alert_risk"
+    },
+    "compliance_failed": {
+      "retry": 0,
+      "then": "block_and_require_human_review"
+    },
+    "publish_failed": {
+      "retry": 2,
+      "retry_delay_minutes": 30,
+      "then": "alert_risk"
+    },
+    "metrics_collection_failed": {
+      "retry": 3,
+      "retry_delay_minutes": 60,
+      "then": "mark_degraded"
+    }
+  },
+  "wecom_outputs": {
+    "on_start": "🎬 酸辣粉每日5条视频任务已启动。",
+    "on_approval_required": "⚠️ 视频发布/投流需要CEO审批，请在 /董事会 或 /任务 中处理。",
+    "on_complete": "✅ 今日5条酸辣粉视频任务已完成，请查看 /今日运营。",
+    "on_failure": "❌ 视频流水线异常，请查看 /风险告警。",
+    "status_command": "/视频进度"
+  },
+  "audit": {
+    "enabled": true,
+    "audit_command": "/审计",
+    "events": [
+      "mission_created",
+      "scheduler_triggered",
+      "wecom_triggered",
+      "script_generated",
+      "compliance_checked",
+      "approval_required",
+      "publish_queue_created",
+      "metrics_collected",
+      "memory_written",
+      "mission_completed",
+      "mission_failed"
+    ]
+  }
+}
