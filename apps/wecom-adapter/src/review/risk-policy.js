@@ -117,7 +117,7 @@ const NO_TEST_PENALTY = 25;
 
 /**
  * 新评分引擎（增强规则，带上下文感知）
- * @param {object} input - { files: string[], testCommandsRun?: string[], patchSize?: number }
+ * @param {object} input - { files: string[], testCommandsRun?: string[], patchSize?: number, aiOutput?: string }
  * @returns {object} { riskScore, forbiddenHits }
  */
 function scoreRisk(input) {
@@ -128,10 +128,24 @@ function scoreRisk(input) {
   const files = input.files;
   const testCommandsRun = input.testCommandsRun;
   const patchSize = input.patchSize;
+  const aiOutput = input.aiOutput || '';
 
-  // 空 patch → 最高风险
-  if (patchSize === 0) {
+  // 空 patch 且无 AI 输出 → 最高风险（不应出现的状态）
+  if (patchSize === 0 && (!aiOutput || aiOutput.trim().length === 0)) {
     return { riskScore: 100, forbiddenHits: [] };
+  }
+
+  // 有 AI 输出但无 patch → 按内容长度计算基础风险（WorkBuddy 场景）
+  if (patchSize === 0 && aiOutput && aiOutput.trim().length > 0) {
+    const contentLines = aiOutput.split('\n').filter(l => l.trim().length > 0).length;
+    // 内容越充实，风险越低（说明 WorkBuddy 确实产出了东西）
+    const baseScore = contentLines > 20 ? 10 : contentLines > 5 ? 25 : 40;
+    return {
+      riskScore: baseScore,
+      forbiddenHits: [],
+      _source: 'aiOutput',
+      _aiOutputLines: contentLines,
+    };
   }
 
   const hits = [];

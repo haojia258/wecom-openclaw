@@ -1,14 +1,20 @@
 /**
  * review-pipeline.js
- * AI Orchestrator Runtime Review 流水线 v0.4
+ * AI Orchestrator Runtime Review 流水线 v0.6
  *
  * 接入已有模块：
  *   - patch-policy.js (范围校验)
- *   - risk-policy.js (风险评估，如存在)
- *   - patch-manager.js (patch 审计，如存在)
+ *   - risk-policy.js (风险评估)
+ *   - patch-manager.js (patch 审计)
  *
- * v0.4 只输出 review result，不执行 apply。
+ * v0.6: 读取 WorkBuddy artifact (workbuddy-output.md)，
+ *       非 patch 输出不再误判为 high risk。
+ * v0.5: drop auto-apply; normalize patches to os.EOL for Windows
+ * v0.4: 只输出 review result，不执行 apply。
  */
+
+var fs = require('fs');
+var path = require('path');
 
 let patchPolicy = null;
 let riskPolicy = null;
@@ -61,14 +67,33 @@ function reviewTask(task) {
     }
   }
 
-  // 2. Risk Policy 检查（如果 patch 内容存在）
+  // 2. Risk Policy 检查
   if (riskPolicy) {
     // 尝试用新 API
     if (typeof riskPolicy.scoreRisk === 'function') {
+      // 构建 files 数组（移除空字符串）
+      const files = [];
+      if (task.patchFile) files.push(task.patchFile);
+
+      // 读取 WorkBuddy artifact 输出
+      let aiOutput = '';
+      const workbuddyArtifactPath = path.join(
+        __dirname, '..', '..', 'storage', 'orchestrator', 'artifacts',
+        task.taskId, 'workbuddy-output.md'
+      );
+      try {
+        if (fs.existsSync(workbuddyArtifactPath)) {
+          aiOutput = fs.readFileSync(workbuddyArtifactPath, 'utf-8');
+        }
+      } catch (_) {
+        // 文件读取失败，静默回退
+      }
+
       const riskInput = {
-        files: [task.patchFile || ''],
-        testCommandsRun: false,
-        patchSize: 0,
+        files,
+        patchSize: task.patchSize || (files.length > 0 ? files.length : 0),
+        testCommandsRun: task.testCommandsRun || false,
+        aiOutput,
       };
       try {
         const scoreResult = riskPolicy.scoreRisk(riskInput);
@@ -147,7 +172,7 @@ function reviewTask(task) {
     overallRisk: computeOverallRisk(results),
     recommendation,
     safe: violations.length === 0 && recommendation !== 'reject',
-    _note: 'v0.4 — review only. No patch applied.',
+    _note: 'v0.6 — WorkBuddy artifact-aware review. No patch applied.',
   };
 }
 
@@ -223,7 +248,7 @@ function formatReviewForWecom(result) {
   });
 
   lines.push(``);
-  lines.push(`💡 注意: v0.4 review 仅输出结果，未执行任何代码变更。`);
+  lines.push(`💡 v0.6 — WorkBuddy artifact-aware。非 patch 输出按内容评分，避免空 patch 误判。`);
 
   return lines.join('\n');
 }
