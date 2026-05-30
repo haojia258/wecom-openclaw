@@ -9,7 +9,6 @@
 
 var store = require('./agent-bus-store');
 var policy = require('./agent-bus-policy');
-var reporter = require('../commander/commander-report');
 
 // ─── Dispatch ──────────────────────────────────────────────
 
@@ -55,15 +54,6 @@ function dispatchJob(job, opts) {
     }, null, 2), 'utf-8');
 
     store.appendAgentEvent(job.job_id, { type: 'dispatched_to_queue', queue_file: queueFile });
-
-    // Write dispatch artifact
-    reporter.writeMissionArtifact(job.mission_id || 'unknown', 'dispatch.json', JSON.stringify({
-      job_id: job.job_id,
-      agent_type: job.agent_type,
-      action: job.action,
-      queue_file: queueFile,
-      timestamp: new Date().toISOString()
-    }, null, 2));
 
     return { success: true, job: result.job, queue_file: queueFile };
   } catch (e) {
@@ -114,17 +104,6 @@ function processCallback(jobId, body) {
     result: body.result || {},
     timestamp: new Date().toISOString()
   });
-
-  // Write result artifact
-  try {
-    reporter.writeMissionArtifact(job.mission_id || 'unknown', 'agent-bus-result.json', JSON.stringify({
-      job_id: jobId,
-      agent_type: job.agent_type,
-      status: newStatus,
-      result: body.result || {},
-      timestamp: new Date().toISOString()
-    }, null, 2));
-  } catch (_) {}
 
   return { success: true, job: result.job };
 }
