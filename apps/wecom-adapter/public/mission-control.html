@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v1.2</title>
+<title>AI Mission Control Dashboard v1.4</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -504,7 +504,7 @@ body {
 </head>
 <body>
 <div class="header">
-  <h1>AI Mission Control Dashboard v1.2</h1>
+  <h1>AI Mission Control Dashboard v1.4</h1>
   <div class="stats" id="stats"></div>
 </div>
 <div class="container">
@@ -770,6 +770,21 @@ body {
         <div class="icon">&#x1F68C;</div>
         <div>Agent Bus Ready</div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- P12.0 Domain Runtime Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header"><span>&#x1F310; Domain Runtime Panel</span><button class="refresh-btn" onclick="loadDomainMissions()">Refresh</button></div>
+    <div class="panel-body" id="domain-body">
+      <div class="cap-check-form">
+        <select id="domain-select" style="width:120px;"><option value="commerce">Commerce</option><option value="marketing">Marketing</option><option value="customer">Customer</option><option value="devops">DevOps</option><option value="trading">Trading</option></select>
+        <button onclick="createDomainMission()">Create</button>
+        <button onclick="loadDomainMissions()">Load</button>
+      </div>
+      <div id="domain-result" class="empty-state"><div class="icon">&#x1F310;</div><div>Domain Runtime Ready</div></div>
     </div>
   </div>
 </div>
@@ -2473,6 +2488,27 @@ function createAgentJob() {
         ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Job: ' + escapeHtml(d.job.job_id) + ' (' + d.job.status + ')</div></div>'
         : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(d.error || 'Failed') + '</div></div>';
     });
+}
+
+// ─── P12.0 Domain Runtime ────────────────────────────────────
+
+function createDomainMission() {
+  var r = document.getElementById('domain-result');
+  var dom = document.getElementById('domain-select').value;
+  r.innerHTML = '<div class="loading">Creating ' + dom + ' mission...</div>';
+  fetch('/domain/' + dom + '/missions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: dom + ' task' }) })
+    .then(function(resp) { return resp.json(); })
+    .then(function(d) { r.innerHTML = d.success ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Mission: ' + escapeHtml(d.mission.mission_id) + ' (' + d.mission.domain + ')</div></div>' : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(d.error||'Failed') + '</div></div>'; });
+}
+
+function loadDomainMissions() {
+  var r = document.getElementById('domain-result');
+  r.innerHTML = '<div class="loading">Loading...</div>';
+  fetch('/domain/list').then(function(resp){return resp.json();}).then(function(data) {
+    var h='<table style="width:100%;font-size:12px;"><tr style="border-bottom:1px solid #30363d;color:#8b949e;"><th>Domain</th><th>Agents</th></tr>';
+    data.domains.forEach(function(d){h+='<tr><td>'+escapeHtml(d.name)+'</td><td>'+(d.agents||[]).join(',')+'</td></tr>';});
+    h+='</table>';r.innerHTML=h;
+  });
 }
 </script>
 </body>
