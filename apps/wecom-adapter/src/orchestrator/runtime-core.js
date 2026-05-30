@@ -1,6 +1,6 @@
 /**
  * runtime-core.js
- * AI Orchestrator Runtime Core v0.4
+ * AI Orchestrator Runtime Core v0.6.1
  *
  * 整合：
  *   - task-queue    任务队列
@@ -34,7 +34,7 @@ const { generateRollbackPlan } = require('./rollback-planner');
 const { reviewTask: reviewTaskPipeline, formatReviewForWecom } = require('./review-pipeline');
 const { decompose, buildPlan, formatPlanForWecom } = require('./orchestrator-core');
 
-const VERSION = '0.4';
+const VERSION = '0.6.1';
 
 /**
  * 创建 Runtime 任务
@@ -188,10 +188,38 @@ function receiveArtifact(taskId, artifacts = {}) {
 
 /**
  * 审查任务: artifact_received → review_pending
+ * v0.6.1: 幂等审查 — 已在 review_pending 时跳过状态机，直接重跑审查
  */
 function reviewTask(taskId) {
   const task = getTask(taskId);
   if (!task) throw new Error(`Task not found: ${taskId}`);
+
+  // ─── v0.6.1 幂等审查 ──────────────────────────────────
+  // 已处于 review_pending 状态时，跳过状态转换校验，
+  // 直接重新运行审查流水线，重新生成 review.md。
+  if (task.status === 'review_pending') {
+    const reviewResult = reviewTaskPipeline(task);
+
+    // 重新保存审查结果
+    saveArtifact(taskId, 'review', formatReviewForWecom(reviewResult));
+
+    recordAudit({
+      taskId,
+      action: 're-review',
+      fromStatus: 'review_pending',
+      toStatus: 'review_pending',
+      actor: 'system',
+      summary: `Re-review completed: risk=${reviewResult.overallRisk}, recommendation=${reviewResult.recommendation}`,
+      rollbackHint: null,
+    });
+
+    return {
+      task: getTask(taskId),
+      review: reviewResult,
+      _note: 'idempotent re-review (v0.6.1)',
+    };
+  }
+  // ─── 原有逻辑: artifact_received → review_pending ──────
 
   const result = validateTransition(task.status, 'review_pending');
   if (!result.valid) {
