@@ -46,6 +46,8 @@ const REGISTRY = {
   '/视频进度': { file: '../commands/video-mission-command', aliases: ['/视频状态', '/内容进度'] },
   '/视频复盘': { file: '../commands/video-mission-command', aliases: ['/内容复盘', '/短视频复盘'] },
   '/同步素材': { file: '../commands/asset-sync-command', aliases: ['/更新素材', '/拉取素材', '/素材同步'] },
+  '/活动筛选': { file: '../commands/cost-activity-command', aliases: ['/活动报名建议', '/算活动'] },
+  '/成本核算': { file: '../commands/cost-activity-command', aliases: ['/保本价', '/商品成本'] },
 };
 
 // 缓存已加载的 handler（懒加载）
