@@ -7,6 +7,7 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test:dashboard": "node src/skills/dashboard/test-dashboard.cjs",
+    "test:company-init": "node src/skills/dashboard/test-company-init.cjs",
     "test:skills:index": "node src/skills/test-skills-index.js",
     "test:agents": "node src/agents/test-agent.js",
     "test:ops-summary": "node src/commands/test-ops-summary.js",

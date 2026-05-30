@@ -41,6 +41,7 @@ const REGISTRY = {
   '/总控':   { file: '../commands/dashboard', aliases: ['/ceo', '/dashboard', '/总控台'] },
   '/董事会':   { file: '../commands/dashboard', aliases: ['/board', '/executive'] },
   '/运营驾驶舱': { file: '../commands/dashboard', aliases: ['/ops-dashboard', '/运营大屏'] },
+  '/初始化':   { file: '../commands/company-init-command', aliases: ['/init', '/初始化配置'] },
 };
 
 // 缓存已加载的 handler（懒加载）
