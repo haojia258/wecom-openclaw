@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Mission Control Dashboard v1.3</title>
+<title>AI Mission Control Dashboard v1.4</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -796,6 +796,17 @@ body {
         <div class="icon">&#x1F3AF;</div>
         <div>Multi-Agent Runtime Ready</div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- P12.0 Domain Runtime Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header"><span>&#x1F310; Domain Runtime Panel</span><button class="refresh-btn" onclick="loadDomainMissions()">Refresh</button></div>
+    <div class="panel-body" id="domain-body">
+      <div class="cap-check-form"><select id="domain-select" style="width:120px;"><option value="commerce">Commerce</option><option value="marketing">Marketing</option><option value="customer">Customer</option><option value="devops">DevOps</option><option value="trading">Trading</option></select><button onclick="createDomainMission()">Create</button></div>
+      <div id="domain-result" class="empty-state"><div class="icon">&#x1F310;</div><div>Domain Runtime Ready</div></div>
     </div>
   </div>
 </div>

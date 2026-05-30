@@ -21,6 +21,7 @@ const wecomMissionCenter = require('./wecom/wecom-mission-center');
 const workbuddyAdapter = require('./execution/workbuddy-adapter');
 const agentBusRoutes = require('./agent-bus/agent-bus-routes');
 const multiAgentRoutes = require('./multi-agent/multi-agent-routes');
+const domainRoutes = require('./domain/domain-routes');
 const vault = require('./lib/vault-client');
 
 const app = express();
@@ -273,6 +274,10 @@ agentBusRoutes.registerAgentBusRoutes(app);
 // ─── P11.4 Multi-Agent Runtime ──────────────────
 app.use('/multi-agent', express.json({ limit: '16kb' }));
 multiAgentRoutes.registerMultiAgentRoutes(app);
+
+// ─── P12.0 Domain Runtime ──────────────────────────
+app.use('/domain', express.json({ limit: '16kb' }));
+domainRoutes.registerDomainRoutes(app);
 
 // 静态文件: Dashboard 页面
 app.use('/mission', express.static(require('path').resolve(__dirname, '../public'), {
