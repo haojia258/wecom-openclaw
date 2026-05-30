@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test:skills": "node src/skills/test-skills.js",
+    "test:dashboard": "node src/skills/dashboard/test-dashboard.cjs",
     "test:skills:index": "node src/skills/test-skills-index.js",
     "test:agents": "node src/agents/test-agent.js",
     "test:ops-summary": "node src/commands/test-ops-summary.js",

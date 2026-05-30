@@ -33,9 +33,11 @@ async function routeCommand(content, ctx) {
       }
     }
 
+    // 将 cmd 注入 ctx，让 handler 知道是哪个命令触发的
+    var handlerCtx = Object.assign({}, ctx || {}, { cmd: cmd });
     logger.route('matched=' + trimmed + (args ? ' args=' + args : ''));
     try {
-      const result = await handler(ctx, args);
+      const result = await handler(handlerCtx, args);
       if (!result || typeof result !== 'string') {
         logger.error('command returned non-string: ' + typeof result);
         return '⚠️ 命令执行失败：' + trimmed + '\nerror: 返回值不是文本';

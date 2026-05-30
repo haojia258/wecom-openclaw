@@ -2,7 +2,7 @@
 
 /**
  * command-center.js - 统一指令注册中心
- * v1.11 - 新增 /ai审计 命令（AI Audit Dashboard v1）
+ * v1.12 - 接入 Dashboard v3 四入口（/总控 /监控 /董事会 /运营驾驶舱）
  */
 
 // 指令注册表
@@ -32,13 +32,15 @@ const REGISTRY = {
   '/阻断项': { file: '../commands/task-blockers', aliases: ['/blockers', '/阻塞'] },
   '/风险告警': { file: '../commands/risk-alert', aliases: ['/alert', '/告警', '/风险扫描', '/risk-alert'] },
   '/补丁':   { file: '../commands/patch',  aliases: ['/patch', '/补丁管理'] },
-  '/监控':   { file: '../commands/monitor', aliases: ['/monitor', '/生产监控'] },
+  '/监控':   { file: '../commands/dashboard', aliases: ['/monitor', '/health', '/生产监控'] },
   '/ai任务': { file: '../commands/ai-task', aliases: ['/aitask', '/AI任务', '/ai-task'] },
   '/今日运营': { file: '../commands/today-ops', aliases: ['/todayops', '/运营日报', '/日报'] },
   '/ai审计':   { file: '../commands/ai-audit',  aliases: ['/aiaudit', '/AI审计', '/ai审计'] },
   '/ai灰度': { file: '../commands/ai-grayscale', aliases: ['/aigray'] },
   '/目标':   { file: '../commands/goal-command', aliases: ['/goal', '/计划', '/拆解'] },
-  '/总控':   { file: '../commands/commander-command', aliases: ['/commander', '/总控台'] },
+  '/总控':   { file: '../commands/dashboard', aliases: ['/ceo', '/dashboard', '/总控台'] },
+  '/董事会':   { file: '../commands/dashboard', aliases: ['/board', '/executive'] },
+  '/运营驾驶舱': { file: '../commands/dashboard', aliases: ['/ops-dashboard', '/运营大屏'] },
 };
 
 // 缓存已加载的 handler（懒加载）
