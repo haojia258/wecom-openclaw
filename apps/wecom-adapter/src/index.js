@@ -20,6 +20,8 @@ const commanderGateway = require('./commander/commander-gateway');
 const wecomMissionCenter = require('./wecom/wecom-mission-center');
 const workbuddyAdapter = require('./execution/workbuddy-adapter');
 const agentBusRoutes = require('./agent-bus/agent-bus-routes');
+const multiAgentRoutes = require('./multi-agent/multi-agent-routes');
+const domainRoutes = require('./domain/domain-routes');
 const eventBusRoutes = require('./event-bus/event-routes');
 const vault = require('./lib/vault-client');
 
@@ -269,6 +271,14 @@ workbuddyAdapter.registerWorkBuddyRoutes(app);
 // ─── P11.3 Agent Bus ────────────────────────────
 app.use('/agent-bus', express.json({ limit: '16kb' }));
 agentBusRoutes.registerAgentBusRoutes(app);
+
+// ─── P11.4 Multi-Agent Runtime ──────────────────
+app.use('/multi-agent', express.json({ limit: '16kb' }));
+multiAgentRoutes.registerMultiAgentRoutes(app);
+
+// ─── P12.0 Domain Runtime ──────────────────────────
+app.use('/domain', express.json({ limit: '16kb' }));
+domainRoutes.registerDomainRoutes(app);
 
 // ─── P13.0 Event Bus ──────────────────────────────
 app.use('/event-bus', express.json({ limit: '16kb' }));
