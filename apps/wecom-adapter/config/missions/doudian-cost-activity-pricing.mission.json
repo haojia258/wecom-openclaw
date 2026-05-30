@@ -1,0 +1,242 @@
+{
+  "version": "mission.doudian.activity.cost.pricing.v1",
+  "mission": {
+    "id": "mission_doudian_cost_activity_auto_pricing",
+    "name": "酸辣粉全成本核算与官方活动筛选",
+    "domain": "commerce_marketing_finance",
+    "owner_roles": ["CFO", "CMO"],
+    "review_mode": "REVIEW_ONLY",
+    "requires_human_approval": true,
+    "enabled": true
+  },
+  "triggers": {
+    "wecom_commands": [
+      {
+        "command": "/活动筛选",
+        "aliases": ["/活动利润", "/活动报名建议", "/算活动"],
+        "action": "run_activity_profit_screening"
+      },
+      {
+        "command": "/成本核算",
+        "aliases": ["/保本价", "/商品成本"],
+        "action": "run_full_cost_calculation"
+      },
+      {
+        "command": "/活动报名",
+        "aliases": ["/报名活动", "/参加活动"],
+        "action": "create_activity_approval_request"
+      }
+    ],
+    "scheduler": {
+      "enabled": true,
+      "timezone": "Asia/Shanghai",
+      "cron": "30 3 * * *",
+      "description": "每天03:30自动核算成本、筛选官方活动、生成报名建议"
+    }
+  },
+  "cost_model": {
+    "formula": "total_cost = purchase_cost + packaging_cost + shipping_cost + platform_commission + payment_fee + refund_loss + ads_allocation",
+    "break_even_price_formula": "break_even_price = total_cost / (1 - activity_discount_rate)",
+    "suggested_activity_price_formula": "suggested_price = total_cost / (1 - target_margin_rate)",
+    "target_margin_rate": 0.2,
+    "minimum_activity_margin_rate": 0.15,
+    "products": [
+      {
+        "sku": "suanlafen_6_buckets",
+        "name": "酸辣粉6桶装",
+        "role": "traffic_sku",
+        "bucket_count": 6,
+        "purchase_cost_per_bucket": 2.5,
+        "shipping_cost": 6,
+        "packaging_cost": 1.2,
+        "current_price": 33
+      },
+      {
+        "sku": "suanlafen_12_buckets",
+        "name": "酸辣粉12桶装",
+        "role": "main_profit_sku",
+        "bucket_count": 12,
+        "purchase_cost_per_bucket": 2.5,
+        "shipping_cost": 12,
+        "packaging_cost": 2.4
+      },
+      {
+        "sku": "suanlafen_18_buckets",
+        "name": "酸辣粉18桶装",
+        "role": "gmv_sku",
+        "bucket_count": 18,
+        "purchase_cost_per_bucket": 2.5,
+        "shipping_cost": 18,
+        "packaging_cost": 3.6
+      }
+    ],
+    "default_rates": {
+      "platform_commission_rate": 0.04,
+      "payment_fee_rate": 0.006,
+      "refund_loss_rate": 0.03
+    },
+    "ads_allocation": {
+      "method": "daily_ads_spend / daily_paid_orders",
+      "fallback": 0
+    }
+  },
+  "activity_screening_rules": {
+    "only_profitable": true,
+    "must_satisfy": [
+      "activity_price >= break_even_price",
+      "activity_margin_rate >= 0.15",
+      "inventory >= 5",
+      "shop_experience_score_passed == true",
+      "product_rating_passed == true"
+    ],
+    "skip_rules": [
+      "negative_margin",
+      "price_below_break_even",
+      "inventory_too_low",
+      "not_eligible_product",
+      "clearance_required_but_clearance_mode_disabled"
+    ],
+    "clearance_mode": {
+      "enabled": false,
+      "requires_ceo_approval": true
+    }
+  },
+  "approval_rules": {
+    "auto_approve": [
+      "cost_calculation",
+      "activity_screening",
+      "profit_estimation",
+      "draft_activity_application",
+      "generate_price_recommendation"
+    ],
+    "ceo_approval_required": [
+      "real_activity_signup",
+      "real_price_change",
+      "activity_margin_rate<0.2",
+      "discount_rate>0.15",
+      "expected_budget_spend>200",
+      "clearance_mode",
+      "inventory_lock",
+      "coupon_create",
+      "promotion_create"
+    ],
+    "forbidden_without_approval": [
+      "change_price",
+      "change_inventory",
+      "join_activity",
+      "create_coupon",
+      "launch_promotion",
+      "delete_product",
+      "modify_env",
+      "modify_nginx",
+      "modify_vault",
+      "pm2_restart",
+      "deploy"
+    ]
+  },
+  "dag": {
+    "graph_id": "dag_doudian_cost_activity_pricing",
+    "nodes": [
+      {
+        "id": "load_product_costs",
+        "name": "读取商品成本配置",
+        "agent": "cfo-agent",
+        "type": "read"
+      },
+      {
+        "id": "sync_order_settlement_ads",
+        "name": "同步订单/结算/广告数据",
+        "agent": "commerce-agent",
+        "type": "observe",
+        "depends_on": ["load_product_costs"],
+        "mode": "safe_read_only"
+      },
+      {
+        "id": "calculate_full_cost",
+        "name": "计算单品全成本与保本价",
+        "agent": "cfo-agent",
+        "type": "calculation",
+        "depends_on": ["sync_order_settlement_ads"]
+      },
+      {
+        "id": "fetch_official_activities",
+        "name": "拉取官方活动列表",
+        "agent": "cmo-agent",
+        "type": "observe",
+        "depends_on": ["calculate_full_cost"],
+        "mode": "safe_read_only"
+      },
+      {
+        "id": "screen_profitable_activities",
+        "name": "筛选可赚钱活动",
+        "agent": "strategy-agent",
+        "type": "analysis",
+        "depends_on": ["fetch_official_activities"]
+      },
+      {
+        "id": "generate_price_plan",
+        "name": "生成建议报名价与毛利预测",
+        "agent": "cfo-agent",
+        "type": "calculation",
+        "depends_on": ["screen_profitable_activities"]
+      },
+      {
+        "id": "create_approval_request",
+        "name": "生成报名审批单",
+        "agent": "approval-center",
+        "type": "approval",
+        "depends_on": ["generate_price_plan"],
+        "required_for": ["real_activity_signup", "real_price_change"]
+      },
+      {
+        "id": "write_audit_snapshot",
+        "name": "保存成本快照与审批留痕",
+        "agent": "audit-agent",
+        "type": "write",
+        "depends_on": ["create_approval_request"]
+      },
+      {
+        "id": "push_wecom_report",
+        "name": "推送企业微信日报",
+        "agent": "wecom-agent",
+        "type": "notify",
+        "depends_on": ["write_audit_snapshot"]
+      }
+    ]
+  },
+  "wecom_outputs": {
+    "report_title": "📊 酸辣粉活动利润筛选日报",
+    "fields": [
+      "商品",
+      "全成本",
+      "保本价",
+      "建议活动价",
+      "预计毛利/单",
+      "可报名活动",
+      "风险等级",
+      "是否需要审批"
+    ],
+    "commands_to_check": [
+      "/活动筛选",
+      "/成本核算",
+      "/活动报名",
+      "/董事会",
+      "/审计"
+    ]
+  },
+  "audit": {
+    "enabled": true,
+    "audit_command": "/审计",
+    "events": [
+      "cost_snapshot_created",
+      "break_even_price_calculated",
+      "activity_list_fetched",
+      "activity_screened",
+      "price_plan_generated",
+      "approval_requested",
+      "activity_signup_blocked_without_approval",
+      "activity_signup_approved",
+      "activity_signup_rejected"
+    ]
+  }
+}
