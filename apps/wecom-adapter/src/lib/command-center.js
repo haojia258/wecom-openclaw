@@ -66,6 +66,7 @@ const REGISTRY = {
   '/目标':     { file: '../commands/goal-command', aliases: ['/goals', '/目标管理'] },
   '/目标设置': { file: '../commands/goal-command', aliases: ['/设置目标'] },
   '/目标状态': { file: '../commands/goal-command', aliases: ['/目标进度'] },
+  '/执行计划': { file: '../commands/execution-command', aliases: ['/任务计划', '/plan'] },
 };
 
 // 缓存已加载的 handler（懒加载）
