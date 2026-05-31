@@ -58,6 +58,9 @@ const REGISTRY = {
   '/预算建议': { file: '../commands/budget-command', aliases: ['/预算方案'] },
   '/策略':     { file: '../commands/strategy-command', aliases: ['/strategy', '/经营策略'] },
   '/经营规划': { file: '../commands/strategy-command', aliases: ['/7天计划', '/运营计划'] },
+  '/记忆':     { file: '../commands/memory-command', aliases: ['/memory', '/记忆库'] },
+  '/经营历史': { file: '../commands/memory-command', aliases: ['/历史数据', '/运营历史'] },
+  '/记忆存档': { file: '../commands/memory-command', aliases: ['/存档', '/保存快照'] },
 };
 
 // 缓存已加载的 handler（懒加载）
