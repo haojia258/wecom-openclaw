@@ -17,18 +17,19 @@
  */
 
 const VALID_TRANSITIONS = {
-  queued:           ['planned'],
-  planned:          ['dispatched'],
-  dispatched:       ['artifact_received'],
-  artifact_received: ['review_pending'],
-  review_pending:   ['approved', 'rejected'],
+  queued:           ['planned', 'cancelled'],
+  planned:          ['dispatched', 'cancelled'],
+  dispatched:       ['artifact_received', 'cancelled'],
+  artifact_received: ['review_pending', 'cancelled'],
+  review_pending:   ['approved', 'rejected', 'cancelled'],
   approved:         ['closed'],
   rejected:         ['rollback_required'],
   rollback_required: ['closed'],
+  cancelled:        [],  // 终态，不可再流转
   // closed 是终态，无出边
 };
 
-const TERMINAL_STATUSES = ['closed'];
+const TERMINAL_STATUSES = ['closed', 'cancelled'];
 
 /**
  * 检查状态跳转是否合法
