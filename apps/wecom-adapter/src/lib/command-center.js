@@ -69,6 +69,8 @@ const REGISTRY = {
   '/执行计划': { file: '../commands/execution-command', aliases: ['/任务计划', '/plan'] },
   '/董事会会议': { file: '../commands/board-meeting-command', aliases: ['/mab', '/multi-agent-board'] },
   '/自治公司':   { file: '../commands/autonomous-command', aliases: ['/autonomous', '/闭环'] },
+'/开源雷达': { file: '../commands/oss-radar', aliases: ['/oss-radar', '/oss', '/开源'] },
+'/worker分发': { file: '../commands/worker-dispatch', aliases: ['/dispatch', '/多节点调度', '/workers'] },
   '/版本':       { file: '../commands/version-command', aliases: ['/version', '/ver'] },
   '/状态':       { file: '../commands/version-command', aliases: ['/status', '/health'] },
 };

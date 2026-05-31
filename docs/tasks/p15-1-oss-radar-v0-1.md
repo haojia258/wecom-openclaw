@@ -88,14 +88,24 @@
 - ❌ 禁止执行第三方代码
 - ❌ 禁止修改 .env
 - ❌ 禁止修改 nginx
-- ❌ 禁止自动 deploy
-- ❌ 禁止 merge
+- ❌ 禁止自动发布到生产环境
+- ❌ 禁止自动上线变更
+- ❌ 禁止自动 merge
 - ❌ 禁止 apply patch
 
-## 保持
+## 要求
 
 - ✅ `REVIEW_ONLY=true`
 - ✅ `requiresHumanApproval=true`
+
+所有变更仅允许：
+- 代码实现
+- 测试
+- 审查
+- Artifact 输出
+- Audit 记录
+
+任何生产发布动作必须经过人工批准。
 
 ## 交付物
 
