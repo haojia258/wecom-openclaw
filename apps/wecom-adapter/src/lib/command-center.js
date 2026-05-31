@@ -39,7 +39,7 @@ const REGISTRY = {
   '/ai灰度': { file: '../commands/ai-grayscale', aliases: ['/aigray'] },
   '/目标':   { file: '../commands/goal-command', aliases: ['/goal', '/计划', '/拆解'] },
   '/总控':   { file: '../commands/dashboard', aliases: ['/ceo', '/dashboard', '/总控台'] },
-  '/董事会':   { file: '../commands/dashboard', aliases: ['/board', '/executive'] },
+  '/董事会':   { file: '../commands/board-command', aliases: ['/board', '/executive'] },
   '/运营驾驶舱': { file: '../commands/dashboard', aliases: ['/ops-dashboard', '/运营大屏'] },
   '/初始化':   { file: '../commands/company-init-command', aliases: ['/init', '/初始化配置'] },
   '/视频任务': { file: '../commands/video-mission-command', aliases: ['/酸辣粉视频', '/每日视频', '/生成视频'] },
