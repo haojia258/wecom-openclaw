@@ -69,6 +69,8 @@ const REGISTRY = {
   '/执行计划': { file: '../commands/execution-command', aliases: ['/任务计划', '/plan'] },
   '/董事会会议': { file: '../commands/board-meeting-command', aliases: ['/mab', '/multi-agent-board'] },
   '/自治公司':   { file: '../commands/autonomous-command', aliases: ['/autonomous', '/闭环'] },
+  '/版本':       { file: '../commands/version-command', aliases: ['/version', '/ver'] },
+  '/状态':       { file: '../commands/version-command', aliases: ['/status', '/health'] },
 };
 
 // 缓存已加载的 handler（懒加载）
