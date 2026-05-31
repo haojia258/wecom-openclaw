@@ -50,6 +50,7 @@ const VALID_STATUSES = [
   'queued',
   'planned',
   'dispatched',
+  'dispatch_failed',
   'artifact_received',
   'review_pending',
   'approved',
