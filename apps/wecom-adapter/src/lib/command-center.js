@@ -61,6 +61,8 @@ const REGISTRY = {
   '/记忆':     { file: '../commands/memory-command', aliases: ['/memory', '/记忆库'] },
   '/经营历史': { file: '../commands/memory-command', aliases: ['/历史数据', '/运营历史'] },
   '/记忆存档': { file: '../commands/memory-command', aliases: ['/存档', '/保存快照'] },
+  '/决策':     { file: '../commands/decision-command', aliases: ['/decide', '/决策建议'] },
+  '/决策分析': { file: '../commands/decision-command', aliases: ['/决策详情', '/decision-analysis'] },
 };
 
 // 缓存已加载的 handler（懒加载）
