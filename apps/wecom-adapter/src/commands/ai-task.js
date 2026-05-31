@@ -1,11 +1,11 @@
 'use strict';
 
 /**
- * /ai任务 - AI Orchestrator Runtime 任务管理 v0.4
+ * /ai任务 - OpenClaw Enterprise OS Beta 1.0 任务管理
  *
  * 子命令:
  *   /ai任务 创建 <自然语言描述>     创建新任务并入队
- *   /ai任务 派发 <taskId>            派发任务给 AI Worker
+ *   /ai任务 派发 <taskId>            派发任务给 AI Worker (WorkBuddy Runtime)
  *   /ai任务 状态 [taskId]            查看任务状态（不传 taskId 则显示列表摘要）
  *   /ai任务 列表 [N]                 列出最近 N 条任务（默认10）
  *   /ai任务 审查 <taskId>            接收产物并执行审查流水线
@@ -17,7 +17,7 @@
  *
  * 别名: /aitask, /AI任务, /ai-task
  *
- * v0.4 限制: 只生成 dispatch payload，不真实调用 AI API。
+ * Beta 1.0: WorkBuddy Runtime 生产可用。REVIEW_ONLY / Gate Protected。
  */
 
 const path = require('path');
@@ -47,7 +47,7 @@ try { doubaoWorker = require('../orchestrator/workers/doubao-worker'); } catch (
 const desc = 'AI任务管理: 创建/派发/审查/批准任务';
 
 const HELP_TEXT =
-  '🤖 AI Orchestrator Runtime v0.4\n' +
+  '🤖 OpenClaw Enterprise OS Beta 1.0\n' +
   '\n' +
   '子命令:\n' +
   '  /ai任务 创建 <描述>       创建新任务\n' +
@@ -63,7 +63,7 @@ const HELP_TEXT =
   'AI Workers: Codex(gpt-4o) | WorkBuddy(claude) | DeepSeek | 豆包\n' +
   '状态流: 排队→规划→派发→接收产物→审查→批准/拒绝→关闭\n' +
   '\n' +
-  '⚠️  v0.4 仅生成 dispatch payload，不真实调用 AI API。';
+  '⚠️  Beta 1.0 — REVIEW_ONLY / Human Approval Required / Runtime Gate Protected';
 
 /**
  * @param {object} ctx     - 上下文 { FromUserName, mock? }
