@@ -63,6 +63,9 @@ const REGISTRY = {
   '/记忆存档': { file: '../commands/memory-command', aliases: ['/存档', '/保存快照'] },
   '/决策':     { file: '../commands/decision-command', aliases: ['/decide', '/决策建议'] },
   '/决策分析': { file: '../commands/decision-command', aliases: ['/决策详情', '/decision-analysis'] },
+  '/目标':     { file: '../commands/goal-command', aliases: ['/goals', '/目标管理'] },
+  '/目标设置': { file: '../commands/goal-command', aliases: ['/设置目标'] },
+  '/目标状态': { file: '../commands/goal-command', aliases: ['/目标进度'] },
 };
 
 // 缓存已加载的 handler（懒加载）
