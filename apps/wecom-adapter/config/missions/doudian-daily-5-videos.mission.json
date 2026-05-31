@@ -148,11 +148,19 @@
         }
       },
       {
+        "id": "scan_product_assets",
+        "name": "扫描素材库并生成 Manifest",
+        "agent": "product-asset-skill",
+        "type": "scan",
+        "depends_on": ["fetch_google_drive_assets"],
+        "outputs": ["product_asset_manifest", "asset_gap_report"]
+      },
+      {
         "id": "generate_5_scripts",
         "name": "生成5条差异化短视频脚本",
         "agent": "doubao",
         "type": "content_generation",
-        "depends_on": ["load_knowledge", "fetch_google_drive_assets"],
+        "depends_on": ["load_knowledge", "fetch_google_drive_assets", "scan_product_assets"],
         "outputs": ["video_scripts"],
         "count": 5
       },
