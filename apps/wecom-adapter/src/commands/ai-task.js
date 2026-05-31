@@ -26,6 +26,11 @@ const fs = require('fs');
 const runtimeCore = require('../orchestrator/runtime-core');
 const { listTasks, listAllTasks } = require('../orchestrator/task-queue');
 const { readArtifact, listArtifacts, saveArtifact, getArtifactDir } = require('../orchestrator/artifact-store');
+// P15.1 Runtime readers
+var taskProgress = require('../runtime/task-progress.js');
+var taskLogReader = require('../runtime/task-log-reader.js');
+var taskArtifactReader = require('../runtime/task-artifact-reader.js');
+var taskZombieDetector = require('../runtime/task-zombie-detector.js');
 const { listAssignees } = require('../orchestrator/worker-dispatcher');
 
 // 延迟加载 openai-worker (Phase2-A)
@@ -145,9 +150,6 @@ async function execute(ctx, args) {
     case 'cleanup':
       return handleMaintenance(subArgs);
 
-    case '僵尸':
-    case 'zombie':
-      return handleMaintenance('僵尸');
 
     case '维护':
     case 'maintenance':
@@ -160,6 +162,26 @@ async function execute(ctx, args) {
 
     case '帮助':
     case 'help':
+
+    case '进度':
+    case 'progress':
+    case 'p':
+      return handleProgress(subArgs);
+
+    case '日志':
+    case 'log':
+      return handleTaskLog(subArgs);
+
+    case '产物列表':
+    case 'artifacts':
+    case 'af':
+      return handleArtifactList(subArgs);
+
+    case '僵尸':
+    case 'zombie':
+    case 'z':
+      return handleZombie(subArgs);
+
     case 'h':
     case '?':
       return HELP_TEXT;
@@ -183,6 +205,15 @@ function handleCreate(userRequest) {
     return '❌ 请提供任务描述\n\n示例:\n  /ai任务 创建 生成运营分析报告\n  /ai任务 创建 修复投流ROI计算bug';
   }
 
+
+  // P15 Runtime Maintenance: redirect artifact queries to /ai任务 产物
+  var _tidMatch = (userRequest || '').match(/task-[a-z0-9]+-[a-z0-9]+/);
+  if (_tidMatch && /产物|artifact|output|结果/.test(userRequest || '')) {
+    return '⚠️  检测到你在查询任务产物，不需要创建新任务。' +
+      '\n\n请直接使用：\n\n  /ai任务 产物 ' + _tidMatch[0] +
+      '\n\n当前任务 ID: ' + _tidMatch[0] +
+      '\n提示: 产物查询不需要创建新任务';
+  }
   try {
     const result = runtimeCore.createRuntimeTask({ userRequest: userRequest.trim() });
     const task = result.task;
@@ -851,3 +882,44 @@ function handleClose(taskId) {
 }
 
 module.exports = { execute, desc };
+
+// ────────────────────────────────────────────
+// P15.1 任务进度
+// ────────────────────────────────────────────
+function handleProgress(taskId) {
+  if (!taskId) return '❌ 请提供 taskId\n\n示例: /ai任务 进度 task-xxxx-xxxx';
+  try {
+    var prog = taskProgress.getProgress(taskId);
+    if (!prog) return '❌ 任务不存在: ' + taskId;
+    return taskProgress.formatProgress(prog);
+  } catch (e) { return '❌ 查询进度失败: ' + e.message; }
+}
+
+// ────────────────────────────────────────────
+// P15.1 任务日志
+// ────────────────────────────────────────────
+function handleTaskLog(taskId) {
+  if (!taskId) return '❌ 请提供 taskId\n\n示例: /ai任务 日志 task-xxxx-xxxx';
+  try {
+    return taskLogReader.formatLog(taskId, 100);
+  } catch (e) { return '❌ 查询日志失败: ' + e.message; }
+}
+
+// ────────────────────────────────────────────
+// P15.1 产物列表
+// ────────────────────────────────────────────
+function handleArtifactList(taskId) {
+  if (!taskId) return '❌ 请提供 taskId\n\n示例: /ai任务 产物列表 task-xxxx-xxxx';
+  try {
+    return taskArtifactReader.formatArtifactList(taskId);
+  } catch (e) { return '❌ 查询产物失败: ' + e.message; }
+}
+
+// ────────────────────────────────────────────
+// P15.1 僵尸检测
+// ────────────────────────────────────────────
+function handleZombie(_) {
+  try {
+    return taskZombieDetector.formatZombies();
+  } catch (e) { return '❌ 僵尸检测失败: ' + e.message; }
+}
