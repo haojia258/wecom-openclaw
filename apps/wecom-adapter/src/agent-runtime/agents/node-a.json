@@ -1,0 +1,34 @@
+{
+  "agentId": "node-a",
+  "name": "Node A Worker",
+  "role": "worker_node",
+  "provider": "node-a",
+  "model": "node-a-runtime",
+  "capabilities": [
+    "restricted_execution",
+    "artifact_generation",
+    "audit",
+    "smoke_test",
+    "file_inspection"
+  ],
+  "allowedTaskTypes": [
+    "smoke_test",
+    "artifact",
+    "audit",
+    "readonly_check"
+  ],
+  "forbiddenActions": [
+    "deploy",
+    "merge",
+    "pm2_reload",
+    "modify_env",
+    "modify_nginx",
+    "destructive_command",
+    "production_write"
+  ],
+  "requiresHumanApproval": true,
+  "reviewOnly": true,
+  "maxConcurrentTasks": 1,
+  "priority": 5,
+  "enabled": true
+}

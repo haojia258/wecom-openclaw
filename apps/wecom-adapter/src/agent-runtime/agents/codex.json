@@ -1,0 +1,32 @@
+{
+  "agentId": "codex",
+  "name": "Codex AI Developer",
+  "role": "development",
+  "provider": "openai",
+  "model": "gpt-4o",
+  "capabilities": [
+    "code_generation",
+    "patch_generation",
+    "test_generation",
+    "prompt_generation"
+  ],
+  "allowedTaskTypes": [
+    "development",
+    "patch",
+    "test",
+    "prompt"
+  ],
+  "forbiddenActions": [
+    "deploy",
+    "merge",
+    "pm2_reload",
+    "modify_env",
+    "modify_nginx",
+    "production_write"
+  ],
+  "requiresHumanApproval": true,
+  "reviewOnly": true,
+  "maxConcurrentTasks": 1,
+  "priority": 10,
+  "enabled": true
+}
