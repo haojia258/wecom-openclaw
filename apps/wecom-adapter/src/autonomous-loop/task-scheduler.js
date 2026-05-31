@@ -91,7 +91,7 @@ function assignAgent(tpl) {
   if (agentRegistry) {
     try {
       var best = agentRegistry.selectBestAgent({ type: tpl.type, title: tpl.title });
-      if (best) return { agentId: best.agentId, method: 'registry' };
+      if (best) return { agentId: typeof best === "string" ? best : best.agentId, method: "registry" };
     } catch (e) {}
   }
 
