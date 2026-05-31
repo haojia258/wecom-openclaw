@@ -70,7 +70,7 @@ async function executeWorkBuddyWorker(task) {
       provider: WORKBUDDY_PROVIDER,
       model: result.model || WORKBUDDY_MODEL,
       latencyMs: result.latency || (Date.now() - t0),
-      outputText: result.content || '',
+      outputText: result.text || result.content || '',
       usage: result.usage || null,
       safetyNote: 'REVIEW_ONLY__NO_AUTO_APPLY',
       error: null,
