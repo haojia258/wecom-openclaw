@@ -48,7 +48,8 @@
     "test:integrated-runtime-validation": "node tests/test-integrated-runtime-validation.cjs",
     "test:autonomous-execution-loop": "node tests/test-autonomous-execution-loop.cjs",
     "test:marketing-decision-engine": "node src/marketing/test-marketing-decision-engine.cjs",
-    "test:budget-engine": "node src/marketing/test-budget-engine.cjs"
+    "test:budget-engine": "node src/marketing/test-budget-engine.cjs",
+    "test:marketing-command": "node src/marketing/test-marketing-command.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",
