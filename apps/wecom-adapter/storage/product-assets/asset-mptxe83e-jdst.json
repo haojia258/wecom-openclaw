@@ -1,0 +1,26 @@
+{
+  "id": "asset-mptxe83e-jdst",
+  "name": "Strategy Doc v2",
+  "type": "json",
+  "category": "strategy_doc",
+  "tags": [
+    "strategy",
+    "v2"
+  ],
+  "taskType": "strategy",
+  "data": {
+    "goals": [
+      "roi+",
+      "ctr+"
+    ]
+  },
+  "metadata": {
+    "size": 0,
+    "format": "",
+    "createdAt": "2026-05-31T15:19:38.618Z",
+    "updatedAt": "2026-05-31T15:19:38.618Z",
+    "version": 1
+  },
+  "reviewOnly": true,
+  "requiresHumanApproval": true
+}

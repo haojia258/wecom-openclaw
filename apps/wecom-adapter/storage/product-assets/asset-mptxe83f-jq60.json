@@ -1,0 +1,21 @@
+{
+  "id": "asset-mptxe83f-jq60",
+  "name": "ROI Report Q1 (restored)",
+  "type": "json",
+  "category": "roi_report",
+  "tags": [
+    "roi",
+    "q1"
+  ],
+  "taskType": "roi",
+  "data": {},
+  "metadata": {
+    "size": 0,
+    "format": "",
+    "createdAt": "2026-05-31T15:19:38.619Z",
+    "updatedAt": "2026-05-31T15:19:38.619Z",
+    "version": 1
+  },
+  "reviewOnly": true,
+  "requiresHumanApproval": true
+}
