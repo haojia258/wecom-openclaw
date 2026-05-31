@@ -156,7 +156,7 @@ function executeDoubaoWorker(task) {
     var rateLimit = getRateLimit();
     if (rateLimit && typeof rateLimit.check === 'function') {
       var rateResult = rateLimit.check('doubao');
-      if (rateResult && rateResult.blocked) {
+      if (rateResult && !rateResult.allowed) {
         resolve({
           ok: false, taskId: task.taskId, workerId: 'doubao-runtime', provider: 'doubao',
           error: 'Doubao Worker rate limited', safetyNote: 'REVIEW_ONLY__NO_AUTO_APPLY',
@@ -184,6 +184,8 @@ function executeDoubaoWorker(task) {
         resultStatus: 'success',
       });
 
+      if (rateLimit && typeof rateLimit.release === 'function') rateLimit.release();
+
       resolve({
         ok: true,
         taskId: task.taskId,
@@ -204,6 +206,8 @@ function executeDoubaoWorker(task) {
         latencyMs: latency,
         errorMessage: err.message,
       });
+
+      if (rateLimit && typeof rateLimit.release === 'function') rateLimit.release();
 
       resolve({
         ok: false,

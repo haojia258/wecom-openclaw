@@ -120,7 +120,7 @@ function executeDeepSeekWorker(task) {
     var rateLimit = getRateLimit();
     if (rateLimit && typeof rateLimit.check === 'function') {
       var rateResult = rateLimit.check('deepseek');
-      if (rateResult && rateResult.blocked) {
+      if (rateResult && !rateResult.allowed) {
         resolve({
           taskId: task.taskId,
           assignee: 'deepseek',
@@ -162,6 +162,8 @@ function executeDeepSeekWorker(task) {
         });
       }
 
+      if (rateLimit && typeof rateLimit.release === 'function') rateLimit.release();
+
       resolve({
         taskId: task.taskId,
         assignee: 'deepseek',
@@ -187,6 +189,8 @@ function executeDeepSeekWorker(task) {
           ts: new Date().toISOString(),
         });
       }
+
+      if (rateLimit && typeof rateLimit.release === 'function') rateLimit.release();
 
       resolve({
         taskId: task.taskId,
