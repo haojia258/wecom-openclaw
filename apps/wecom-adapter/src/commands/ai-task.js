@@ -43,6 +43,10 @@ try { doubaoWorker = require('../orchestrator/workers/doubao-worker'); } catch (
 // 延迟加载 workbuddy-worker (P12.4)
 let workbuddyWorker = null;
 try { workbuddyWorker = require('../orchestrator/workers/workbuddy-worker'); } catch (e) { /* 可选依赖 */ }
+
+// 延迟加载 task-maintenance (P15.0)
+let taskMaintenance = null;
+try { taskMaintenance = require('../commands/ai-task-maintenance'); } catch (e) { /* 可选依赖 */ }
 try { doubaoWorker = require('../orchestrator/workers/doubao-worker'); } catch (e) { /* 可选依赖 */ }
 
 const desc = 'AI任务管理: 创建/派发/审查/批准任务';
@@ -61,6 +65,8 @@ const HELP_TEXT =
   '  /ai任务 回滚 <taskId>     规划回滚\n' +
   '  /ai任务 重试 <taskId>     重试失败任务\n' +
   '  /ai任务 取消 <taskId>     取消任务\n' +
+  '  /ai任务 清理              清理僵尸任务\n' +
+  '  /ai任务 僵尸              检测僵尸任务\n' +
   '  /ai任务 关闭 <taskId>     关闭任务\n' +
   '\n' +
   'AI Workers: Codex(gpt-4o) | WorkBuddy(claude) | DeepSeek | 豆包\n' +
@@ -134,6 +140,18 @@ async function execute(ctx, args) {
     case '重试':
     case 'retry':
       return handleRetry(subArgs);
+
+    case '清理':
+    case 'cleanup':
+      return handleMaintenance(subArgs);
+
+    case '僵尸':
+    case 'zombie':
+      return handleMaintenance('僵尸');
+
+    case '维护':
+    case 'maintenance':
+      return handleMaintenance('维护');
 
     case '关闭':
     case 'close':
@@ -791,6 +809,11 @@ function handleCancel(taskId) {
   } catch (e) {
     return '❌ 取消失败\n\n' + e.message;
   }
+}
+
+function handleMaintenance(args) {
+  if (!taskMaintenance) return '⚠️ 维护模块未加载';
+  return taskMaintenance.handleCleanup(args || '');
 }
 
 function handleRetry(taskId) {
