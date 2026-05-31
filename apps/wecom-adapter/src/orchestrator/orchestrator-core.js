@@ -87,7 +87,7 @@ function buildPlan(decomposition) {
     branch: decomposition.branch,
     tasks,
     validation,
-    summary: 'AI Orchestrator v0.4 自动规划',
+    summary: 'OpenClaw Enterprise OS Beta 1.0 — 自动规划',
     createdAt: new Date().toISOString(),
   };
 }
