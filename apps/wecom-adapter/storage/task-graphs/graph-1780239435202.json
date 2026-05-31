@@ -1,0 +1,21 @@
+{
+  "id": "graph-1780239435202",
+  "title": "P11 Graph 2",
+  "owner": "qa",
+  "goal": "Test QA workflow",
+  "tasks": {
+    "task-1780239435202": {
+      "title": "QA Task",
+      "role": "qa",
+      "reviewRequired": true,
+      "taskId": "task-1780239435202",
+      "status": "review",
+      "dependsOn": [],
+      "artifacts": [],
+      "createdAt": "2026-05-31T14:57:15.202Z",
+      "updatedAt": "2026-05-31T14:57:15.202Z"
+    }
+  },
+  "createdAt": "2026-05-31T14:57:15.202Z",
+  "updatedAt": "2026-05-31T14:57:15.202Z"
+}
