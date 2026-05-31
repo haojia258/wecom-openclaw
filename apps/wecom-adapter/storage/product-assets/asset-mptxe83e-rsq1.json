@@ -1,0 +1,24 @@
+{
+  "id": "asset-mptxe83e-rsq1",
+  "name": "Product Video Clip",
+  "type": "video",
+  "category": "video_clip",
+  "tags": [
+    "tutorial",
+    "product"
+  ],
+  "taskType": "video",
+  "data": {
+    "duration": 30,
+    "resolution": "1080p"
+  },
+  "metadata": {
+    "size": 0,
+    "format": "",
+    "createdAt": "2026-05-31T15:19:38.618Z",
+    "updatedAt": "2026-05-31T15:19:38.618Z",
+    "version": 1
+  },
+  "reviewOnly": true,
+  "requiresHumanApproval": true
+}

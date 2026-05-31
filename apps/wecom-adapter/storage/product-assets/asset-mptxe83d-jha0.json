@@ -1,0 +1,26 @@
+{
+  "id": "asset-mptxe83d-jha0",
+  "name": "ROI Report Q1 Updated",
+  "type": "json",
+  "category": "roi_report",
+  "tags": [
+    "roi",
+    "q1",
+    "updated"
+  ],
+  "taskType": "roi",
+  "data": {
+    "roas": 3.2,
+    "ctr": 1.8
+  },
+  "metadata": {
+    "size": 0,
+    "format": "",
+    "createdAt": "2026-05-31T15:19:38.617Z",
+    "updatedAt": "2026-05-31T15:19:38.619Z",
+    "version": 2
+  },
+  "reviewOnly": true,
+  "requiresHumanApproval": true,
+  "_archived": true
+}
