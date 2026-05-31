@@ -1,0 +1,20 @@
+{
+  "name": "patch-generation-template",
+  "description": "Patch 生成模板：根据需求和验收标准生成代码 Patch",
+  "version": "1.0",
+  "inputs": [
+    { "name": "userRequest", "type": "string", "required": true, "description": "用户需求描述" },
+    { "name": "acceptance", "type": "string", "required": false, "description": "验收标准" },
+    { "name": "branch", "type": "string", "required": false, "description": "目标分支" },
+    { "name": "forbiddenPaths", "type": "array", "required": false, "description": "禁止修改的路径" }
+  ],
+  "outputs": {
+    "taskId": "",
+    "patchFile": "",
+    "branch": "",
+    "scopeCheck": null,
+    "riskPreview": null,
+    "diffPreview": ""
+  },
+  "promptTemplate": "请根据以下需求生成代码 Patch：\n- 需求: {{userRequest}}\n- 验收标准: {{acceptance}}\n- 目标分支: {{branch}}\n- 禁止修改: {{forbiddenPaths}}\n\n要求：\n1. 先检查范围（禁止修改 nginx/.env/ecosystem.config.js/main 分支）\n2. 生成 diff\n3. 预览风险评分\n4. 输出 Patch 文件路径"
+}

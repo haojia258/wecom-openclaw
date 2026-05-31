@@ -2,12 +2,13 @@
 
 /**
  * logger.js - 统一日志系统
- * v1.0 - 零依赖，fs 写文件，自动 rotate 保留 7 天
+ * v1.1 - 集成 Vault sanitize，自动 mask 密钥
  */
 
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
+const vault = require('./vault-client');
 
 const LOG_DIR = config.LOG_DIR;
 const BASE_NAME = config.LOG_BASE;
@@ -30,15 +31,17 @@ function todayLogPath() {
   return path.join(LOG_DIR, BASE_NAME + '.' + dateStr() + '.log');
 }
 
-// 写一行
+// 写一行（自动 sanitize）
 function write(tag, msg) {
-  const line = '[' + new Date().toISOString().replace('T', ' ').slice(0, 19) + '] [' + tag + '] ' + msg + '\n';
+  // 对所有日志内容进行 sanitize，mask 密钥值
+  const safeMsg = vault.sanitize(String(msg));
+  const line = '[' + new Date().toISOString().replace('T', ' ').slice(0, 19) + '] [' + tag + '] ' + safeMsg + '\n';
   try {
     fs.appendFileSync(todayLogPath(), line, 'utf8');
   } catch (_) {}
   // 同时输出到 stdout (PM2 接管)
   const tagPad = (tag + '       ').slice(0, 7);
-  try { process.stdout.write('[' + tagPad + '] ' + msg + '\n'); } catch (_) {}
+  try { process.stdout.write('[' + tagPad + '] ' + safeMsg + '\n'); } catch (_) {}
 }
 
 // 清理超过 7 天的日志

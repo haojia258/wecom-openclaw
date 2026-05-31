@@ -2,10 +2,10 @@
 
 /**
  * index.js - wecom-adapter 入口
- * v1.0 - 基于 v5-api-reply，增加日志、超时保护、fallback、定时推送
+ * v1.1 - HashiCorp Vault 集成，密钥不再从 .env 明文读取
  */
 
-require('dotenv').config({ path: '/opt/wecom-openclaw/.env', override: true });
+require('dotenv').config({ path: '/opt/wecom-openclaw/.env', override: false });
 
 const express = require('express');
 const https = require('https');
@@ -13,6 +13,17 @@ const xml2js = require('xml2js');
 const crypto = require('crypto');
 const logger = require('./lib/logger');
 const pushScheduler = require('./lib/push-scheduler');
+const commandIngress = require('./runtime/command-ingress');
+const aiGateway = require('./gateway/ai-gateway');
+const missionRoutes = require('./mission/mission-routes');
+const commanderGateway = require('./commander/commander-gateway');
+const wecomMissionCenter = require('./wecom/wecom-mission-center');
+const workbuddyAdapter = require('./execution/workbuddy-adapter');
+const agentBusRoutes = require('./agent-bus/agent-bus-routes');
+const multiAgentRoutes = require('./multi-agent/multi-agent-routes');
+const domainRoutes = require('./domain/domain-routes');
+const eventBusRoutes = require('./event-bus/event-routes');
+const vault = require('./lib/vault-client');
 
 const app = express();
 app.use(express.text({ type: '*/xml' }));
@@ -20,13 +31,12 @@ app.disable('x-powered-by');
 app.disable('etag');
 
 const PORT = process.env.WECOM_ADAPTER_PORT || 3001;
-const WECOM_TOKEN = process.env.WECOM_TOKEN || 'openclaw123';
-const WECOM_ENCODING_AES_KEY = process.env.WECOM_ENCODING_AES_KEY || '';
-const WECOM_CORP_ID = process.env.WECOM_CORP_ID || '';
-const WECOM_SECRET = process.env.WECOM_SECRET || '';
 
-logger.info('WeCom Adapter v1.0 starting, port=' + PORT);
-logger.info('CorpID: ' + WECOM_CORP_ID);
+// 密钥由 vault.init() 填充
+let WECOM_TOKEN = '';
+let WECOM_ENCODING_AES_KEY = '';
+let WECOM_CORP_ID = '';
+let WECOM_SECRET = '';
 
 // ─── 企微 API 发送消息 ──────────────────────────────
 
@@ -51,7 +61,9 @@ function getAccessToken(callback) {
           logger.info('getAccessToken: ok');
           callback(null, cachedToken);
         } else {
-          callback(new Error('gettoken: ' + d));
+          // sanitize: 不在日志中泄露 secret
+          const sanitized = vault.sanitize('gettoken: ' + d);
+          callback(new Error(sanitized));
         }
       } catch (e) {
         callback(e);
@@ -189,14 +201,15 @@ app.post('/wecom/callback', async function(req, res) {
 
   // 异步处理命令并发送回复
   try {
-    const parsed = await new xml2js.Parser().ParseStringPromise(xmlMsg);
+    const parsed = await new xml2js.Parser().parseStringPromise(xmlMsg);
     const msgType = (parsed.xml.MsgType && parsed.xml.MsgType[0]) || '';
     const content = (parsed.xml.Content && parsed.xml.Content[0]) || '';
     const fromUser = (parsed.xml.FromUserName && parsed.xml.FromUserName[0]) || '';
     const toUser = (parsed.xml.ToUserName && parsed.xml.ToUserName[0]) || '';
     const agentId = (parsed.xml.AgentID && parsed.xml.AgentID[0]) || '1000006';
 
-    logger.in('from=' + fromUser + ' agentId=' + agentId + ' content=' + content);
+    // sanitize 用户内容（防止用户在聊天中发送密钥内容）
+    logger.in('from=' + fromUser + ' agentId=' + agentId + ' content=' + vault.sanitize(content));
 
     if (msgType === 'text' && content) {
       const ctx = { fromUser: fromUser, toUser: toUser, agentId: agentId };
@@ -210,7 +223,7 @@ app.post('/wecom/callback', async function(req, res) {
         ]);
       } catch (e) {
         if (e.message.startsWith('TIMEOUT:')) {
-          logger.error('Command TIMEOUT: ' + content);
+          logger.error('Command TIMEOUT: ' + vault.sanitize(content));
           sendWeComMessage(fromUser, 'AI处理中，请稍后再试', agentId);
           return;
         }
@@ -218,16 +231,16 @@ app.post('/wecom/callback', async function(req, res) {
       }
 
       if (!replyText || typeof replyText !== 'string') {
-        replyText = 'OpenClaw 已收到：' + content + '\n发送 /帮助 查看可用命令';
+        replyText = 'OpenClaw 已收到：' + vault.sanitize(content) + '\n发送 /帮助 查看可用命令';
       }
       logger.reply('len=' + replyText.length + 'B');
       sendWeComMessage(fromUser, replyText, agentId);
     }
   } catch (e) {
-    logger.error('Async processing FAIL: ' + e.message);
+    logger.error('Async processing FAIL: ' + vault.sanitize(e.message));
     // fallback：通知用户系统繁忙
     try {
-      const parsed2 = xmlMsg ? await new xml2js.Parser().ParseStringPromise(xmlMsg) : null;
+      const parsed2 = xmlMsg ? await new xml2js.Parser().parseStringPromise(xmlMsg) : null;
       const fromUser2 = parsed2 && parsed2.xml && parsed2.xml.FromUserName && parsed2.xml.FromUserName[0];
       if (fromUser2) {
         sendWeComMessage(fromUser2, '系统繁忙，请稍后再试', '1000006');
@@ -236,18 +249,88 @@ app.post('/wecom/callback', async function(req, res) {
   }
 });
 
-// ─── health ──────────────────────────────────────
+// ─── ChatGPT Bridge (P8.0) ──────────────────────
+commandIngress.registerRoutes(app);
+
+// ─── AI Gateway (P8.0.3) ────────────────────────
+aiGateway.registerGatewayRoutes(app);
+
+// ─── AI Mission Control Dashboard (P10.0) ────────
+missionRoutes.registerMissionRoutes(app);
+
+// ─── P11.0 Commander Gateway ─────────────────────
+commanderGateway.registerCommanderRoutes(app);
+
+// ─── P11.1 WeCom Mission Center ──────────────────
+wecomMissionCenter.registerWecomMissionRoutes(app);
+
+// ─── P11.2 WorkBuddy Execution Adapter ───────────
+app.use('/execution', express.json({ limit: '16kb' }));
+workbuddyAdapter.registerWorkBuddyRoutes(app);
+
+// ─── P11.3 Agent Bus ────────────────────────────
+app.use('/agent-bus', express.json({ limit: '16kb' }));
+agentBusRoutes.registerAgentBusRoutes(app);
+
+// ─── P11.4 Multi-Agent Runtime ──────────────────
+app.use('/multi-agent', express.json({ limit: '16kb' }));
+multiAgentRoutes.registerMultiAgentRoutes(app);
+
+// ─── P12.0 Domain Runtime ──────────────────────────
+app.use('/domain', express.json({ limit: '16kb' }));
+domainRoutes.registerDomainRoutes(app);
+
+// ─── P13.0 Event Bus ──────────────────────────────
+app.use('/event-bus', express.json({ limit: '16kb' }));
+eventBusRoutes.registerEventBusRoutes(app);
+
+// 静态文件: Dashboard 页面
+app.use('/mission', express.static(require('path').resolve(__dirname, '../public'), {
+  index: 'mission-control.html'
+}));
+
+// ─── health（不再暴露 corpId） ──────────────────
 
 app.get('/health', function(req, res) {
-  res.json({ status: 'ok', port: PORT, corpId: WECOM_CORP_ID, version: 'v1.0.0' });
+  res.json({ status: 'ok', port: PORT, version: 'v1.1.0' });
 });
 
 // ─── 启动 ──────────────────────────────────────
 
-app.listen(PORT, function() {
-  logger.info('WeCom Adapter v1.0 STARTED, port=' + PORT);
-  // 启动日志 rotate
-  logger.startRotate();
-  // 启动定时推送
-  pushScheduler.start();
+async function start() {
+  // 1. 从 Vault 加载密钥 (staging/CI 模式可跳过)
+  if (process.env.VAULT_SKIP === 'true' || process.env.NODE_ENV === 'staging') {
+    logger.info('VAULT_SKIP mode: loading secrets from env');
+    WECOM_TOKEN = process.env.WECOM_TOKEN || 'staging-token';
+    WECOM_ENCODING_AES_KEY = process.env.WECOM_ENCODING_AES_KEY || '';
+    WECOM_CORP_ID = process.env.WECOM_CORP_ID || 'staging-corp';
+    WECOM_SECRET = process.env.WECOM_SECRET || 'staging-secret';
+  } else {
+    try {
+      logger.info('Loading secrets from Vault...');
+      await vault.init();
+      WECOM_TOKEN = vault.get('WECOM_TOKEN');
+      WECOM_ENCODING_AES_KEY = vault.get('WECOM_ENCODING_AES_KEY');
+      WECOM_CORP_ID = vault.get('WECOM_CORP_ID');
+      WECOM_SECRET = vault.get('WECOM_SECRET');
+      logger.info('Vault secrets loaded successfully');
+    } catch (e) {
+      logger.error('FATAL: Vault init failed: ' + e.message);
+      process.exit(1);
+    }
+  }
+
+  // 2. 启动 HTTP 服务
+  app.listen(PORT, function() {
+    logger.info('WeCom Adapter v1.1 STARTED, port=' + PORT);
+    // 启动日志 rotate
+    logger.startRotate();
+    // 启动定时推送
+    pushScheduler.start();
+  });
+}
+
+start().catch(function(e) {
+  console.error('FATAL: Startup failed:', e.message);
+  process.exit(1);
 });

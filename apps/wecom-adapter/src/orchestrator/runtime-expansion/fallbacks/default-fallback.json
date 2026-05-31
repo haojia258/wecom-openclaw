@@ -1,0 +1,14 @@
+{
+  "name": "default-fallback",
+  "version": "1.0",
+  "description": "默认回退配置（配置化）",
+  "fallbackChain": [
+    { "worker": "workbuddy", "condition": "default" },
+    { "worker": "codex", "condition": "code_related" },
+    { "worker": "deepseek", "condition": "data_related" },
+    { "worker": "doubao", "condition": "content_related" }
+  ],
+  "stopOnSuccess": true,
+  "maxFallbacks": 3,
+  "notes": "当主 Worker 失败时，按此链尝试回退。stopOnSuccess=true 表示首次成功即停止。"
+}

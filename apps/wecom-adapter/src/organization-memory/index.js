@@ -1,0 +1,26 @@
+'use strict';var kt=require('./knowledge-types'),kv=require('./knowledge-validator'),ks=require('./knowledge-store'),kr=require('./knowledge-capture-runtime'),ka=require('./knowledge-audit'),lt=require('./learning-types'),lv=require('./learning-validator'),le=require('./learning-engine'),lr=require('./learning-runtime'),la=require('./learning-audit'),mt=require('./memory-types'),mv=require('./memory-validator'),ms=require('./memory-store'),mq=require('./memory-query-engine'),mr=require('./memory-runtime'),rt=require('./replay-types'),rv=require('./replay-validator'),re=require('./experience-replay-engine'),rr=require('./replay-runtime'),ra=require('./replay-audit');
+module.exports={
+  SOURCE_TYPE:kt.SOURCE_TYPE,CATEGORY:kt.CATEGORY,OUTCOME:kt.OUTCOME,INSIGHT_TYPE:lt.INSIGHT_TYPE,MEMORY_TYPE:mt.MEMORY_TYPE,REPLAY_STATUS:rt.REPLAY_STATUS,
+  ERROR_CODES:Object.assign({},kt.ERROR_CODES,lt.ERROR_CODES,mt.ERROR_CODES,rt.ERROR_CODES),
+  createKnowledgeRecord:kt.createKnowledgeRecord,validateKnowledge:kv.validateKnowledge,
+  saveKnowledge:ks.saveKnowledge,getKnowledge:ks.getKnowledge,listKnowledge:ks.listKnowledge,
+  captureKnowledge:kr.captureKnowledge,captureFromGoal:kr.captureFromGoal,captureFromExecutionAnalytics:kr.captureFromExecutionAnalytics,captureFromOrchestration:kr.captureFromOrchestration,
+  getKnowledgeRecord:kr.getKnowledgeRecord,listKnowledgeRecords:kr.listKnowledgeRecords,generateKnowledgeSnapshot:kr.generateKnowledgeSnapshot,
+  recordKnowledgeEvent:ka.recordKnowledgeEvent,listKnowledgeEvents:ka.listKnowledgeEvents,
+  createLearningInsight:lt.createLearningInsight,validateLearningInsight:lv.validateLearningInsight,
+  generateLearningInsights:lr.generateLearningInsights,
+  analyzeSuccessPatterns:lr.analyzeSuccessPatterns,analyzeFailurePatterns:lr.analyzeFailurePatterns,
+  analyzeAgentPerformance:lr.analyzeAgentPerformance,analyzeApprovalRisk:lr.analyzeApprovalRisk,
+  analyzeStrategyEffectiveness:lr.analyzeStrategyEffectiveness,
+  generateLearningSnapshot:lr.generateLearningSnapshot,getLearningInsight:lr.getLearningInsight,
+  listLearningInsights:lr.listLearningInsights,
+  recordLearningEvent:la.recordLearningEvent,listLearningEvents:la.listLearningEvents,
+  addMemory:mr.addMemory,getMemory:mr.getMemory,listMemory:mr.listMemory,
+  searchMemory:mr.searchMemory,findSimilarGoals:mr.findSimilarGoals,findRelevantInsights:mr.findRelevantInsights,
+  generateMemorySnapshot:mr.generateMemorySnapshot,addBulkKnowledge:mr.addBulkKnowledge,
+  replayExperienceForGoal:rr.replayExperienceForGoal,findSimilarGoalExperiences:rr.findSimilarGoalExperiences,
+  recommendStrategiesFromMemory:rr.recommendStrategiesFromMemory,generateRiskWarnings:rr.generateRiskWarnings,
+  generateReplaySnapshot:rr.generateReplaySnapshot,getReplay:rr.getReplay,listReplays:rr.listReplays,
+  recordReplayEvent:ra.recordReplayEvent,listReplayEvents:ra.listReplayEvents,
+  _reset:function(){kr._reset();lr._reset();mr._reset();rr._reset();}
+};

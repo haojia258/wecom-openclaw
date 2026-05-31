@@ -1,0 +1,68 @@
+{
+  "version": "agent.google_drive_assets.v1",
+  "agent": {
+    "id": "google_drive_asset_agent",
+    "name": "Google Drive 素材同步 Agent",
+    "domain": "marketing",
+    "owner_role": "CMO",
+    "enabled": true,
+    "review_mode": "REVIEW_ONLY",
+    "requires_human_approval": false,
+    "description": "从指定 Google Drive 文件夹拉取视频、图片、素材文件，同步到本地 assets 目录，用于酸辣粉每日视频流水线。"
+  },
+  "triggers": {
+    "scheduler": {
+      "enabled": true,
+      "timezone": "Asia/Shanghai",
+      "cron": "0 5 * * *",
+      "description": "每天05:00自动拉取最新素材"
+    },
+    "wecom_commands": [
+      {
+        "command": "/同步素材",
+        "aliases": ["/更新素材", "/拉取素材", "/素材同步"],
+        "action": "run_sync"
+      }
+    ]
+  },
+  "google_drive": {
+    "folder_url": "https://drive.google.com/drive/folders/1mU8XPcaRhIhmbHPPWbkLsYJUXx6L7YjF",
+    "service_account_json_path": "/opt/openclaw-agent/keys/google_service_account.json",
+    "scopes": ["https://www.googleapis.com/auth/drive.readonly"],
+    "file_filters": {
+      "mime_types": ["image/jpeg", "image/png", "video/mp4"],
+      "ignore_trashed": true
+    },
+    "local_sync_path": "/opt/openclaw/assets/google_drive/",
+    "overwrite_existing": true
+  },
+  "dag_node": {
+    "id": "fetch_google_drive_assets",
+    "name": "拉取 Google Drive 素材",
+    "depends_on": ["load_knowledge"],
+    "outputs": ["google_drive_assets"],
+    "retry_policy": {
+      "max_retries": 2,
+      "retry_delay_minutes": 10,
+      "on_failure": "alert_risk"
+    }
+  },
+  "audit": {
+    "enabled": true,
+    "audit_command": "/审计",
+    "events": [
+      "agent_triggered",
+      "drive_folder_accessed",
+      "files_downloaded",
+      "files_skipped",
+      "agent_completed",
+      "agent_failed"
+    ]
+  },
+  "wecom_outputs": {
+    "on_start": "📥 Google Drive 素材同步开始。",
+    "on_complete": "✅ Google Drive 素材同步完成。",
+    "on_failure": "❌ 素材同步失败，请检查 /审计 日志。",
+    "status_command": "/同步素材"
+  }
+}

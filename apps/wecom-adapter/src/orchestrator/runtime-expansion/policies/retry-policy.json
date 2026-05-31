@@ -1,0 +1,20 @@
+{
+  "name": "retry-policy",
+  "version": "1.0",
+  "description": "重试策略配置（配置化）",
+  "maxRetries": 3,
+  "backoffMs": 1000,
+  "backoffMultiplier": 2,
+  "retryableErrors": [
+    "ECONNREFUSED",
+    "ETIMEOUT",
+    "rate_limit",
+    "temporary_unavailable"
+  ],
+  "nonRetryableErrors": [
+    "invalid_api_key",
+    "permission_denied",
+    "invalid_request"
+  ],
+  "notes": "AI Worker 调用失败时，按此策略决定是否重试。"
+}

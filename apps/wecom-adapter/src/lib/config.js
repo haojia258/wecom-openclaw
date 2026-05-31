@@ -2,11 +2,13 @@
 
 /**
  * config.js - 统一路径与常量配置
- * v1.0 - 所有路径从此读取，禁止硬编码
+ * v1.1 - 密钥从 Vault 读取，非敏感配置保留 process.env
  */
 
+const vault = require('./vault-client');
+
 module.exports = {
-  VERSION: 'v1.0.0',
+  VERSION: 'v1.1.0',
 
   // 数据文件 (全路径，可通过环境变量覆盖)
   COMPASS_FILE:     process.env.COMPASS_FILE     || '/opt/wecom-openclaw/logs/compass_latest.json',
@@ -20,13 +22,13 @@ module.exports = {
   LOG_DIR:  process.env.LOG_DIR  || '/opt/wecom-openclaw/logs/',
   LOG_BASE:  'wecom-runtime',   // logger 自动追加 .YYYY-MM-DD.log
 
-  // 企微配置 (可从 .env 覆盖)
+  // 企微配置（敏感字段从 Vault 读取）
   WECOM: {
-    CORP_ID:       process.env.WECOM_CORP_ID   || '',
-    SECRET:        process.env.WECOM_SECRET     || '',
-    AGENT_ID:      process.env.WECOM_AGENT_ID  || '1000006',
-    PUSH_USERS:    (process.env.WECOM_PUSH_USER || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
-    PUSH_ENABLED:  process.env.PUSH_ENABLED === 'true',
-    PUSH_CRON:     process.env.PUSH_CRON        || '0 8 * * *',
+    get CORP_ID()     { return vault.tryGet('WECOM_CORP_ID') || ''; },
+    get SECRET()      { return vault.tryGet('WECOM_SECRET') || ''; },
+    AGENT_ID:         process.env.WECOM_AGENT_ID  || '1000006',
+    PUSH_USERS:       (process.env.WECOM_PUSH_USER || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
+    PUSH_ENABLED:     process.env.PUSH_ENABLED === 'true',
+    PUSH_CRON:        process.env.PUSH_CRON        || '0 8 * * *',
   },
 };

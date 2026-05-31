@@ -1,0 +1,21 @@
+{
+  "name": "review-template",
+  "description": "通用 Review 模板：对任务产出进行 Review 并给出建议",
+  "version": "1.0",
+  "inputs": [
+    { "name": "taskId", "type": "string", "required": true, "description": "任务 ID" },
+    { "name": "taskType", "type": "string", "required": false, "description": "任务类型（code/patch/report/video）" },
+    { "name": "artifactContent", "type": "string", "required": false, "description": "产物内容" },
+    { "name": "acceptanceCriteria", "type": "string", "required": false, "description": "验收标准" }
+  ],
+  "outputs": {
+    "taskId": "{{taskId}}",
+    "taskType": "{{taskType}}",
+    "reviewStatus": "",
+    "score": null,
+    "issues": [],
+    "suggestions": [],
+    "approved": false
+  },
+  "promptTemplate": "请对以下任务产出进行 Review：\n- 任务 ID: {{taskId}}\n- 任务类型: {{taskType}}\n- 产物内容: {{artifactContent}}\n- 验收标准: {{acceptanceCriteria}}\n\n请输出：Review 状态（pass/needs_revision/reject）、评分（0-100）、问题列表、改进建议、是否批准。"
+}

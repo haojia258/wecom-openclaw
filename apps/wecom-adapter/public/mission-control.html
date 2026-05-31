@@ -1,0 +1,2550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Mission Control Dashboard v1.4</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: #0d1117;
+  color: #c9d1d9;
+  line-height: 1.5;
+}
+.header {
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #58a6ff;
+}
+.header .badge-version {
+  font-size: 11px;
+  background: #1c3a5c;
+  color: #58a6ff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+.header .stats {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+}
+.header .stats span {
+  background: #21262d;
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid #30363d;
+}
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  padding: 12px 24px;
+  min-height: calc(100vh - 130px);
+}
+.panel {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.panel-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid #30363d;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.panel-body {
+  padding: 10px 14px;
+  overflow-y: auto;
+  flex: 1;
+  max-height: calc(100vh - 200px);
+}
+.task-row {
+  padding: 8px 10px;
+  border-bottom: 1px solid #21262d;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
+}
+.task-row:hover { background: #1c2128; }
+.task-row.active {
+  background: #1c2541;
+  border-left-color: #58a6ff;
+}
+.task-row .top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.task-row .title {
+  font-weight: 600;
+  font-size: 13px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-row .meta {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: #8b949e;
+  flex-wrap: wrap;
+}
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.badge-pending { background: #21262d; color: #8b949e; }
+.badge-running,
+.badge-in_progress { background: #1c3a5c; color: #58a6ff; }
+.badge-completed { background: #1a3d2e; color: #3fb950; }
+.badge-failed { background: #3d1a1a; color: #f85149; }
+.badge-blocked { background: #3d2e1a; color: #d29922; }
+/* P10.2: Recovery badges */
+.badge-retrying { background: #1c3a5c; color: #58a6ff; }
+.badge-recovered { background: #1a3d2e; color: #3fb950; }
+.badge-retry_exhausted { background: #3d2e1a; color: #d29922; }
+.badge-rolling_back { background: #3d1a2e; color: #f0883e; }
+.badge-rolled_back { background: #2e1a3d; color: #bc8cff; }
+.badge-rollback_failed { background: #3d1a1a; color: #f85149; }
+.badge-unrecoverable { background: #3d1a1a; color: #f85149; }
+.event-item {
+  padding: 7px 0;
+  border-bottom: 1px solid #21262d;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.event-item .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.dot-info { background: #58a6ff; }
+.dot-success { background: #3fb950; }
+.dot-warn { background: #d29922; }
+.dot-error { background: #f85149; }
+.dot-retry { background: #79c0ff; }
+.dot-rollback { background: #bc8cff; }
+.dot-recovery { background: #3fb950; }
+.event-item .content {
+  flex: 1;
+  font-size: 12px;
+}
+.event-item .content .type {
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+.event-item .content .stage {
+  font-size: 10px;
+  color: #8b949e;
+}
+.event-item .content .payload {
+  font-size: 10px;
+  color: #6e7681;
+  margin-top: 2px;
+  font-family: 'SF Mono', Consolas, monospace;
+  background: #0d1117;
+  padding: 3px 6px;
+  border-radius: 4px;
+  overflow-x: auto;
+  max-height: 60px;
+  overflow-y: auto;
+}
+.event-item .time {
+  font-size: 10px;
+  color: #484f58;
+  flex-shrink: 0;
+}
+.empty-state {
+  text-align: center;
+  padding: 30px 20px;
+  color: #484f58;
+  font-size: 13px;
+}
+.empty-state .icon { font-size: 28px; margin-bottom: 6px; }
+.task-detail {
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #0d1117;
+  border-radius: 6px;
+  border: 1px solid #21262d;
+}
+.task-detail .row {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+.task-detail .row label {
+  color: #8b949e;
+  min-width: 80px;
+}
+.task-detail .row a {
+  color: #58a6ff;
+  text-decoration: none;
+}
+/* P10.2: Recovery Panel styles */
+.recovery-card {
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #0d1117;
+  border-radius: 6px;
+  border: 1px solid #21262d;
+}
+.recovery-card h4 {
+  font-size: 12px;
+  color: #8b949e;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.recovery-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 12px;
+}
+.recovery-stat .label { color: #8b949e; }
+.recovery-stat .value { font-weight: 600; }
+.recovery-stat .value.retry { color: #58a6ff; }
+.recovery-stat .value.success { color: #3fb950; }
+.recovery-stat .value.warning { color: #d29922; }
+.recovery-stat .value.error { color: #f85149; }
+.recovery-stat .value.rollback { color: #bc8cff; }
+/* Timeline filter tabs */
+.timeline-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.timeline-tab {
+  padding: 3px 10px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #8b949e;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.timeline-tab:hover { background: #30363d; color: #c9d1d9; }
+.timeline-tab.active { background: #1c3a5c; color: #58a6ff; border-color: #58a6ff; }
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #8b949e;
+}
+.refresh-btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.refresh-btn:hover { background: #30363d; }
+/* P10.5: Task Graph Panel */
+.graph-card {
+  padding: 10px;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.graph-card h4 {
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: #e6edf3;
+}
+.graph-card .graph-meta {
+  font-size: 11px;
+  color: #8b949e;
+  margin-bottom: 8px;
+}
+.graph-node {
+  padding: 5px 8px;
+  border-left: 3px solid #30363d;
+  margin: 3px 0;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.graph-node .node-id { font-weight: 600; color: #58a6ff; min-width: 80px; }
+.graph-node .node-agent { color: #8b949e; }
+.graph-node .node-cap { color: #d2a8ff; }
+.graph-node .node-deps { font-size: 10px; color: #6e7681; }
+.graph-btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 3px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.graph-btn:hover { background: #30363d; }
+.graph-btn.run { color: #3fb950; border-color: #3fb950; }
+.graph-btn.run:hover { background: #1a3d2e; }
+/* P10.3: Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #30363d;
+  margin-bottom: 0;
+}
+.tab {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8b949e;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.tab:hover { color: #c9d1d9; }
+.tab.active {
+  color: #58a6ff;
+  border-bottom-color: #58a6ff;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+/* P10.3: Artifact row */
+.artifact-row {
+  padding: 10px 12px;
+  border-bottom: 1px solid #21262d;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.artifact-row:hover { background: #1c2128; }
+.artifact-row .icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.artifact-row .info {
+  flex: 1;
+  min-width: 0;
+}
+.artifact-row .name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.artifact-row .meta {
+  font-size: 11px;
+  color: #8b949e;
+  margin-top: 2px;
+}
+.artifact-row .size {
+  font-size: 11px;
+  color: #484f58;
+  flex-shrink: 0;
+}
+/* P10.4: Capability Check */
+.cap-panel {
+  margin-top: 16px;
+}
+.cap-check-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #0d1117;
+  border-radius: 6px;
+  border: 1px solid #21262d;
+}
+.cap-check-form select, .cap-check-form input {
+  background: #161b22;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.cap-check-form button {
+  background: #238636;
+  border: none;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+.cap-check-form button:hover { background: #2ea043; }
+.cap-result {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.cap-result.allowed { background: #1a3d2e; border: 1px solid #2ea043; color: #3fb950; }
+.cap-result.denied { background: #3d1a1a; border: 1px solid #f85149; color: #f85149; }
+.cap-result.approval { background: #3d2e1a; border: 1px solid #d29922; color: #d29922; }
+.cap-agents-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cap-agent-row {
+  padding: 8px 10px;
+  background: #0d1117;
+  border-radius: 4px;
+  border: 1px solid #21262d;
+  font-size: 12px;
+}
+.cap-agent-row .agent-name {
+  font-weight: 600;
+  color: #58a6ff;
+  margin-bottom: 4px;
+}
+.cap-agent-row .caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cap-agent-row .cap-tag {
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+.cap-tag.allowed { background: #1a3d2e; color: #3fb950; }
+.cap-tag.forbidden { background: #3d1a1a; color: #f85149; }
+.cap-tag.approval { background: #3d2e1a; color: #d29922; }
+/* Artifact popup */
+.artifact-popup {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.artifact-popup.show { display: flex; }
+.artifact-popup .popup-content {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 80vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  min-width: 400px;
+}
+.artifact-popup .popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #30363d;
+  padding-bottom: 8px;
+}
+.artifact-popup .popup-close {
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-size: 20px;
+  cursor: pointer;
+}
+.artifact-popup .popup-body {
+  font-family: 'SF Mono', Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  background: #0d1117;
+  padding: 12px;
+  border-radius: 4px;
+  max-height: 50vh;
+  overflow-y: auto;
+  line-height: 1.4;
+}
+/* Responsive: stack panels on narrow screens */
+@media (max-width: 1200px) {
+  .container { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 800px) {
+  .container { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>AI Mission Control Dashboard v1.3</h1>
+  <div class="stats" id="stats"></div>
+</div>
+<div class="container">
+  <!-- Panel 1: Mission Tasks -->
+  <div class="panel" id="tasks-panel">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('tasks')" id="tab-tasks">Tasks</div>
+      <div class="tab" onclick="switchTab('artifacts')" id="tab-artifacts">Artifacts</div>
+    </div>
+    <div class="tab-content active" id="tab-content-tasks">
+      <div class="panel-header">
+        <span>Mission Tasks</span>
+        <button class="refresh-btn" onclick="loadTasks()">Refresh</button>
+      </div>
+      <div class="panel-body" id="tasks-list">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-content-artifacts">
+      <div class="panel-header">
+        <span>Artifacts</span>
+        <button class="refresh-btn" onclick="loadArtifacts()">Refresh</button>
+      </div>
+      <div class="panel-body" id="artifacts-list">
+        <div class="empty-state">
+          <div class="icon">&#x1F4E6;</div>
+          <div>Select a task to view its artifacts</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Panel 2: Event Timeline + Failure Timeline -->
+  <div class="panel" id="events-panel">
+    <div class="panel-header">
+      <span id="events-title">Event Timeline</span>
+      <button class="refresh-btn" onclick="loadEvents()">Refresh</button>
+    </div>
+    <div class="panel-body" id="events-body">
+      <div class="timeline-tabs" id="timeline-tabs" style="display:none;">
+        <div class="timeline-tab active" onclick="switchTab('all')">All</div>
+        <div class="timeline-tab" onclick="switchTab('failure')">Failures</div>
+        <div class="timeline-tab" onclick="switchTab('recovery')">Recovery</div>
+      </div>
+      <div class="empty-state" id="events-list">
+        <div class="icon">&#x1F4CB;</div>
+        <div>Select a task to view its event timeline</div>
+      </div>
+      <div class="empty-state" id="failure-list" style="display:none;">
+        <div class="icon">&#x26A0;</div>
+        <div>No failure events found</div>
+      </div>
+      <div class="empty-state" id="recovery-list" style="display:none;">
+        <div class="icon">&#x1F504;</div>
+        <div>No recovery events found</div>
+      </div>
+    </div>
+  </div>
+  <!-- Panel 3: Recovery Panel (P10.2) -->
+  <div class="panel" id="recovery-panel">
+    <div class="panel-header">
+      <span>&#x1F6E1; Recovery Status</span>
+      <button class="refresh-btn" onclick="loadRecovery()">Refresh</button>
+    </div>
+    <div class="panel-body" id="recovery-body">
+      <div class="empty-state">
+        <div class="icon">&#x1F50D;</div>
+        <div>Select a task to view recovery info</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P10.4 Capability Check Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>Capability Check</span>
+      <button class="refresh-btn" onclick="loadAgents()">Refresh</button>
+    </div>
+    <div class="panel-body">
+      <div class="cap-check-form">
+        <select id="cap-agent-select">
+          <option value="">Select Agent...</option>
+        </select>
+        <input type="text" id="cap-input" placeholder="Capability (e.g. pm2.restart)" />
+        <div style="display:flex; gap:8px;">
+          <button onclick="checkCapability()">Check</button>
+        </div>
+      </div>
+      <div id="cap-result"></div>
+      <div class="cap-agents-list" id="cap-agents-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- P10.5 Task Graph Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>Task Graph Engine (P10.5)</span>
+      <div style="display:flex;gap:8px;">
+        <button class="refresh-btn" onclick="loadGraphs()">Refresh</button>
+        <button class="refresh-btn" onclick="createSmokeGraph()">+ Smoke Graph</button>
+      </div>
+    </div>
+    <div class="panel-body" id="task-graph-body" style="max-height:400px;">
+      <div class="empty-state">
+        <div class="icon">&#x1F4CA;</div>
+        <div>Loading graphs...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Integration Validation Panel (P10.6) -->
+  <div class="panel" style="margin-top:16px;">
+    <div class="panel-header">
+      <span>Integration Validation (P10.6)</span>
+      <div style="display:flex;gap:8px;">
+        <button class="refresh-btn" onclick="runIntegrationFlow('happy')" style="font-size:12px;padding:4px 10px;">Happy Path</button>
+        <button class="refresh-btn" onclick="runIntegrationFlow('recovery')" style="font-size:12px;padding:4px 10px;border-color:#f0883e;">Recovery</button>
+        <button class="refresh-btn" onclick="runIntegrationFlow('forbidden')" style="font-size:12px;padding:4px 10px;border-color:#f85149;">Forbidden</button>
+        <button class="refresh-btn" onclick="runIntegrationFlow('approval')" style="font-size:12px;padding:4px 10px;border-color:#d29922;">Approval</button>
+        <button class="refresh-btn" onclick="refreshIntegrationStatus()">Refresh</button>
+      </div>
+    </div>
+    <div class="panel-body" id="integration-panel-body" style="max-height:500px;">
+      <div class="empty-state">
+        <div class="icon">&#x1F517;</div>
+        <div>Click a flow button to run integration validation</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agent Health Panel (P10.7) -->
+  <div style="padding: 0 24px 16px;">
+    <div class="panel">
+      <div class="panel-header">
+        <span>Agent Health (P10.7)</span>
+        <button class="refresh-btn" onclick="loadAgentHealth()" style="font-size:12px;padding:4px 10px;">Refresh</button>
+      </div>
+      <div class="panel-body" id="agent-health-panel-body">
+        <div style="color:#8b949e;padding:20px;text-align:center;">Loading agent health data...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Autonomous Execution Loop Panel (P10.8) -->
+  <div style="padding: 0 24px 16px;">
+    <div class="panel">
+      <div class="panel-header">
+        <span>Autonomous Loop (P10.8)</span>
+        <div style="display:flex;gap:8px;">
+          <input id="loop-graph-id" type="text" placeholder="Graph ID" style="background:#0d1117;border:1px solid #30363d;color:#c9d1d9;padding:4px 8px;border-radius:4px;font-size:12px;width:160px;" />
+          <button class="graph-btn run" onclick="runAutonomousLoop()" style="font-size:12px;padding:4px 10px;">Run Loop</button>
+          <button class="graph-btn" onclick="runAutoNode()" style="font-size:12px;padding:4px 10px;">Run Node</button>
+          <button class="refresh-btn" onclick="loadLoopReport()" style="font-size:12px;padding:4px 10px;">Load Report</button>
+          <button class="refresh-btn" onclick="refreshLoopPanel()" style="font-size:12px;padding:4px 10px;">Refresh</button>
+        </div>
+      </div>
+      <div class="panel-body" id="autonomous-loop-panel-body" style="max-height:500px;">
+        <div class="empty-state">
+          <div class="icon">&#x1F504;</div>
+          <div>Enter a graph ID and click Run Loop to start autonomous execution</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P11.0 Commander Gateway Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>&#x1F6E1; Commander Gateway</span>
+      <button class="refresh-btn" onclick="loadCommanderStatus()">Refresh</button>
+    </div>
+    <div class="panel-body" id="commander-body">
+      <div class="cap-check-form">
+        <input type="text" id="commander-text" placeholder="输入任务描述..." style="flex:1;min-width:200px;">
+        <input type="text" id="commander-operator" placeholder="操作者" value="laohao" style="width:120px;">
+        <button onclick="createCommanderMission()">Create Mission</button>
+        <button onclick="loadCommanderMission()" style="background:#30363d;">Query Status</button>
+      </div>
+      <div id="commander-result" class="empty-state">
+        <div class="icon">&#x1F680;</div>
+        <div>Commander Gateway Ready</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P11.1 WeCom Mission Center Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>&#x1F4F1; WeCom Mission Center</span>
+      <button class="refresh-btn" onclick="loadWeComStatus()">Refresh</button>
+    </div>
+    <div class="panel-body" id="wecom-body">
+      <div class="cap-check-form">
+        <select id="wecom-command" style="width:150px;">
+          <option value="mission">/任务 创建</option>
+          <option value="status">/任务 状态</option>
+          <option value="detail">/任务 详情</option>
+          <option value="artifacts">/任务 artifacts</option>
+          <option value="approve">/审批</option>
+          <option value="reject">/拒绝</option>
+          <option value="help">/help</option>
+        </select>
+        <input type="text" id="wecom-mission-id" placeholder="Mission ID" style="width:200px;">
+        <button onclick="sendWeComCommand()">Send</button>
+      </div>
+      <div id="wecom-result" class="empty-state">
+        <div class="icon">&#x2709;</div>
+        <div>WeCom Mission Center Ready</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P11.2 WorkBuddy Execution Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>&#x1F916; WorkBuddy Execution Panel</span>
+      <button class="refresh-btn" onclick="loadWorkBuddyJobs()">Load Jobs</button>
+    </div>
+    <div class="panel-body" id="workbuddy-body">
+      <div class="cap-check-form">
+        <button onclick="createWorkBuddyJob()">Create Job</button>
+        <button onclick="approveWorkBuddyJob()">Approve Job</button>
+        <button onclick="rejectWorkBuddyJob()">Reject Job</button>
+        <button onclick="dispatchWorkBuddyJob()">Dispatch Job</button>
+        <input type="text" id="wb-job-id" placeholder="Job ID (wb_xxx)" style="width:200px;margin-left:8px;">
+      </div>
+      <div id="workbuddy-result" class="empty-state">
+        <div class="icon">&#x1F916;</div>
+        <div>WorkBuddy Execution Panel Ready</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P11.3 Agent Bus Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>&#x1F68C; Agent Bus Panel</span>
+      <button class="refresh-btn" onclick="loadAgentBus()">Refresh</button>
+    </div>
+    <div class="panel-body" id="agent-bus-body">
+      <div class="cap-check-form">
+        <select id="ab-agent-type" style="width:150px;">
+          <option value="workbuddy">WorkBuddy</option>
+          <option value="codex">Codex</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="doubao">Doubao</option>
+        </select>
+        <button onclick="createAgentJob()">Create Job</button>
+        <button onclick="loadAgentBus()">Load Agents</button>
+      </div>
+      <div id="agentbus-result" class="empty-state">
+        <div class="icon">&#x1F68C;</div>
+        <div>Agent Bus Ready</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P11.4 Multi-Agent Runtime Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header">
+      <span>&#x1F3AF; Multi-Agent Runtime Panel</span>
+      <button class="refresh-btn" onclick="loadMultiAgentMissions()">Refresh</button>
+    </div>
+    <div class="panel-body" id="multi-agent-body">
+      <div class="cap-check-form">
+        <select id="ma-mission-type" style="width:150px;">
+          <option value="development">Development</option>
+          <option value="audit">Audit</option>
+          <option value="deployment">Deployment</option>
+          <option value="full_cycle">Full Cycle</option>
+        </select>
+        <button onclick="createMultiAgentMission()">Create Mission</button>
+        <button onclick="loadMultiAgentMissions()">Load Missions</button>
+      </div>
+      <div id="multiagent-result" class="empty-state">
+        <div class="icon">&#x1F3AF;</div>
+        <div>Multi-Agent Runtime Ready</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- P12.0 Domain Runtime Panel -->
+<div style="padding: 0 24px 16px;">
+  <div class="panel">
+    <div class="panel-header"><span>&#x1F310; Domain Runtime Panel</span><button class="refresh-btn" onclick="loadDomainMissions()">Refresh</button></div>
+    <div class="panel-body" id="domain-body">
+      <div class="cap-check-form"><select id="domain-select" style="width:120px;"><option value="commerce">Commerce</option><option value="marketing">Marketing</option><option value="customer">Customer</option><option value="devops">DevOps</option><option value="trading">Trading</option></select><button onclick="createDomainMission()">Create</button></div>
+      <div id="domain-result" class="empty-state"><div class="icon">&#x1F310;</div><div>Domain Runtime Ready</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Artifact Content Popup -->
+<div class="artifact-popup" id="artifact-popup">
+  <div class="popup-content">
+    <div class="popup-header">
+      <span id="popup-title" style="font-weight:600;color:#58a6ff;">Artifact</span>
+      <button class="popup-close" onclick="closePopup()">&times;</button>
+    </div>
+    <div class="popup-body" id="popup-body"></div>
+  </div>
+</div>
+
+<script>
+var currentTaskId = null;
+var allEvents = [];
+var currentTab = 'all';
+
+// ─── Event type filter lists ──────────────────────────────
+
+var FAILURE_EVENT_TYPES = ['FAILED', 'RETRY_EXHAUSTED', 'ROLLBACK_FAILED', 'RECOVERY_FAILED'];
+var RECOVERY_EVENT_TYPES = ['RETRY_SCHEDULED', 'RETRY_STARTED', 'RETRY_SUCCESS', 'RETRY_EXHAUSTED',
+  'ROLLBACK_TRIGGERED', 'ROLLBACK_COMPLETED', 'ROLLBACK_FAILED',
+  'RECOVERY_SUCCESS', 'RECOVERY_FAILED'];
+
+function getStatusBadge(status) {
+  var cls = 'badge-';
+  if (!status) return '<span class="badge badge-pending">unknown</span>';
+  var s = status.toLowerCase();
+  if (s === 'pending') cls += 'pending';
+  else if (s === 'running' || s === 'in_progress') cls += 'in_progress';
+  else if (s === 'completed') cls += 'completed';
+  else if (s === 'failed') cls += 'failed';
+  else if (s === 'blocked') cls += 'blocked';
+  else cls += 'pending';
+  return '<span class="badge ' + cls + '">' + escapeHtml(status) + '</span>';
+}
+
+// P10.2: Recovery status badge
+function getRecoveryBadge(status) {
+  if (!status) return '<span class="badge badge-pending">-</span>';
+  var cls = 'badge-';
+  var s = status.toLowerCase();
+  if (s === 'retrying') cls += 'retrying';
+  else if (s === 'recovered' || s === 'recovery_success') cls += 'recovered';
+  else if (s === 'retry_exhausted') cls += 'retry_exhausted';
+  else if (s === 'rolling_back') cls += 'rolling_back';
+  else if (s === 'rolled_back') cls += 'rolled_back';
+  else if (s === 'rollback_failed') cls += 'rollback_failed';
+  else if (s === 'unrecoverable') cls += 'unrecoverable';
+  else cls += 'pending';
+  return '<span class="badge ' + cls + '">' + escapeHtml(status) + '</span>';
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatTime(iso) {
+  if (!iso) return '-';
+  var d = new Date(iso);
+  return d.toLocaleString('zh-CN', { hour12: false });
+}
+
+function getEventDotClass(eventType) {
+  if (!eventType) return 'dot-info';
+  var t = eventType.toLowerCase();
+  if (t.indexOf('error') >= 0 || t.indexOf('failed') >= 0 || t.indexOf('exhausted') >= 0)
+    return 'dot-error';
+  if (t.indexOf('retry') >= 0) return 'dot-retry';
+  if (t.indexOf('rollback') >= 0) return 'dot-rollback';
+  if (t.indexOf('recovery') >= 0) return 'dot-recovery';
+  if (t.indexOf('complete') >= 0 || t.indexOf('success') >= 0) return 'dot-success';
+  if (t.indexOf('warn') >= 0) return 'dot-warn';
+  return 'dot-info';
+}
+
+// ─── Tab switching ─────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  var tabs = document.querySelectorAll('.timeline-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.toggle('active', tabs[i].textContent.toLowerCase() === tab);
+  }
+  renderEvents();
+}
+
+// ─── Render events based on current tab ───────────────────
+function renderEvents() {
+  var eventsDiv = document.getElementById('events-list');
+  var failureDiv = document.getElementById('failure-list');
+  var recoveryDiv = document.getElementById('recovery-list');
+  var tabsDiv = document.getElementById('timeline-tabs');
+
+  // Hide all
+  eventsDiv.style.display = 'none';
+  failureDiv.style.display = 'none';
+  recoveryDiv.style.display = 'none';
+
+  if (!currentTaskId) {
+    eventsDiv.style.display = 'block';
+    tabsDiv.style.display = 'none';
+    return;
+  }
+
+  tabsDiv.style.display = 'flex';
+
+  if (currentTab === 'all') {
+    eventsDiv.style.display = 'block';
+    renderEventList(eventsDiv, allEvents);
+  } else if (currentTab === 'failure') {
+    failureDiv.style.display = 'block';
+    var failures = allEvents.filter(function(e) {
+      return FAILURE_EVENT_TYPES.indexOf(e.event_type) !== -1;
+    });
+    renderEventList(failureDiv, failures);
+  } else if (currentTab === 'recovery') {
+    recoveryDiv.style.display = 'block';
+    var recoveries = allEvents.filter(function(e) {
+      return RECOVERY_EVENT_TYPES.indexOf(e.event_type) !== -1;
+    });
+    renderEventList(recoveryDiv, recoveries);
+  }
+}
+
+function renderEventList(container, events) {
+  if (!events || events.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div>No events to display</div></div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < events.length; i++) {
+    var evt = events[i];
+    var dotClass = getEventDotClass(evt.event_type);
+    html += '<div class="event-item">';
+    html += '<div class="dot ' + dotClass + '"></div>';
+    html += '<div class="content">';
+    html += '<div class="type">' + escapeHtml(evt.event_type) + '</div>';
+    if (evt.stage) html += '<div class="stage">Stage: ' + escapeHtml(evt.stage) + '</div>';
+    if (evt.payload) html += '<div class="payload">' + escapeHtml(JSON.stringify(evt.payload, null, 2)) + '</div>';
+    html += '</div>';
+    html += '<div class="time">' + formatTime(evt.created_at) + '</div>';
+    html += '</div>';
+  }
+  container.innerHTML = html;
+}
+
+// ─── Load tasks ────────────────────────────────────────────
+function loadTasks() {
+  var list = document.getElementById('tasks-list');
+  list.innerHTML = '<div class="loading">Loading...</div>';
+
+  fetch('/mission/tasks')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Failed: ' + escapeHtml(resp.error) + '</div></div>';
+        return;
+      }
+
+      // Update stats
+      var statsEl = document.getElementById('stats');
+      var s = resp.stats;
+      var total = s.total || 0;
+      statsEl.innerHTML = '<span>Total: ' + total + '</span>' +
+        (s.by_status ? Object.keys(s.by_status).map(function(k) {
+          return '<span>' + k + ': ' + s.by_status[k] + '</span>';
+        }).join('') : '');
+
+      var tasks = resp.data || [];
+      if (tasks.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4ED;</div><div>No mission tasks yet</div></div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < tasks.length; i++) {
+        var t = tasks[i];
+        var activeClass = (currentTaskId === t.id) ? ' active' : '';
+        html += '<div class="task-row' + activeClass + '" onclick="selectTask(\'' + escapeHtml(t.id) + '\')">';
+        html += '<div class="top">';
+        html += '<span class="title">' + escapeHtml(t.title || t.id) + '</span>';
+        html += getStatusBadge(t.status);
+        if (t.recovery_status) html += getRecoveryBadge(t.recovery_status);
+        html += '</div>';
+        html += '<div class="meta">';
+        html += '<span>Agent: ' + escapeHtml(t.owner_agent) + '</span>';
+        if (t.current_stage) html += '<span>Stage: ' + escapeHtml(t.current_stage) + '</span>';
+        if (t.github_pr) html += '<span>PR: ' + escapeHtml(t.github_pr) + '</span>';
+        if (t.retry_count > 0) html += '<span>Retries: ' + t.retry_count + '</span>';
+        if (t.last_event_at) html += '<span>Last: ' + formatTime(t.last_event_at) + '</span>';
+        html += '</div>';
+        html += '</div>';
+      }
+      list.innerHTML = html;
+    })
+    .catch(function(e) {
+      list.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+function selectTask(taskId) {
+  currentTaskId = taskId;
+  loadTasks();
+  loadEvents();
+  loadRecovery();
+}
+
+// ─── Load events ───────────────────────────────────────────
+function loadEvents() {
+  var eventsDiv = document.getElementById('events-list');
+  var titleEl = document.getElementById('events-title');
+
+  if (!currentTaskId) {
+    eventsDiv.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4CB;</div><div>Select a task to view its event timeline</div></div>';
+    titleEl.textContent = 'Event Timeline';
+    document.getElementById('timeline-tabs').style.display = 'none';
+    return;
+  }
+
+  eventsDiv.innerHTML = '<div class="loading">Loading...</div>';
+  titleEl.textContent = 'Events: ' + currentTaskId;
+
+  fetch('/mission/tasks/' + encodeURIComponent(currentTaskId) + '/events')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        eventsDiv.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(resp.error) + '</div></div>';
+        allEvents = [];
+        return;
+      }
+
+      var task = resp.task;
+      allEvents = resp.events || [];
+
+      var html = '';
+
+      // Task detail header
+      if (task) {
+        html += '<div class="task-detail">';
+        html += '<div class="row"><label>Task ID:</label><span>' + escapeHtml(task.id) + '</span></div>';
+        html += '<div class="row"><label>Status:</label>' + getStatusBadge(task.status) + '</div>';
+        html += '<div class="row"><label>Agent:</label><span>' + escapeHtml(task.owner_agent) + '</span></div>';
+        html += '<div class="row"><label>Stage:</label><span>' + escapeHtml(task.current_stage || '-') + '</span></div>';
+        // P10.2: Recovery fields
+        if (task.recovery_status) html += '<div class="row"><label>Recovery:</label>' + getRecoveryBadge(task.recovery_status) + '</div>';
+        if (task.retry_count > 0) html += '<div class="row"><label>Retries:</label><span>' + task.retry_count + '</span></div>';
+        if (task.last_failure_type) html += '<div class="row"><label>Failure:</label><span style="color:#f85149">' + escapeHtml(task.last_failure_type) + '</span></div>';
+        if (task.rollback_state) html += '<div class="row"><label>Rollback:</label><span>' + escapeHtml(task.rollback_state) + '</span></div>';
+        if (task.github_pr) {
+          html += '<div class="row"><label>GitHub PR:</label><a href="' + escapeHtml(task.github_pr) + '" target="_blank">' + escapeHtml(task.github_pr) + '</a></div>';
+        }
+        html += '<div class="row"><label>Created:</label><span>' + formatTime(task.created_at) + '</span></div>';
+        html += '</div>';
+      }
+
+      eventsDiv.innerHTML = html;
+      // Render with current tab filter
+      renderEvents();
+    })
+    .catch(function(e) {
+      eventsDiv.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+      allEvents = [];
+    });
+}
+
+// ─── Load recovery info (P10.2) ────────────────────────────
+function loadRecovery() {
+  var body = document.getElementById('recovery-body');
+
+  if (!currentTaskId) {
+    body.innerHTML = '<div class="empty-state"><div class="icon">&#x1F50D;</div><div>Select a task to view recovery info</div></div>';
+    return;
+  }
+
+  body.innerHTML = '<div class="loading">Loading...</div>';
+
+  fetch('/mission/tasks/' + encodeURIComponent(currentTaskId) + '/events')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        body.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(resp.error) + '</div></div>';
+        return;
+      }
+
+      var task = resp.task;
+      if (!task) {
+        body.innerHTML = '<div class="empty-state"><div class="icon">&#x1F50D;</div><div>Task not found</div></div>';
+        return;
+      }
+
+      // Count recovery events
+      var events = resp.events || [];
+      var recoveryEvents = events.filter(function(e) {
+        return RECOVERY_EVENT_TYPES.indexOf(e.event_type) !== -1;
+      });
+      var lastFailureEvent = null;
+      for (var i = events.length - 1; i >= 0; i--) {
+        if (FAILURE_EVENT_TYPES.indexOf(events[i].event_type) !== -1) {
+          lastFailureEvent = events[i];
+          break;
+        }
+      }
+
+      // Build recovery state display
+      var retryCount = task.retry_count || 0;
+      var recoveryStatus = task.recovery_status || 'none';
+      var failureType = task.last_failure_type || 'none';
+      var rollbackState = task.rollback_state || 'none';
+      var stage = task.current_stage || '-';
+      var retryValClass = retryCount > 0 ? 'warning' : 'success';
+      var failureValClass = failureType !== 'none' ? 'error' : 'success';
+      var recoveryValClass = (recoveryStatus === 'recovered' || recoveryStatus === 'rolled_back') ? 'success' :
+        (recoveryStatus === 'unrecoverable' || recoveryStatus === 'rollback_failed') ? 'error' :
+        (recoveryStatus === 'retrying' || recoveryStatus === 'rolling_back') ? 'retry' :
+        recoveryStatus === 'retry_exhausted' ? 'warning' : '';
+      var rollbackValClass = rollbackState === 'completed' ? 'rollback' : (rollbackState === 'failed' ? 'error' : '');
+
+      var html = '';
+      // Recovery status card
+      html += '<div class="recovery-card">';
+      html += '<h4>Recovery State</h4>';
+      html += '<div class="recovery-stat"><span class="label">Recovery Status</span>' + getRecoveryBadge(recoveryStatus) + '</div>';
+      html += '<div class="recovery-stat"><span class="label">Current Stage</span><span class="value">' + escapeHtml(stage) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Retry Count</span><span class="value ' + retryValClass + '">' + retryCount + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Last Failure</span><span class="value ' + failureValClass + '">' + escapeHtml(failureType) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Rollback State</span><span class="value ' + rollbackValClass + '">' + escapeHtml(rollbackState) + '</span></div>';
+      html += '</div>';
+
+      // Failure events card
+      html += '<div class="recovery-card">';
+      html += '<h4>Recovery Events (' + recoveryEvents.length + ')</h4>';
+      if (recoveryEvents.length === 0) {
+        html += '<div style="font-size:12px;color:#484f58;padding:8px 0;">No recovery events recorded</div>';
+      } else {
+        // Show last 5 recovery events
+        var recentRecovery = recoveryEvents.slice(-5).reverse();
+        for (var j = 0; j < recentRecovery.length; j++) {
+          var revt = recentRecovery[j];
+          var dotClass = getEventDotClass(revt.event_type);
+          html += '<div class="event-item">';
+          html += '<div class="dot ' + dotClass + '"></div>';
+          html += '<div class="content">';
+          html += '<div class="type">' + escapeHtml(revt.event_type) + '</div>';
+          html += '</div>';
+          html += '<div class="time">' + formatTime(revt.created_at) + '</div>';
+          html += '</div>';
+        }
+      }
+      html += '</div>';
+
+      // Last failure detail
+      if (lastFailureEvent) {
+        html += '<div class="recovery-card">';
+        html += '<h4>Last Failure Detail</h4>';
+        html += '<div style="font-size:11px;color:#f85149;">Type: ' + escapeHtml(lastFailureEvent.event_type) + '</div>';
+        html += '<div style="font-size:10px;color:#6e7681;margin-top:2px;">Time: ' + formatTime(lastFailureEvent.created_at) + '</div>';
+        if (lastFailureEvent.payload) {
+          html += '<div class="payload" style="margin-top:4px;font-size:10px;">' + escapeHtml(JSON.stringify(lastFailureEvent.payload, null, 2)) + '</div>';
+        }
+        html += '</div>';
+      }
+
+      body.innerHTML = html;
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+// Auto-refresh every 10 seconds
+setInterval(function() {
+  loadTasks();
+  if (currentTaskId) {
+    loadEvents();
+    loadRecovery();
+  }
+}, 10000);
+
+// Initial load
+loadTasks();
+loadAgents();
+
+// ─── P10.3 + P10.4: Tabs, Artifacts, Capability ─────────
+
+function switchTab(tabName) {
+  var tabs = document.querySelectorAll('.tab');
+  var contents = document.querySelectorAll('.tab-content');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.remove('active');
+  }
+  for (var j = 0; j < contents.length; j++) {
+    contents[j].classList.remove('active');
+  }
+  document.getElementById('tab-' + tabName).classList.add('active');
+  document.getElementById('tab-content-' + tabName).classList.add('active');
+
+  if (tabName === 'artifacts') {
+    loadArtifacts();
+  }
+}
+
+function loadArtifacts() {
+  var list = document.getElementById('artifacts-list');
+
+  if (!currentTaskId) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4E6;</div><div>Select a task to view its artifacts</div></div>';
+    return;
+  }
+
+  list.innerHTML = '<div class="loading">Loading...</div>';
+
+  fetch('/mission/' + encodeURIComponent(currentTaskId) + '/artifacts')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(resp.error) + '</div></div>';
+        return;
+      }
+
+      var artifacts = resp.artifacts || [];
+      if (artifacts.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4E6;</div><div>No artifacts for this mission</div></div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < artifacts.length; i++) {
+        var a = artifacts[i];
+        var iconEmoji = '&#x1F4C4;';
+        if (a.filename && a.filename.endsWith('.json')) iconEmoji = '&#x1F4CA;';
+        if (a.filename && a.filename.endsWith('.diff')) iconEmoji = '&#x1F527;';
+
+        html += '<div class="artifact-row" onclick="viewArtifact(\'' + escapeHtml(a.filename) + '\')">';
+        html += '<div class="icon">' + iconEmoji + '</div>';
+        html += '<div class="info">';
+        html += '<div class="name">' + escapeHtml(a.filename) + '</div>';
+        html += '<div class="meta">' + escapeHtml(a.agent || '-') + ' &middot; ' + (a.artifact_type || '') + ' &middot; ' + formatTime(a.created_at) + '</div>';
+        html += '</div>';
+        html += '<div class="size">' + formatSize(a.size) + '</div>';
+        html += '</div>';
+      }
+      list.innerHTML = html;
+    })
+    .catch(function(e) {
+      list.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+function viewArtifact(filename) {
+  if (!currentTaskId || !filename) return;
+
+  var popup = document.getElementById('artifact-popup');
+  var title = document.getElementById('popup-title');
+  var body = document.getElementById('popup-body');
+
+  title.textContent = 'Artifact: ' + filename;
+  body.textContent = 'Loading...';
+  popup.classList.add('show');
+
+  fetch('/mission/' + encodeURIComponent(currentTaskId) + '/artifacts/' + encodeURIComponent(filename))
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp.success) {
+        // For JSON, pretty-print
+        if (filename.endsWith('.json') && typeof resp.content === 'string') {
+          try {
+            var parsed = JSON.parse(resp.content);
+            body.textContent = JSON.stringify(parsed, null, 2);
+          } catch(e) {
+            body.textContent = resp.content;
+          }
+        } else {
+          body.textContent = resp.content;
+        }
+      } else {
+        body.textContent = 'Error: ' + resp.error;
+      }
+    })
+    .catch(function(e) {
+      body.textContent = 'Error: ' + e.message;
+    });
+}
+
+function closePopup() {
+  document.getElementById('artifact-popup').classList.remove('show');
+}
+
+function formatSize(bytes) {
+  if (!bytes && bytes !== 0) return '-';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function loadAgents() {
+  var select = document.getElementById('cap-agent-select');
+  var list = document.getElementById('cap-agents-list');
+
+  fetch('/mission/capability/agents')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) return;
+
+      var agents = resp.agents || [];
+
+      // Update select
+      var optHtml = '<option value="">Select Agent...</option>';
+      for (var i = 0; i < agents.length; i++) {
+        optHtml += '<option value="' + escapeHtml(agents[i].agent) + '">' + escapeHtml(agents[i].agent) + '</option>';
+      }
+      select.innerHTML = optHtml;
+
+      // Render agent cards
+      var html = '';
+      for (var j = 0; j < agents.length; j++) {
+        var a = agents[j];
+        html += '<div class="cap-agent-row">';
+        html += '<div class="agent-name">' + escapeHtml(a.agent) + '</div>';
+        html += '<div class="caps">';
+        for (var k = 0; k < a.capabilities.length; k++) {
+          html += '<span class="cap-tag allowed">' + escapeHtml(a.capabilities[k]) + '</span>';
+        }
+        for (var l = 0; l < a.forbidden.length; l++) {
+          html += '<span class="cap-tag forbidden">&#x1F6AB; ' + escapeHtml(a.forbidden[l]) + '</span>';
+        }
+        for (var m = 0; m < a.requiresApproval.length; m++) {
+          html += '<span class="cap-tag approval">&#x1F4CB; ' + escapeHtml(a.requiresApproval[m]) + '</span>';
+        }
+        html += '</div></div>';
+      }
+      list.innerHTML = html;
+    })
+    .catch(function(e) {
+      list.innerHTML = '<div style="color:#f85149;font-size:12px;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function checkCapability() {
+  var agent = document.getElementById('cap-agent-select').value;
+  var capability = document.getElementById('cap-input').value.trim();
+  var resultDiv = document.getElementById('cap-result');
+
+  if (!agent) {
+    resultDiv.innerHTML = '<div class="cap-result denied">Please select an agent</div>';
+    return;
+  }
+  if (!capability) {
+    resultDiv.innerHTML = '<div class="cap-result denied">Please enter a capability</div>';
+    return;
+  }
+
+  resultDiv.innerHTML = '<div style="padding:10px;color:#8b949e;">Checking...</div>';
+
+  fetch('/mission/capability/check', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agent: agent, capability: capability, mission_id: currentTaskId || '' })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        resultDiv.innerHTML = '<div class="cap-result denied">Error: ' + escapeHtml(resp.error || 'Unknown error') + '</div>';
+        return;
+      }
+
+      var cls = 'denied';
+      var icon = '&#x274C;';
+      if (resp.allowed && !resp.requiresApproval) {
+        cls = 'allowed';
+        icon = '&#x2705;';
+      } else if (resp.allowed && resp.requiresApproval) {
+        cls = 'approval';
+        icon = '&#x26A0;';
+      }
+
+      resultDiv.innerHTML = '<div class="cap-result ' + cls + '">' +
+        icon + ' <strong>' + escapeHtml(agent) + '</strong> → <strong>' + escapeHtml(capability) + '</strong><br>' +
+        (resp.allowed ? 'Allowed' : 'Denied') +
+        (resp.requiresApproval ? ' (Requires Approval)' : '') +
+        '<br><span style="font-size:11px;opacity:0.7;">' + escapeHtml(resp.reason) + '</span>' +
+        '</div>';
+    })
+    .catch(function(e) {
+      resultDiv.innerHTML = '<div class="cap-result denied">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+// Extend loadEvents to also refresh artifacts
+var _origLoadEvents = loadEvents;
+loadEvents = function() {
+  _origLoadEvents();
+  if (document.getElementById('tab-content-artifacts').classList.contains('active')) {
+    loadArtifacts();
+  }
+};
+
+// ═══════════════════════════════════════════════════════════
+// P10.5 Task Graph Engine Dashboard
+// ═══════════════════════════════════════════════════════════
+
+var _graphsCache = [];
+
+function loadGraphs() {
+  var body = document.getElementById('task-graph-body');
+
+  fetch('/mission/graphs/' + (_graphsCache.length > 0 ? 'x' : 'x'), {})
+    .then(function() { return []; })
+    .catch(function() { return []; });
+
+  // Build graphs display from all known graphs via individual GET
+  // For now, use the cache; refresh fetches from mission tasks' graph data
+  body.innerHTML = '<div class="loading">Loading graphs...</div>';
+
+  // Try fetching graphs by listing missions and checking each
+  fetch('/mission/tasks')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success || !resp.data || resp.data.length === 0) {
+        body.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4CA;</div><div>No mission tasks found. Create a mission task first.</div></div>';
+        return;
+      }
+
+      // Check each mission for graph artifacts
+      var promises = [];
+      for (var i = 0; i < resp.data.length; i++) {
+        (function(missionId) {
+          promises.push(
+            fetch('/mission/' + missionId + '/artifacts/graph.json')
+              .then(function(r) { return r.json(); })
+              .then(function(ar) {
+                if (ar.success) {
+                  try {
+                    var graphData = typeof ar.content === 'string' ? JSON.parse(ar.content) : ar.content;
+                    graphData._mission_id = missionId;
+                    return graphData;
+                  } catch(e) { return null; }
+                }
+                return null;
+              })
+              .catch(function() { return null; })
+          );
+        })(resp.data[i].id);
+      }
+
+      return Promise.all(promises);
+    })
+    .then(function(graphs) {
+      if (!graphs) return;
+      var validGraphs = [];
+      for (var i = 0; i < graphs.length; i++) {
+        if (graphs[i]) validGraphs.push(graphs[i]);
+      }
+      renderGraphs(validGraphs);
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+function renderGraphs(graphs) {
+  var body = document.getElementById('task-graph-body');
+
+  if (!graphs || graphs.length === 0) {
+    body.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4CA;</div><div>No task graphs found. Click "+ Smoke Graph" to create one.</div></div>';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < graphs.length; i++) {
+    var g = graphs[i];
+    var statusBadge = getStatusBadge(g.status);
+
+    html += '<div class="graph-card">';
+    html += '<h4>' + escapeHtml(g.graph_id) + ' ' + statusBadge + '</h4>';
+    html += '<div class="graph-meta">Mission: ' + escapeHtml(g.mission_id || g._mission_id || '') +
+      ' | Nodes: ' + (g.nodes ? g.nodes.length : 0) +
+      ' | Updated: ' + formatTime(g.updated_at) + '</div>';
+
+    if (g.nodes) {
+      var readyNodes = [];
+      var failedNodes = [];
+
+      for (var j = 0; j < g.nodes.length; j++) {
+        var n = g.nodes[j];
+        if (n.status === 'pending' && (!n.dependsOn || n.dependsOn.length === 0)) {
+          // Simple check for ready: pending and all deps completed
+          var allDepsDone = true;
+          if (n.dependsOn) {
+            for (var d = 0; d < n.dependsOn.length; d++) {
+              var depNode = g.nodes.find(function(x) { return x.id === n.dependsOn[d]; });
+              if (!depNode || depNode.status !== 'completed') { allDepsDone = false; break; }
+            }
+          }
+          if (allDepsDone) readyNodes.push(n.id);
+        }
+        if (n.status === 'failed') failedNodes.push(n.id);
+      }
+
+      for (var k = 0; k < g.nodes.length; k++) {
+        var nd = g.nodes[k];
+        html += '<div class="graph-node">';
+        html += '<span class="node-id">' + escapeHtml(nd.id) + '</span>';
+        html += getStatusBadge(nd.status);
+        html += '<span class="node-agent">' + escapeHtml(nd.agent || '-') + '</span>';
+        html += '<span class="node-cap">' + escapeHtml(nd.capability || '-') + '</span>';
+        if (nd.dependsOn && nd.dependsOn.length > 0) {
+          html += '<span class="node-deps">depends: ' + nd.dependsOn.map(escapeHtml).join(', ') + '</span>';
+        }
+        html += '</div>';
+      }
+
+      if (readyNodes.length > 0) {
+        html += '<div style="margin-top:8px;font-size:11px;color:#3fb950;">&#x2713; Ready: ' + readyNodes.map(escapeHtml).join(', ') + '</div>';
+      }
+      if (failedNodes.length > 0) {
+        html += '<div style="margin-top:4px;font-size:11px;color:#f85149;">&#x2717; Failed: ' + failedNodes.map(escapeHtml).join(', ') + '</div>';
+      }
+
+      // Action buttons
+      if (g.status === 'pending' || g.status === 'running') {
+        html += '<div style="margin-top:8px;display:flex;gap:6px;">';
+        html += '<button class="graph-btn run" onclick="runGraphStep(\'' + escapeHtml(g.graph_id) + '\')">Run Step</button>';
+        html += '</div>';
+      }
+      if (g.status === 'failed') {
+        html += '<div style="margin-top:8px;display:flex;gap:6px;">';
+        html += '<button class="graph-btn" onclick="recoverGraph(\'' + escapeHtml(g.graph_id) + '\')">Recover</button>';
+        html += '</div>';
+      }
+    }
+
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+function createSmokeGraph() {
+  var body = document.getElementById('task-graph-body');
+  body.innerHTML = '<div class="loading">Creating smoke graph...</div>';
+
+  // First, find or create a mission task
+  fetch('/mission/tasks')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      var missionId;
+      if (resp.success && resp.data && resp.data.length > 0) {
+        missionId = resp.data[0].id;
+      } else {
+        // Create a test mission task
+        return fetch('/mission/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mission_task_id: 'P10.5',
+            event_type: 'MISSION_CREATED',
+            payload: { title: 'P10.5 Task Graph Smoke Test' }
+          })
+        }).then(function() { return 'P10.5'; });
+      }
+      return missionId;
+    })
+    .then(function(missionId) {
+      return fetch('/mission/graphs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          graph_id: 'graph-p10-5-smoke',
+          mission_id: missionId,
+          nodes: [
+            { id: 'collect_metrics', type: 'skill', skill: 'fetch-doudian-metrics', capability: 'server.audit', agent: 'workbuddy', status: 'pending' },
+            { id: 'risk_scan', type: 'skill', skill: 'risk-alert', capability: 'risk.analysis', agent: 'deepseek', dependsOn: ['collect_metrics'], status: 'pending' },
+            { id: 'ops_summary', type: 'skill', skill: 'ops-summary', capability: 'summary.write', agent: 'doubao', dependsOn: ['risk_scan'], status: 'pending' }
+          ]
+        })
+      });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp.success) {
+        loadGraphs();
+      } else {
+        body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml((resp.errors || [resp.error]).join('; ')) + '</div>';
+      }
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function runGraphStep(graphId) {
+  var body = document.getElementById('task-graph-body');
+  body.innerHTML = '<div class="loading">Running step for ' + escapeHtml(graphId) + '...</div>';
+
+  fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/run-step', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}'
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp.success) {
+        loadGraphs();
+      } else {
+        body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(resp.error) + '</div>';
+      }
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function recoverGraph(graphId) {
+  var body = document.getElementById('task-graph-body');
+  body.innerHTML = '<div class="loading">Recovering graph ' + escapeHtml(graphId) + '...</div>';
+
+  fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/nodes/failed_node/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}'
+  })
+    .then(function() {
+      return fetch('/mission/recovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mission_task_id: graphId, event_type: 'GRAPH_FAILED', error_message: 'Graph failed, requesting recovery' })
+      });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function() {
+      loadGraphs();
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+// ─── P10.6 Integration Validation ────────────────────────
+
+var INTEGRATION_GRAPHS = {
+  happy: {
+    graph_id: 'integration-happy-path',
+    mission_id: 'P10.6-HAPPY',
+    nodes: [
+      { id: 'collect', agent: 'workbuddy', capability: 'server.audit' },
+      { id: 'analyze', agent: 'deepseek', capability: 'reasoning.review', depends_on: ['collect'] },
+      { id: 'report', agent: 'doubao', capability: 'summary.write', depends_on: ['analyze'] }
+    ]
+  },
+  recovery: {
+    graph_id: 'integration-failure-recovery',
+    mission_id: 'P10.6-RECOVERY',
+    nodes: [
+      { id: 'collect', agent: 'workbuddy', capability: 'server.audit' },
+      { id: 'fragile', agent: 'workbuddy', capability: 'server.audit', depends_on: ['collect'] }
+    ]
+  },
+  forbidden: {
+    graph_id: 'integration-forbidden',
+    mission_id: 'P10.6-FORBIDDEN',
+    nodes: [
+      { id: 'collect', agent: 'workbuddy', capability: 'server.audit' },
+      { id: 'dangerous', agent: 'codex', capability: 'env.write', depends_on: ['collect'] }
+    ]
+  },
+  approval: {
+    graph_id: 'integration-approval',
+    mission_id: 'P10.6-APPROVAL',
+    nodes: [
+      { id: 'collect', agent: 'workbuddy', capability: 'server.audit' },
+      { id: 'restart', agent: 'workbuddy', capability: 'pm2.restart', depends_on: ['collect'] }
+    ]
+  }
+};
+
+function runIntegrationFlow(flowType) {
+  var body = document.getElementById('integration-panel-body');
+  var graphDef = INTEGRATION_GRAPHS[flowType];
+  if (!graphDef) return;
+
+  body.innerHTML = '<div class="loading">Running ' + escapeHtml(flowType) + ' flow...</div>';
+
+  fetch('/mission/graphs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(graphDef)
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      var html = '<div style="padding:12px;">';
+      html += '<div style="margin-bottom:12px;"><strong>Flow:</strong> ' + escapeHtml(flowType);
+      html += ' <span class="badge" style="background:' + (resp.success ? '#238636' : '#f85149') + ';">' + (resp.success ? 'OK' : 'FAIL') + '</span>';
+      html += '</div>';
+
+      if (resp.graph && resp.graph.nodes) {
+        html += '<div style="margin-bottom:8px;"><strong>Nodes:</strong></div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">';
+        for (var i = 0; i < resp.graph.nodes.length; i++) {
+          var n = resp.graph.nodes[i];
+          var nc = n.status === 'completed' ? '#238636' : n.status === 'failed' ? '#f85149' : n.status === 'blocked' ? '#d29922' : '#30363d';
+          html += '<span class="graph-node" style="border-color:' + nc + ';">' + escapeHtml(n.id) + ' (' + escapeHtml(n.status || 'pending') + ')</span>';
+        }
+        html += '</div>';
+      }
+
+      if (resp.errors) {
+        html += '<div style="color:#f85149;margin-top:8px;">' + escapeHtml(JSON.stringify(resp.errors)) + '</div>';
+      }
+
+      html += '</div>';
+      body.innerHTML = html;
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function refreshIntegrationStatus() {
+  var body = document.getElementById('integration-panel-body');
+  body.innerHTML = '<div class="loading">Refreshing integration graphs...</div>';
+
+  var flowTypes = Object.keys(INTEGRATION_GRAPHS);
+  var allResults = [];
+  var done = 0;
+
+  for (var i = 0; i < flowTypes.length; i++) {
+    (function(ft) {
+      fetch('/mission/graphs/' + encodeURIComponent(INTEGRATION_GRAPHS[ft].graph_id))
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+          allResults.push({ flow: ft, data: resp });
+          done++;
+          if (done >= flowTypes.length) {
+            renderIntegrationStatus(allResults);
+          }
+        })
+        .catch(function() {
+          allResults.push({ flow: ft, data: null });
+          done++;
+          if (done >= flowTypes.length) {
+            renderIntegrationStatus(allResults);
+          }
+        });
+    })(flowTypes[i]);
+  }
+}
+
+function renderIntegrationStatus(results) {
+  var body = document.getElementById('integration-panel-body');
+  var html = '<div style="padding:12px;">';
+
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
+    var g = r.data;
+    if (g && g.success !== false && g.graph) {
+      var status = g.graph.status || 'unknown';
+      var sc = status === 'completed' ? '#238636' : status === 'failed' ? '#f85149' : status === 'blocked' ? '#d29922' : '#30363d';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #21262d;">';
+      html += '<span style="min-width:80px;font-weight:500;">' + escapeHtml(r.flow) + '</span>';
+      html += '<span class="badge" style="background:' + sc + ';">' + escapeHtml(status) + '</span>';
+      if (g.graph.nodes) {
+        html += '<span style="color:#8b949e;font-size:11px;">(' + g.graph.nodes.length + ' nodes)</span>';
+      }
+      html += '</div>';
+    } else {
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #21262d;">';
+      html += '<span style="min-width:80px;font-weight:500;">' + escapeHtml(r.flow) + '</span>';
+      html += '<span class="badge" style="background:#30363d;">not found</span>';
+      html += '</div>';
+    }
+  }
+
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+// Auto-load graphs on page ready
+setTimeout(function() { loadGraphs(); }, 500);
+
+// ═══════════════════════════════════════════════════════════
+// P10.7 Agent Health Dashboard
+// ═══════════════════════════════════════════════════════════
+
+function loadAgentHealth() {
+  var body = document.getElementById('agent-health-panel-body');
+  body.innerHTML = '<div style="color:#8b949e;padding:20px;text-align:center;">Loading...</div>';
+
+  // First, fetch all agents
+  fetch('/mission/agents')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success || !resp.agents) {
+        body.innerHTML = '<div style="color:#f85149;padding:20px;text-align:center;">Failed to load agents</div>';
+        return;
+      }
+
+      var agents = resp.agents;
+
+      // For each agent, fetch health data
+      var healthPromises = [];
+      for (var i = 0; i < agents.length; i++) {
+        (function(agentName) {
+          healthPromises.push(
+            fetch('/mission/agents/' + encodeURIComponent(agentName) + '/health')
+              .then(function(r) { return r.json(); })
+              .then(function(hr) {
+                if (hr.success) {
+                  return hr.health;
+                }
+                return { agent: agentName, status: 'unknown', error: hr.error };
+              })
+              .catch(function() {
+                return { agent: agentName, status: 'unknown', error: 'fetch failed' };
+              })
+          );
+        })(agents[i].agent);
+      }
+
+      return Promise.all(healthPromises);
+    })
+    .then(function(healthData) {
+      if (!healthData) return;
+      renderAgentHealth(healthData);
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div style="color:#f85149;padding:20px;text-align:center;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function getStatusColor(status) {
+  switch (status) {
+    case 'online': case 'idle': return '#3fb950';
+    case 'busy': return '#58a6ff';
+    case 'degraded': return '#d29922';
+    case 'offline': return '#f85149';
+    case 'unknown': return '#484f58';
+    default: return '#8b949e';
+  }
+}
+
+function getStatusBgColor(status) {
+  switch (status) {
+    case 'online': case 'idle': return '#1a3d2e';
+    case 'busy': return '#1c3a5c';
+    case 'degraded': return '#3d2e1a';
+    case 'offline': return '#3d1a1a';
+    case 'unknown': return '#21262d';
+    default: return '#21262d';
+  }
+}
+
+function renderAgentHealth(healthData) {
+  var body = document.getElementById('agent-health-panel-body');
+
+  if (!healthData || healthData.length === 0) {
+    body.innerHTML = '<div style="color:#8b949e;padding:20px;text-align:center;">No agent data available</div>';
+    return;
+  }
+
+  var html = '';
+
+  for (var i = 0; i < healthData.length; i++) {
+    var h = healthData[i];
+    var color = getStatusColor(h.status);
+    var bgColor = getStatusBgColor(h.status);
+    var canDispatch = h.can_dispatch !== undefined ? h.can_dispatch : true;
+
+    html += '<div class="graph-card" style="margin-bottom: 12px;">';
+
+    // Header row: agent name + status badge + can_dispatch
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+    html += '<div style="display:flex;align-items:center;gap:8px;">';
+    html += '<h4 style="margin:0;">' + escapeHtml(h.agent) + '</h4>';
+    html += '<span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;background:' + bgColor + ';color:' + color + ';">' + escapeHtml(h.status) + '</span>';
+    html += '</div>';
+    html += '<span style="font-size:11px;color:' + (canDispatch ? '#3fb950' : '#f85149') + ';">' + (canDispatch ? 'can dispatch' : 'no dispatch') + '</span>';
+    html += '</div>';
+
+    // Metrics row
+    html += '<div style="display:flex;gap:16px;font-size:12px;color:#8b949e;margin-bottom:6px;flex-wrap:wrap;">';
+    html += '<span>Last seen: ' + formatTime(h.last_seen) + '</span>';
+    html += '<span>Uptime: ' + (h.uptime_seconds || 0) + 's</span>';
+    html += '<span>Tasks: ' + (h.active_tasks || 0) + '</span>';
+    html += '<span>Heartbeats: ' + (h.total_heartbeats || 0) + '</span>';
+    html += '<span>Errors: ' + (h.error_count || 0) + '</span>';
+    html += '</div>';
+
+    // CPU / Memory bars
+    html += '<div style="display:flex;gap:8px;margin-bottom:4px;align-items:center;">';
+    html += '<span style="font-size:11px;color:#8b949e;min-width:36px;">CPU</span>';
+    html += '<div style="flex:1;height:6px;background:#21262d;border-radius:3px;overflow:hidden;">';
+    var cpuPct = Math.min((h.cpu || 0), 100);
+    html += '<div style="width:' + cpuPct + '%;height:100%;background:' + (cpuPct > 80 ? '#f85149' : cpuPct > 50 ? '#d29922' : '#3fb950') + ';border-radius:3px;"></div>';
+    html += '</div>';
+    html += '<span style="font-size:11px;color:#8b949e;min-width:44px;text-align:right;">' + (h.cpu || 0).toFixed(1) + '%</span>';
+    html += '</div>';
+
+    html += '<div style="display:flex;gap:8px;margin-bottom:4px;align-items:center;">';
+    html += '<span style="font-size:11px;color:#8b949e;min-width:36px;">MEM</span>';
+    html += '<div style="flex:1;height:6px;background:#21262d;border-radius:3px;overflow:hidden;">';
+    var memMb = h.memory || 0;
+    var memPct = Math.min(memMb / 10, 100); // 0-1000MB → 0-100%
+    html += '<div style="width:' + memPct + '%;height:100%;background:' + (memMb > 800 ? '#f85149' : memMb > 500 ? '#d29922' : '#3fb950') + ';border-radius:3px;"></div>';
+    html += '</div>';
+    html += '<span style="font-size:11px;color:#8b949e;min-width:44px;text-align:right;">' + memMb.toFixed(0) + ' MB</span>';
+    html += '</div>';
+
+    // Current mission
+    if (h.current_mission) {
+      html += '<div style="font-size:11px;color:#58a6ff;margin-top:4px;">Mission: ' + escapeHtml(h.current_mission) + '</div>';
+    }
+
+    // Capabilities
+    if (h.capabilities && h.capabilities.length > 0) {
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">';
+      for (var c = 0; c < h.capabilities.length; c++) {
+        html += '<span style="padding:1px 6px;border-radius:8px;font-size:10px;background:#1a3d2e;color:#3fb950;">' + escapeHtml(h.capabilities[c]) + '</span>';
+      }
+      html += '</div>';
+    }
+
+    // Warnings
+    if (h.warnings && h.warnings.length > 0) {
+      html += '<div style="margin-top:6px;">';
+      for (var w = 0; w < h.warnings.length; w++) {
+        html += '<div style="font-size:11px;color:#d29922;padding:2px 0;">&#x26A0; ' + escapeHtml(h.warnings[w]) + '</div>';
+      }
+      html += '</div>';
+    }
+
+    // Degraded reason
+    if (h.degraded_reason) {
+      html += '<div style="font-size:11px;color:#f0883e;margin-top:2px;">Reason: ' + escapeHtml(h.degraded_reason) + '</div>';
+    }
+
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+// Auto-refresh agent health every 15 seconds
+setInterval(function() { loadAgentHealth(); }, 15000);
+
+// Initial load of agent health
+setTimeout(function() { loadAgentHealth(); }, 800);
+
+// ═══════════════════════════════════════════════════════════
+// P10.8 Autonomous Execution Loop
+// ═══════════════════════════════════════════════════════════
+
+function runAutonomousLoop() {
+  var graphId = document.getElementById('loop-graph-id').value.trim();
+  var body = document.getElementById('autonomous-loop-panel-body');
+
+  if (!graphId) {
+    body.innerHTML = '<div class="empty-state" style="color:#f85149;">Please enter a graph ID</div>';
+    return;
+  }
+
+  body.innerHTML = '<div class="loading">Running autonomous loop for ' + escapeHtml(graphId) + '...</div>';
+
+  fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/run-loop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ maxSteps: 20, verbose: true })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      renderLoopResult(graphId, resp);
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function runAutoNode() {
+  var graphId = document.getElementById('loop-graph-id').value.trim();
+  var body = document.getElementById('autonomous-loop-panel-body');
+
+  if (!graphId) {
+    body.innerHTML = '<div class="empty-state" style="color:#f85149;">Please enter a graph ID</div>';
+    return;
+  }
+
+  // Attempt to find a ready node from the graph
+  body.innerHTML = '<div class="loading">Finding ready node in ' + escapeHtml(graphId) + '...</div>';
+
+  fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/ready')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success || !resp.ready_nodes || resp.ready_nodes.length === 0) {
+        renderLoopResult(graphId, { success: false, error: 'No ready nodes found' });
+        return;
+      }
+
+      var nodeId = resp.ready_nodes[0].id;
+      body.innerHTML = '<div class="loading">Running node ' + escapeHtml(nodeId) + '...</div>';
+
+      return fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/nodes/' + encodeURIComponent(nodeId) + '/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verbose: true })
+      });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      renderLoopResult(graphId, resp);
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function loadLoopReport() {
+  var graphId = document.getElementById('loop-graph-id').value.trim();
+  var body = document.getElementById('autonomous-loop-panel-body');
+
+  if (!graphId) {
+    body.innerHTML = '<div class="empty-state" style="color:#f85149;">Please enter a graph ID</div>';
+    return;
+  }
+
+  body.innerHTML = '<div class="loading">Loading loop report for ' + escapeHtml(graphId) + '...</div>';
+
+  fetch('/mission/graphs/' + encodeURIComponent(graphId) + '/loop-report')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (!resp.success) {
+        body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(resp.error) + '</div>';
+        return;
+      }
+
+      var report = resp.report;
+      var html = '<div style="padding:12px;">';
+
+      // Report header
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+      html += '<strong>Graph:</strong> ' + escapeHtml(report.graph_id);
+      html += getStatusBadge(report.status);
+      html += '</div>';
+
+      // Stats grid
+      html += '<div class="recovery-card">';
+      html += '<h4>Execution Stats</h4>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">';
+      html += '<div class="recovery-stat"><span class="label">Completed</span><span class="value success">' + (report.completed_nodes || 0) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Failed</span><span class="value error">' + (report.failed_nodes || 0) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Blocked</span><span class="value warning">' + (report.blocked_nodes || 0) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Running</span><span class="value retry">' + (report.running_nodes || 0) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Pending</span><span class="value">' + (report.pending_nodes || 0) + '</span></div>';
+      html += '<div class="recovery-stat"><span class="label">Total</span><span class="value">' + (report.total_nodes || 0) + '</span></div>';
+      html += '</div>';
+      html += '</div>';
+
+      // Summary
+      html += '<div class="recovery-card">';
+      html += '<h4>Summary</h4>';
+      html += '<div style="font-size:12px;color:#c9d1d9;">' + escapeHtml(report.summary || '') + '</div>';
+      html += '<div style="font-size:11px;color:#484f58;margin-top:4px;">Generated: ' + formatTime(report.generated_at) + '</div>';
+      html += '</div>';
+
+      // Events (latest 5)
+      if (report.events && report.events.length > 0) {
+        html += '<div class="recovery-card">';
+        html += '<h4>Events (' + report.events.length + ')</h4>';
+        var recentEvents = report.events.slice(-5).reverse();
+        for (var i = 0; i < recentEvents.length; i++) {
+          var evt = recentEvents[i];
+          html += '<div class="event-item">';
+          html += '<div class="dot ' + getEventDotClass(evt.type || 'info') + '"></div>';
+          html += '<div class="content">';
+          html += '<div class="type">' + escapeHtml(evt.type || 'EVENT') + '</div>';
+          if (evt.node_id) html += '<div class="stage">Node: ' + escapeHtml(evt.node_id) + '</div>';
+          if (evt.detail) html += '<div class="payload">' + escapeHtml(JSON.stringify(evt.detail)) + '</div>';
+          html += '</div>';
+          html += '<div class="time">' + formatTime(evt.timestamp) + '</div>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      // Artifacts
+      if (report.artifacts && report.artifacts.length > 0) {
+        html += '<div class="recovery-card">';
+        html += '<h4>Artifacts (' + report.artifacts.length + ')</h4>';
+        for (var j = 0; j < report.artifacts.length; j++) {
+          var a = report.artifacts[j];
+          html += '<div style="font-size:11px;padding:2px 0;display:flex;align-items:center;gap:6px;">';
+          html += '<span style="color:#58a6ff;">' + escapeHtml(a.filename) + '</span>';
+          html += '<span style="color:#484f58;">' + formatSize(a.size) + '</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      html += '</div>';
+      body.innerHTML = html;
+    })
+    .catch(function(e) {
+      body.innerHTML = '<div class="empty-state" style="color:#f85149;">Error: ' + escapeHtml(e.message) + '</div>';
+    });
+}
+
+function refreshLoopPanel() {
+  var graphId = document.getElementById('loop-graph-id').value.trim();
+  if (graphId) {
+    loadLoopReport();
+  } else {
+    var body = document.getElementById('autonomous-loop-panel-body');
+    body.innerHTML = '<div class="empty-state"><div class="icon">&#x1F504;</div><div>Enter a graph ID and click Run Loop to start autonomous execution</div></div>';
+  }
+}
+
+function renderLoopResult(graphId, resp) {
+  var body = document.getElementById('autonomous-loop-panel-body');
+
+  if (!resp) {
+    body.innerHTML = '<div class="empty-state" style="color:#f85149;">No response received</div>';
+    return;
+  }
+
+  var html = '<div style="padding:12px;">';
+
+  if (resp.success) {
+    // Status header
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">';
+    html += '<strong>' + escapeHtml(graphId) + '</strong>';
+    if (resp.status) {
+      html += getStatusBadge(resp.status);
+    }
+    html += '</div>';
+
+    // Step count
+    if (resp.total_steps !== undefined) {
+      html += '<div style="margin-bottom:8px;font-size:13px;color:#c9d1d9;">Steps executed: ' + resp.total_steps + '</div>';
+    }
+
+    // Message
+    if (resp.message) {
+      html += '<div style="margin-bottom:8px;font-size:12px;color:#8b949e;">' + escapeHtml(resp.message) + '</div>';
+    }
+
+    // Steps detail
+    if (resp.steps && resp.steps.length > 0) {
+      html += '<div class="recovery-card">';
+      html += '<h4>Execution Steps</h4>';
+      for (var i = 0; i < resp.steps.length; i++) {
+        var step = resp.steps[i];
+        html += '<div style="font-size:12px;padding:3px 0;display:flex;align-items:center;gap:8px;">';
+        html += '<span style="color:#484f58;">#' + step.step + '</span>';
+        html += '<span style="color:#58a6ff;">' + escapeHtml(step.node_id) + '</span>';
+        var stepClass = step.action === 'executed' ? 'success' : step.action === 'failed' ? 'error' : step.action === 'blocked' ? 'warning' : '';
+        html += '<span class="value ' + stepClass + '">' + escapeHtml(step.action) + '</span>';
+        if (step.policy) {
+          html += '<span style="font-size:10px;color:#8b949e;">[' + escapeHtml(step.policy) + ']</span>';
+        }
+        if (step.reason) {
+          html += '<span style="font-size:10px;color:#d29922;">' + escapeHtml(step.reason) + '</span>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    // Loop events
+    if (resp.loop_events && resp.loop_events.length > 0) {
+      html += '<div class="recovery-card">';
+      html += '<h4>Loop Events (' + resp.loop_events.length + ')</h4>';
+      for (var j = 0; j < resp.loop_events.length; j++) {
+        var levt = resp.loop_events[j];
+        html += '<div style="font-size:11px;padding:2px 0;color:#8b949e;">';
+        html += '#' + levt.step + ' ' + escapeHtml(levt.node_id || '(graph)') + ' → ' + escapeHtml(levt.action);
+        if (levt.reason) html += ' <span style="color:#d29922;">' + escapeHtml(levt.reason) + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+  } else {
+    // Error display
+    html += '<div style="margin-bottom:12px;">';
+    html += '<strong>' + escapeHtml(graphId) + '</strong>';
+    html += ' <span class="badge badge-failed">ERROR</span>';
+    html += '</div>';
+    html += '<div style="color:#f85149;font-size:13px;margin-bottom:8px;">' + escapeHtml(resp.error) + '</div>';
+
+    if (resp.validation_errors) {
+      html += '<div style="color:#d29922;font-size:12px;">Validation errors: ' + escapeHtml(JSON.stringify(resp.validation_errors)) + '</div>';
+    }
+
+    if (resp.blocked) {
+      html += '<div style="margin-top:8px;">';
+      html += '<span class="badge badge-blocked">BLOCKED</span>';
+      if (resp.requiresApproval) {
+        html += ' <span class="badge badge-warning">REQUIRES APPROVAL</span>';
+      }
+      html += '</div>';
+    }
+
+    if (resp.policy) {
+      html += '<div style="font-size:11px;color:#8b949e;margin-top:4px;">Policy: ' + escapeHtml(JSON.stringify(resp.policy)) + '</div>';
+    }
+  }
+
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// P11.0 Commander Gateway Functions
+// ═══════════════════════════════════════════════════════════
+
+function createCommanderMission() {
+  var text = document.getElementById('commander-text').value.trim();
+  var operator = document.getElementById('commander-operator').value.trim();
+  var result = document.getElementById('commander-result');
+
+  if (!text) {
+    result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Please enter a mission description</div></div>';
+    return;
+  }
+
+  result.innerHTML = '<div class="loading">Creating mission...</div>';
+
+  fetch('/commander/mission', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source: 'dashboard', text: text, operator: operator || 'laohao', room: 'Mission Control', autoRun: true })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(resp) {
+    if (resp.success) {
+      var html = '<div style="padding:8px 0;">';
+      html += '<div style="color:#3fb950;font-weight:600;">&#x2705; Mission Created</div>';
+      html += '<div style="font-size:11px;margin-top:4px;">';
+      html += '<div>Mission: <code>' + escapeHtml(resp.mission_id) + '</code></div>';
+      html += '<div>Graph: <code>' + escapeHtml(resp.graph_id) + '</code></div>';
+      html += '<div>Type: ' + escapeHtml(resp.mission_type || 'N/A') + '</div>';
+      html += '<div>Status: ' + getStatusBadge(resp.status) + '</div>';
+      if (resp.capabilities) {
+        html += '<div>Capabilities: ' + (resp.capabilities.all_allowed ? 'ALLOWED' : 'BLOCKED') + '</div>';
+        if (resp.capabilities.requires_approval) {
+          html += '<div style="color:#d29922;">&#x26A0; Requires Approval</div>';
+        }
+      }
+      if (resp.loop) {
+        html += '<div>Loop: ' + resp.loop.status + ' (' + (resp.loop.steps || 0) + ' steps)</div>';
+      }
+      html += '</div></div>';
+      result.innerHTML = html;
+      loadTasks();
+    } else {
+      result.innerHTML = '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(resp.error || 'Unknown error') + '</div></div>';
+    }
+  })
+  .catch(function(e) {
+    result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+  });
+}
+
+function loadCommanderMission() {
+  var missionId = document.getElementById('commander-mission-id');
+  if (!missionId) {
+    var createEl = document.getElementById('commander-operator');
+    missionId = document.createElement('input');
+    missionId.type = 'text';
+    missionId.id = 'commander-mission-id';
+    missionId.placeholder = 'Mission ID';
+    missionId.style.cssText = 'width:200px;';
+    createEl.parentNode.insertBefore(missionId, createEl.nextSibling);
+  }
+
+  var id = missionId.value.trim();
+  var result = document.getElementById('commander-result');
+  if (!id) {
+    result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Enter a Mission ID</div></div>';
+    return;
+  }
+
+  result.innerHTML = '<div class="loading">Loading...</div>';
+  fetch('/commander/mission/' + encodeURIComponent(id) + '/status')
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp.success) {
+        var html = '<div style="padding:8px 0;">';
+        html += '<div style="font-weight:600;">Mission: <code>' + escapeHtml(resp.mission_id) + '</code></div>';
+        html += '<div style="font-size:11px;">';
+        if (resp.status) {
+          html += '<div>Stage: ' + escapeHtml(resp.status.stage) + '</div>';
+          html += '<div>Progress: ' + (resp.status.progress || 0) + '%</div>';
+          html += '<div>Approval: ' + escapeHtml(resp.status.approval_status || 'N/A') + '</div>';
+        }
+        if (resp.graph) {
+          html += '<div>Graph: ' + escapeHtml(resp.graph.status) + ' (' + (resp.graph.node_count || 0) + ' nodes)</div>';
+        }
+        html += '<div>Artifacts: ' + (resp.artifact_count || 0) + '</div>';
+        html += '</div></div>';
+        result.innerHTML = html;
+      } else {
+        result.innerHTML = '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(resp.error || 'Not found') + '</div></div>';
+      }
+    })
+    .catch(function(e) {
+      result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+function loadCommanderStatus() {
+  loadCommanderMission();
+}
+
+// ═══════════════════════════════════════════════════════════
+// P11.1 WeCom Mission Center Functions
+// ═══════════════════════════════════════════════════════════
+
+function sendWeComCommand() {
+  var command = document.getElementById('wecom-command').value;
+  var missionId = document.getElementById('wecom-mission-id').value.trim();
+  var result = document.getElementById('wecom-result');
+  var content = '';
+
+  switch (command) {
+    case 'mission':
+      content = document.getElementById('commander-text') ? document.getElementById('commander-text').value.trim() : '';
+      if (!content) { content = '开始任务'; }
+      break;
+    case 'status': content = '/任务 状态 ' + missionId; break;
+    case 'detail': content = '/任务 详情 ' + missionId; break;
+    case 'artifacts': content = '/任务 artifacts ' + missionId; break;
+    case 'approve': content = '/审批 ' + missionId; break;
+    case 'reject': content = '/拒绝 ' + missionId; break;
+    case 'help': content = '/help'; break;
+  }
+
+  if (!content) {
+    result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Enter Mission ID</div></div>';
+    return;
+  }
+
+  result.innerHTML = '<div class="loading">Sending...</div>';
+
+  fetch('/wecom/mission', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ FromUserName: 'laohao', RoomId: 'Mission Control', Content: content })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(resp) {
+    if (resp.reply) {
+      result.innerHTML = '<div style="white-space:pre-wrap;font-size:13px;padding:8px;background:#161b22;border-radius:4px;">' + escapeHtml(resp.reply) + '</div>';
+    } else if (resp.success) {
+      result.innerHTML = '<div class="empty-state"><div class="icon">&#x2705;</div><div>Mission: ' + escapeHtml(resp.mission_id || 'OK') + '</div></div>';
+    } else {
+      result.innerHTML = '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(resp.error || 'Failed') + '</div></div>';
+    }
+    loadTasks();
+  })
+  .catch(function(e) {
+    result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+  });
+}
+
+function loadWeComStatus() {
+  // No-op: WeCom status is driven by sendWeComCommand
+}
+
+// ─── P11.2 WorkBuddy Execution Panel ─────────────────────────
+
+function loadWorkBuddyJobs() {
+  var result = document.getElementById('workbuddy-result');
+  result.innerHTML = '<div class="loading">Loading WorkBuddy jobs...</div>';
+  fetch('/execution/workbuddy/jobs')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success || !data.jobs || data.jobs.length === 0) {
+        result.innerHTML = '<div class="empty-state"><div class="icon">&#x1F916;</div><div>No WorkBuddy jobs yet</div></div>';
+        return;
+      }
+      var html = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
+      html += '<tr style="border-bottom:1px solid #30363d;color:#8b949e;">';
+      html += '<th style="padding:4px 8px;text-align:left;">Job ID</th>';
+      html += '<th style="padding:4px 8px;text-align:left;">Action</th>';
+      html += '<th style="padding:4px 8px;text-align:left;">Status</th>';
+      html += '<th style="padding:4px 8px;text-align:left;">Approval</th>';
+      html += '</tr>';
+      data.jobs.forEach(function(j) {
+        html += '<tr style="border-bottom:1px solid #21262d;">';
+        html += '<td style="padding:4px 8px;">' + escapeHtml(j.job_id) + '</td>';
+        html += '<td style="padding:4px 8px;">' + escapeHtml(j.action) + '</td>';
+        html += '<td style="padding:4px 8px;">' + getStatusBadge(j.status) + '</td>';
+        html += '<td style="padding:4px 8px;">' + (j.requiresApproval ? '⚠️ Yes' : '✅ No') + '</td>';
+        html += '</tr>';
+      });
+      html += '</table>';
+      result.innerHTML = html;
+    })
+    .catch(function(e) {
+      result.innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;</div><div>Error: ' + escapeHtml(e.message) + '</div></div>';
+    });
+}
+
+function createWorkBuddyJob() {
+  var result = document.getElementById('workbuddy-result');
+  result.innerHTML = '<div class="loading">Creating job...</div>';
+  fetch('/execution/workbuddy/jobs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mission_id: 'dashboard_test', action: 'test.run' })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        result.innerHTML = '<div class="empty-state"><div class="icon">&#x2705;</div><div>Job: ' + escapeHtml(data.job.job_id) + ' (' + data.job.status + ')</div></div>';
+        loadWorkBuddyJobs();
+      } else {
+        result.innerHTML = '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(data.error || 'Failed') + '</div></div>';
+      }
+    });
+}
+
+function approveWorkBuddyJob() {
+  var jobId = document.getElementById('wb-job-id').value.trim();
+  if (!jobId) { alert('Enter Job ID'); return; }
+  var result = document.getElementById('workbuddy-result');
+  result.innerHTML = '<div class="loading">Approving...</div>';
+  fetch('/execution/workbuddy/jobs/' + encodeURIComponent(jobId) + '/approve', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      result.innerHTML = data.success
+        ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Approved: ' + escapeHtml(jobId) + '</div></div>'
+        : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(data.error || 'Failed') + '</div></div>';
+      loadWorkBuddyJobs();
+    });
+}
+
+function rejectWorkBuddyJob() {
+  var jobId = document.getElementById('wb-job-id').value.trim();
+  if (!jobId) { alert('Enter Job ID'); return; }
+  var result = document.getElementById('workbuddy-result');
+  result.innerHTML = '<div class="loading">Rejecting...</div>';
+  fetch('/execution/workbuddy/jobs/' + encodeURIComponent(jobId) + '/reject', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      result.innerHTML = data.success
+        ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Rejected: ' + escapeHtml(jobId) + '</div></div>'
+        : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(data.error || 'Failed') + '</div></div>';
+      loadWorkBuddyJobs();
+    });
+}
+
+function dispatchWorkBuddyJob() {
+  var jobId = document.getElementById('wb-job-id').value.trim();
+  if (!jobId) { alert('Enter Job ID'); return; }
+  var result = document.getElementById('workbuddy-result');
+  result.innerHTML = '<div class="loading">Dispatching...</div>';
+  fetch('/execution/workbuddy/jobs/' + encodeURIComponent(jobId) + '/dispatch', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      result.innerHTML = data.success
+        ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Dispatched: ' + escapeHtml(jobId) + '</div></div>'
+        : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(data.error || 'Failed') + '</div></div>';
+      loadWorkBuddyJobs();
+    });
+}
+
+// ─── P11.3 Agent Bus Panel ──────────────────────────────────
+
+function loadAgentBus() {
+  var r = document.getElementById('agentbus-result');
+  r.innerHTML = '<div class="loading">Loading agent bus...</div>';
+  fetch('/agent-bus/agents')
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+      if (!data.agents || data.agents.length === 0) {
+        r.innerHTML = '<div class="empty-state"><div class="icon">&#x1F68C;</div><div>No agents registered</div></div>';
+        return;
+      }
+      var h = '<table style="width:100%;font-size:12px;"><tr style="border-bottom:1px solid #30363d;color:#8b949e;"><th>Agent</th><th>Type</th><th>Status</th></tr>';
+      data.agents.forEach(function(a) {
+        h += '<tr style="border-bottom:1px solid #21262d;">';
+        h += '<td>' + escapeHtml(a.agent_id || '?') + '</td><td>' + escapeHtml(a.agent_type) + '</td><td>' + getStatusBadge(a.status) + '</td>';
+        h += '</tr>';
+      });
+      h += '</table>';
+      r.innerHTML = h;
+    });
+}
+
+function createAgentJob() {
+  var r = document.getElementById('agentbus-result');
+  var at = document.getElementById('ab-agent-type').value;
+  r.innerHTML = '<div class="loading">Creating ' + at + ' job...</div>';
+  fetch('/agent-bus/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent_type: at, action: 'test.run', mission_id: 'db_' + Date.now() }) })
+    .then(function(resp) { return resp.json(); })
+    .then(function(d) {
+      r.innerHTML = d.success
+        ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Job: ' + escapeHtml(d.job.job_id) + ' (' + d.job.status + ')</div></div>'
+        : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(d.error || 'Failed') + '</div></div>';
+    });
+}
+
+// ─── P11.4 Multi-Agent Runtime Panel ────────────────────────
+
+function createMultiAgentMission() {
+  var r = document.getElementById('multiagent-result');
+  var mt = document.getElementById('ma-mission-type').value;
+  r.innerHTML = '<div class="loading">Creating ' + mt + ' mission...</div>';
+  fetch('/multi-agent/missions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_type: mt }) })
+    .then(function(resp) { return resp.json(); })
+    .then(function(d) {
+      r.innerHTML = d.success
+        ? '<div class="empty-state"><div class="icon">&#x2705;</div><div>Mission: ' + escapeHtml(d.mission.mission_id) + ' (' + d.plan.nodes.length + ' nodes, ' + (d.plan.agents || []).join(',') + ')</div></div>'
+        : '<div class="empty-state"><div class="icon">&#x274C;</div><div>' + escapeHtml(d.error || 'Failed') + '</div></div>';
+    });
+}
+
+function loadMultiAgentMissions() {
+  var r = document.getElementById('multiagent-result');
+  r.innerHTML = '<div class="loading">Loading missions...</div>';
+  fetch('/multi-agent/missions')
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+      if (!data.missions || data.missions.length === 0) {
+        r.innerHTML = '<div class="empty-state"><div class="icon">&#x1F3AF;</div><div>No missions yet</div></div>';
+        return;
+      }
+      var h = '<table style="width:100%;font-size:12px;"><tr style="border-bottom:1px solid #30363d;color:#8b949e;"><th>Mission</th><th>Type</th><th>Status</th><th>Progress</th><th>Agents</th></tr>';
+      data.missions.forEach(function(m) {
+        h += '<tr style="border-bottom:1px solid #21262d;"><td>' + escapeHtml(m.mission_id) + '</td><td>' + escapeHtml(m.mission_type) + '</td><td>' + getStatusBadge(m.status) + '</td><td>' + m.progress + '%</td><td>' + (m.agents||[]).join(',') + '</td></tr>';
+      });
+      h += '</table>';
+      r.innerHTML = h;
+    });
+}
+</script>
+</body>
+</html>

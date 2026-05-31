@@ -11,6 +11,7 @@ const https = require('https');
 const opsRules = require('./ops-rules');
 const config = require('./config');
 const logger = require('./logger');
+const vault = require('./vault-client');
 
 let cronJob = null;
 let cachedToken = null;
@@ -27,7 +28,8 @@ function getToken(callback) {
     return;
   }
   const url = 'https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=' + WECOM_CORP_ID + '&corpsecret=' + WECOM_SECRET;
-  https.get(url, function(res) {
+  // sanitize: 不在日志中泄露 secret
+  https.get(vault.sanitize(url), function(res) {
     let d = '';
     res.on('data', function(c) { d += c; });
     res.on('end', function() {

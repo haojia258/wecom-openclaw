@@ -1,29 +1,38 @@
-# Dependencies
+# === Dependencies ===
 node_modules/
 package-lock.json
 
-# Environment & Secrets
+# === Environment & Secrets ===
 .env
+.env.*
+!.env.example
 *.pem
+*.key
 
-# Logs & Data
+# === Logs & Runtime Data ===
 logs/
 storage/
+!apps/wecom-adapter/src/storage/
 data/
-
-# Browser profiles & screenshots
+!apps/wecom-adapter/data/
+apps/wecom-adapter/data/*.db
+apps/wecom-adapter/data/*.db-shm
+apps/wecom-adapter/data/*.db-wal
+cookies/
 screenshots/
-*.png
-*.html
 
-# OS files
+# === Browser ===
+data/browser/
+
+# === OS files ===
 .DS_Store
 Thumbs.db
 
-# IDE
+# === IDE ===
 .vscode/
 .idea/
 
-# Temp
+# === Temp & Backup ===
 *.bak
 *.tmp
+*.log
