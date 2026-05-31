@@ -53,6 +53,9 @@ const REGISTRY = {
   '/素材报告': { file: '../commands/product-asset-command', aliases: ['/素材缺口'] },
   '/周报':     { file: '../commands/kpi-command', aliases: ['/weekly'] },
   '/月报':     { file: '../commands/kpi-command', aliases: ['/monthly'] },
+  '/预算':     { file: '../commands/budget-command', aliases: ['/budget'] },
+  '/预算分析': { file: '../commands/budget-command', aliases: ['/预算诊断'] },
+  '/预算建议': { file: '../commands/budget-command', aliases: ['/预算方案'] },
 };
 
 // 缓存已加载的 handler（懒加载）
