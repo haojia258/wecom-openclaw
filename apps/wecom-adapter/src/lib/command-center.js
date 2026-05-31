@@ -51,6 +51,8 @@ const REGISTRY = {
   '/素材库':   { file: '../commands/product-asset-command', aliases: ['/素材摘要'] },
   '/素材扫描': { file: '../commands/product-asset-command', aliases: ['/扫描素材'] },
   '/素材报告': { file: '../commands/product-asset-command', aliases: ['/素材缺口'] },
+  '/周报':     { file: '../commands/kpi-command', aliases: ['/weekly'] },
+  '/月报':     { file: '../commands/kpi-command', aliases: ['/monthly'] },
 };
 
 // 缓存已加载的 handler（懒加载）
