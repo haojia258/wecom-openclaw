@@ -1,0 +1,33 @@
+{
+  "agentId": "deepseek",
+  "name": "DeepSeek V4 Pro Analyst",
+  "role": "analysis",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "capabilities": [
+    "roi_analysis",
+    "risk_analysis",
+    "data_analysis",
+    "video_advice",
+    "strategy_review"
+  ],
+  "allowedTaskTypes": [
+    "analysis",
+    "risk",
+    "roi",
+    "strategy",
+    "video"
+  ],
+  "forbiddenActions": [
+    "deploy",
+    "merge",
+    "code_write",
+    "server_execution",
+    "production_write"
+  ],
+  "requiresHumanApproval": true,
+  "reviewOnly": true,
+  "maxConcurrentTasks": 2,
+  "priority": 7,
+  "enabled": true
+}
