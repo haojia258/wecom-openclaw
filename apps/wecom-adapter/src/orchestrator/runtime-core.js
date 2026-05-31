@@ -349,6 +349,37 @@ function planRollback(taskId) {
 }
 
 /**
+ * 重试任务: dispatch_failed → dispatched, dispatched idempotent
+ */
+function retryTask(taskId) {
+  const task = getTask(taskId);
+  if (!task) throw new Error('Task not found: ' + taskId);
+
+  var fromStatus = task.status;
+
+  // Idempotent: already dispatched → just re-run
+  if (fromStatus === 'dispatched') {
+    recordAudit({
+      taskId: taskId, action: 'retry', fromStatus: 'dispatched', toStatus: 'dispatched',
+      actor: 'system', summary: 'Idempotent re-dispatch',
+    });
+    return getTask(taskId);
+  }
+
+  // dispatch_failed → dispatched
+  if (fromStatus === 'dispatch_failed') {
+    updateStatus(taskId, 'dispatched');
+    recordAudit({
+      taskId: taskId, action: 'retry', fromStatus: 'dispatch_failed', toStatus: 'dispatched',
+      actor: 'system', summary: 'Retry after dispatch failure',
+    });
+    return getTask(taskId);
+  }
+
+  throw new Error('Cannot retry: task status is ' + fromStatus + ' (only dispatch_failed or dispatched)');
+}
+
+/**
  * 取消任务: queued/planned/dispatched/artifact_received/review_pending → cancelled
  * v0.6.2 — 不删除 artifact，不留 rollback
  */
@@ -489,6 +520,7 @@ module.exports = {
   reviewTask,
   approveTask,
   rejectTask,
+  retryTask,
   cancelTask,
   planRollback,
   closeTask,

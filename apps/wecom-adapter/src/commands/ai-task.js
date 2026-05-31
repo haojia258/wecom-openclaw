@@ -59,6 +59,7 @@ const HELP_TEXT =
   '  /ai任务 批准 <taskId>     批准执行\n' +
   '  /ai任务 拒绝 <taskId>     拒绝任务\n' +
   '  /ai任务 回滚 <taskId>     规划回滚\n' +
+  '  /ai任务 重试 <taskId>     重试失败任务\n' +
   '  /ai任务 取消 <taskId>     取消任务\n' +
   '  /ai任务 关闭 <taskId>     关闭任务\n' +
   '\n' +
@@ -129,6 +130,10 @@ async function execute(ctx, args) {
     case '取消':
     case 'cancel':
       return handleCancel(subArgs);
+
+    case '重试':
+    case 'retry':
+      return handleRetry(subArgs);
 
     case '关闭':
     case 'close':
@@ -785,6 +790,17 @@ function handleCancel(taskId) {
     return '✅ **任务已取消**\n\nTask ID: ' + taskId + '\n状态: cancelled\n\n⚠️ Artifact 保留未删除。';
   } catch (e) {
     return '❌ 取消失败\n\n' + e.message;
+  }
+}
+
+function handleRetry(taskId) {
+  if (!taskId) return '❌ 缺少 taskId\n用法: /ai任务 重试 <taskId>';
+  taskId = taskId.trim();
+  try {
+    const task = runtimeCore.retryTask(taskId);
+    return '✅ **任务重试成功**\n\nTask ID: ' + taskId + '\n状态: ' + task.status + '\n\n📌 下一步: /ai任务 派发 ' + taskId;
+  } catch (e) {
+    return '❌ 重试失败\n\n' + e.message;
   }
 }
 

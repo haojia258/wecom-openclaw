@@ -19,7 +19,8 @@
 const VALID_TRANSITIONS = {
   queued:           ['planned', 'cancelled'],
   planned:          ['dispatched', 'cancelled'],
-  dispatched:       ['artifact_received', 'cancelled'],
+  dispatched:       ['artifact_received', 'dispatch_failed', 'cancelled'],
+  dispatch_failed:  ['dispatched', 'cancelled'],  // retry or cancel
   artifact_received: ['review_pending', 'cancelled'],
   review_pending:   ['approved', 'rejected', 'cancelled'],
   approved:         ['closed'],
