@@ -11,7 +11,7 @@ var fs = require('fs');
 
 var BASE_DIR = (function () {
   // try project-relative path first
-  var p = path.join(__dirname, '..', '..', '..', '..', 'apps', 'wecom-adapter', 'storage', 'orchestrator', 'artifacts');
+  var p = path.join(__dirname, '..', '..', '..', 'storage', 'orchestrator', 'artifacts');
   if (fs.existsSync(p)) return p;
   // fallback: absolute server path
   p = '/opt/wecom-openclaw/apps/wecom-adapter/storage/orchestrator/artifacts';

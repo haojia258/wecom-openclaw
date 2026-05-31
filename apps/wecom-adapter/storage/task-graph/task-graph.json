@@ -1,0 +1,37 @@
+{
+  "tasks": {
+    "OSS Radar": {
+      "id": "oss-radar",
+      "name": "OSS Radar",
+      "status": "completed",
+      "dependsOn": [],
+      "children": [
+        "agent-registry",
+        "marketplace"
+      ],
+      "blockedBy": []
+    },
+    "agent-registry": {
+      "id": "agent-registry",
+      "name": "Agent Registry",
+      "status": "in_progress",
+      "dependsOn": [
+        "OSS Radar"
+      ],
+      "children": [
+        "marketplace"
+      ],
+      "blockedBy": []
+    },
+    "marketplace": {
+      "id": "marketplace",
+      "name": "Marketplace Integration",
+      "status": "in_progress",
+      "dependsOn": [
+        "agent-registry"
+      ],
+      "children": [],
+      "blockedBy": []
+    }
+  }
+}

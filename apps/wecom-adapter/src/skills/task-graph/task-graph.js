@@ -7,7 +7,7 @@
 var path = require('path');
 var fs = require('fs');
 
-var GRAPH_PATH = path.join(__dirname, '..', '..', '..', '..', 'storage', 'task-graph', 'task-graph.json');
+var GRAPH_PATH = path.join(__dirname, '..', '..', '..', 'storage', 'task-graph', 'task-graph.json');
 
 var _cache = null;
 var _cacheTime = 0;
