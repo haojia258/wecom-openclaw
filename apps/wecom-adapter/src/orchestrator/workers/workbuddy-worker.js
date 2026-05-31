@@ -11,7 +11,7 @@
 
 var providerWorker = require('./provider-worker');
 
-var WORKBUDDY_HOST = process.env.WORKBUDDY_BASE_URL || 'https://api.deepseek.com';
+var WORKBUDDY_HOST = process.env.WORKBUDDY_BASE_URL || 'api.deepseek.com';
 var WORKBUDDY_MODEL = process.env.WORKBUDDY_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-chat';
 var WORKBUDDY_PROVIDER = 'workbuddy';
 var WORKER_ID = 'workbuddy-runtime';
@@ -39,7 +39,7 @@ async function executeWorkBuddyWorker(task) {
   try {
     var result = await providerWorker.callChatCompletions({
       provider: WORKBUDDY_PROVIDER,
-      host: WORKBUDDY_HOST,
+      hostname: WORKBUDDY_HOST,
       model: WORKBUDDY_MODEL,
       apiKey: process.env.DEEPSEEK_API_KEY,
       messages: [
