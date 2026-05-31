@@ -349,6 +349,34 @@ function planRollback(taskId) {
 }
 
 /**
+ * 取消任务: queued/planned/dispatched/artifact_received/review_pending → cancelled
+ * v0.6.2 — 不删除 artifact，不留 rollback
+ */
+function cancelTask(taskId) {
+  const task = getTask(taskId);
+  if (!task) throw new Error('Task not found: ' + taskId);
+
+  const result = validateTransition(task.status, 'cancelled');
+  if (!result.valid) {
+    throw new Error('Cannot cancel: ' + result.reason);
+  }
+
+  updateStatus(taskId, 'cancelled');
+
+  recordAudit({
+    taskId: taskId,
+    action: 'cancel',
+    fromStatus: task.status,
+    toStatus: 'cancelled',
+    actor: 'system',
+    summary: 'Task cancelled — artifacts preserved',
+    rollbackHint: null,
+  });
+
+  return getTask(taskId);
+}
+
+/**
  * 关闭任务: approved/rollback_required → closed
  */
 function closeTask(taskId) {
@@ -461,6 +489,7 @@ module.exports = {
   reviewTask,
   approveTask,
   rejectTask,
+  cancelTask,
   planRollback,
   closeTask,
   getTaskStatus,

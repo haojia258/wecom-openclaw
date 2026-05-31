@@ -54,6 +54,7 @@ const VALID_STATUSES = [
   'review_pending',
   'approved',
   'rejected',
+  'cancelled',
   'rollback_required',
   'closed',
 ];

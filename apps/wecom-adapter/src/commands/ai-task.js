@@ -12,6 +12,7 @@
  *   /ai任务 批准 <taskId>            批准任务
  *   /ai任务 拒绝 <taskId>            拒绝任务
  *   /ai任务 回滚 <taskId>            规划回滚
+ *   /ai任务 取消 <taskId>            取消任务（保留 artifact）
  *   /ai任务 关闭 <taskId>            关闭任务
  *   /ai任务 帮助                    显示帮助
  *
@@ -58,6 +59,7 @@ const HELP_TEXT =
   '  /ai任务 批准 <taskId>     批准执行\n' +
   '  /ai任务 拒绝 <taskId>     拒绝任务\n' +
   '  /ai任务 回滚 <taskId>     规划回滚\n' +
+  '  /ai任务 取消 <taskId>     取消任务\n' +
   '  /ai任务 关闭 <taskId>     关闭任务\n' +
   '\n' +
   'AI Workers: Codex(gpt-4o) | WorkBuddy(claude) | DeepSeek | 豆包\n' +
@@ -123,6 +125,10 @@ async function execute(ctx, args) {
     case 'rollback':
     case 'rb':
       return handleRollback(subArgs);
+
+    case '取消':
+    case 'cancel':
+      return handleCancel(subArgs);
 
     case '关闭':
     case 'close':
@@ -771,6 +777,17 @@ function handleRollback(taskId) {
 // ────────────────────────────────────────────
 // 关闭任务
 // ────────────────────────────────────────────
+function handleCancel(taskId) {
+  if (!taskId) return '❌ 缺少 taskId\n用法: /ai任务 取消 <taskId>';
+  taskId = taskId.trim();
+  try {
+    const task = runtimeCore.cancelTask(taskId);
+    return '✅ **任务已取消**\n\nTask ID: ' + taskId + '\n状态: cancelled\n\n⚠️ Artifact 保留未删除。';
+  } catch (e) {
+    return '❌ 取消失败\n\n' + e.message;
+  }
+}
+
 function handleClose(taskId) {
   if (!taskId) {
     return '❌ 请提供 taskId\n\n示例: /ai任务 关闭 task-xxx';
