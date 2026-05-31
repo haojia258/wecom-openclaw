@@ -47,7 +47,18 @@
     "test:agent-heartbeat": "node tests/test-agent-heartbeat.cjs",
     "test:integrated-runtime-validation": "node tests/test-integrated-runtime-validation.cjs",
     "test:autonomous-execution-loop": "node tests/test-autonomous-execution-loop.cjs",
-    "test:task-graph": "node src/agent-runtime/test-task-graph.cjs"
+    "test:task-graph": "node src/agent-runtime/test-task-graph.cjs",
+    "test:agent-registry": "node src/agent-runtime/test-agent-capability-registry.cjs",
+    "test:video-material-engine": "node src/video-material/test-video-material-engine.cjs",
+    "test:video-script-generator": "node src/video-material/test-video-script-generator.cjs",
+    "test:video-material-command": "node src/video-material/test-video-material-command.cjs",
+    "test:marketing-decision-engine": "node src/marketing/test-marketing-decision-engine.cjs",
+    "test:budget-engine": "node src/marketing/test-budget-engine.cjs",
+    "test:marketing-command": "node src/marketing/test-marketing-command.cjs",
+    "test:domain-registry": "node src/domain-gateway/test-domain-registry.cjs",
+    "test:domain-gateway-command": "node src/domain-gateway/test-domain-gateway-command.cjs",
+    "test:domain-status": "node src/domain-gateway/test-domain-status.cjs",
+    "test:autonomous-loop": "node src/autonomous-loop/test-autonomous-loop.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",
