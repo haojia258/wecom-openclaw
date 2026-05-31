@@ -39,6 +39,11 @@ try { deepseekWorker = require('../orchestrator/workers/deepseek-worker'); } cat
 let doubaoWorker = null;
 try { doubaoWorker = require('../orchestrator/workers/doubao-worker'); } catch (e) { /* 可选依赖 */ }
 
+// 延迟加载 workbuddy-worker (P12.4)
+let workbuddyWorker = null;
+try { workbuddyWorker = require('../orchestrator/workers/workbuddy-worker'); } catch (e) { /* 可选依赖 */ }
+try { doubaoWorker = require('../orchestrator/workers/doubao-worker'); } catch (e) { /* 可选依赖 */ }
+
 const desc = 'AI任务管理: 创建/派发/审查/批准任务';
 
 const HELP_TEXT =
@@ -407,7 +412,64 @@ async function handleDispatchAsync(taskId) {
       }
     }
 
-    // 7. 其他 assignee（workbuddy）→ 保持 mock 行为
+    // 3d. assignee 是 workbuddy → 调用 WorkBuddy Runtime (P12.4)
+    if (task.assignee === 'workbuddy' && workbuddyWorker) {
+      try {
+        var wbArtifact = await workbuddyWorker.executeWorkBuddyWorker(task);
+
+        var artifactDir4 = getArtifactDir(taskId);
+
+        if (wbArtifact.ok && wbArtifact.outputText) {
+          fs.writeFileSync(path.join(artifactDir4, 'workbuddy-output.md'), wbArtifact.outputText, 'utf-8');
+        }
+        var wbMeta = {
+          taskId: taskId, workerId: 'workbuddy-runtime', provider: 'workbuddy',
+          model: wbArtifact.model || 'deepseek-chat', latencyMs: wbArtifact.latencyMs,
+          status: wbArtifact.ok ? 'success' : 'failed',
+          safetyNote: 'REVIEW_ONLY__NO_AUTO_APPLY',
+        };
+        fs.writeFileSync(path.join(artifactDir4, 'runtime-meta.json'), JSON.stringify(wbMeta, null, 2), 'utf-8');
+
+        if (!wbArtifact.ok) {
+          return [
+            '🚀 任务已派发（WorkBuddy Runtime）',
+            '',
+            'Task ID:  ' + taskId,
+            '⚠️ WorkBuddy Worker 失败：' + (wbArtifact.error || 'unknown'),
+            '',
+            '任务保持 dispatched 状态，可重试：/ai任务 派发 ' + taskId,
+          ].join('\n');
+        }
+
+        runtimeCore.receiveArtifact(taskId, {
+          review: (wbArtifact.outputText || '').substring(0, 200) + '...',
+          model: wbArtifact.model || 'deepseek-chat',
+          safetyNote: 'REVIEW_ONLY__NO_AUTO_APPLY',
+        });
+
+        return [
+          '✅ 任务已派发（WorkBuddy Runtime）',
+          '',
+          'Task ID:  ' + taskId,
+          'Model:    ' + (wbArtifact.model || 'deepseek-chat'),
+          '延迟:     ' + (wbArtifact.latencyMs || '?') + 'ms',
+          '产物:    workbuddy-output.md + runtime-meta.json',
+          '',
+          '📌 下一步: /ai任务 审查 ' + taskId,
+        ].join('\n');
+      } catch (e) {
+        return [
+          '🚀 任务已派发（WorkBuddy Runtime）',
+          '',
+          'Task ID:  ' + taskId,
+          '⚠️ WorkBuddy Worker 异常：' + e.message,
+          '',
+          '任务保持 dispatched 状态，可重试：/ai任务 派发 ' + taskId,
+        ].join('\n');
+      }
+    }
+
+    // 7. 其他 assignee → 保持 mock 行为
     const dispatch = result.dispatch;
     const payload = dispatch.payload;
 
