@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenClaw Enterprise OS v1</title>
+<style>
+:root{--bg:#faf6f0;--card:#fffefb;--b:#e8e0d5;--t:#3d3529;--m:#8c7b6b;--g:#10b981;--r:#ef4444;--y:#f59e0b;--bl:#3b82f6;--p:#8b5cf6}
+*{margin:0;padding:0;box-sizing:border-box}body{font:13px/1.6 -apple-system,sans-serif;background:var(--bg);color:var(--t)}
+.topbar{background:var(--card);border-bottom:1px solid var(--b);padding:0 14px;display:flex;align-items:center;gap:2px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
+.topbar .logo{font-weight:700;font-size:16px;margin-right:10px;color:var(--bl)}
+.topbar a{padding:10px 11px;color:var(--m);text-decoration:none;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;transition:all .2s}
+.topbar a:hover,.topbar a.active{color:var(--t);border-bottom-color:var(--bl)}
+.topbar input{padding:12px 16px;background:var(--bg);border:1px solid var(--b);color:var(--t);border-radius:6px;font-size:16px;width:540px;margin-left:auto}
+main{max-width:1480px;margin:0 auto;padding:14px}.page{display:none}.page.active{display:block}
+h2{font-size:18px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+h3{font-size:13px;color:var(--m);margin:16px 0 8px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.card{background:var(--card);border:1px solid var(--b);border-radius:8px;padding:14px}
+.card h3{font-size:11px;color:var(--m);margin:0 0 4px;text-transform:none}
+.card .val{font-size:22px;font-weight:700}.card .sub{font-size:10px;color:var(--m);margin-top:1px}
+.ai{border:1px dashed var(--r);background:rgba(239,68,68,.04)}.ai .val{color:var(--r)}
+.g{color:var(--g)}.r{color:var(--r)}.y{color:var(--y)}.bl{color:var(--bl)}.p{color:var(--p)}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th,td{padding:6px 9px;text-align:left;border-bottom:1px solid var(--b)}
+th{color:var(--m);font-weight:600;font-size:10px;text-transform:uppercase}tr:hover{background:rgba(140,123,107,.06)}
+.b{display:inline-block;padding:2px 6px;border-radius:9px;font-size:9px;font-weight:600}
+.br{background:rgba(16,185,129,.15);color:var(--g)}.bp{background:rgba(245,158,11,.15);color:var(--y)}
+.bv{background:rgba(139,92,246,.15);color:var(--p)}.bd{background:rgba(239,68,68,.15);color:var(--r)}
+.btn{padding:4px 10px;border-radius:5px;border:1px solid var(--b);background:var(--card);color:var(--t);cursor:pointer;font-size:10px}.btn:hover{background:var(--b)}
+.bb{border-color:var(--bl);color:var(--bl)}.brd{border-color:var(--r);color:var(--r)}.bg{border-color:var(--g);color:var(--g)}
+.filter-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.filter-row select,.filter-row input{padding:10px 14px;background:var(--bg);border:1px solid var(--b);color:var(--t);border-radius:6px;font-size:15px;width:540px}
+.chart{display:flex;align-items:flex-end;gap:3px;height:80px;padding:4px 0}
+.chart div{flex:1;border-radius:3px 3px 0 0;min-width:16px;position:relative}.chart div span{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:7px;color:var(--m)}
+.flow-step{display:inline-block;padding:6px 12px;background:var(--card);border:1px solid var(--b);border-radius:20px;margin:4px;font-size:10px;text-align:center;min-width:70px}
+.flow-step.active{border-color:var(--g);background:rgba(16,185,129,.08)}.flow-step.wait{border-color:var(--y);background:rgba(245,158,11,.08)}
+.flow-arrow{display:inline-block;margin:0 2px;color:var(--m)}
+.approval-item{background:var(--card);border:1px solid var(--b);border-radius:8px;padding:12px;margin-bottom:8px}
+.approval-item .meta{font-size:10px;color:var(--m)}.approval-item .title{font-weight:600;margin:3px 0}
+.asset-card{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--b);border-radius:6px;margin-bottom:6px}
+.asset-card .icon{font-size:24px}.asset-card .info{flex:1}.asset-card .score{font-size:18px;font-weight:700}
+.pagination{display:flex;gap:3px;justify-content:center;margin-top:8px}.pagination span{padding:3px 8px;border:1px solid var(--b);border-radius:4px;cursor:pointer;font-size:10px}
+.pagination span.active{background:var(--bl);border-color:var(--bl)}.pagination span:hover{background:var(--b)}
+.progress-bar{height:6px;background:var(--b);border-radius:3px;overflow:hidden;margin:4px 0}.progress-bar div{height:100%;background:var(--g);border-radius:3px;transition:width .3s}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}.pulse{animation:pulse 2s infinite}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">⚡ OpenClaw OS</div>
+  <a class="active" onclick="show('dashboard')">📊 总控</a>
+  <a onclick="show('commerce')">🛒 抖店</a>
+  <a onclick="show('agents')">🤖 AI</a>
+  <a onclick="show('assets')">📦 素材</a>
+  <a onclick="show('deploy')">🚀 系统</a>
+  <a onclick="show('approvals')">
+  <a onclick="show('system')">🖥️ 系统中心</a>
+  <a onclick="show('dispatch')">📡 调度</a>
+  <a onclick="show('runtime')">⚙️ 运行时</a>✋ 审批</a>
+  <a onclick="show('week7')">📅 7天</a>
+  <a onclick="show('autonomous')">⚡ 自治</a>
+  <input id="gs" placeholder="🔍 搜索任务/Agent/SKU/审批/素材..." oninput="globalSearch()">
+  <span style="font-size:10px;color:var(--m)" id="clock2"></span>
+</div>
+<main>
+
+<!-- ═══ Dashboard ═══ -->
+<div id="dashboard" class="page active"><h2>📊 总控 · 指挥中心</h2>
+<div class="grid2" id="dc"></div>
+<h3>📈 KPI 趋势 (7天)</h3><div class="chart" id="kpiChart"></div>
+<div style="font-size:9px;color:var(--m);margin-top:2px">D1-D7 GMV(k¥)</div>
+<h3>🎯 投流概览</h3><div class="chart" id="roiChart"></div>
+<div style="font-size:9px;color:var(--m);margin-top:2px">ROI% · CTR% · CVR% 7天趋势</div>
+</div>
+
+<!-- ═══ Commerce ═══ -->
+<div id="commerce" class="page"><h2>🛒 抖店业务</h2>
+<div class="grid2" id="cc"></div>
+<h3>📦 SKU 明细</h3><table><tr><th>SKU</th><th>名称</th><th>GMV</th><th>订单</th><th>ROI</th><th>库存</th><th>风险</th></tr><tbody id="skuBody"></tbody></table>
+<h3>📊 活动/投流历史</h3><div id="campHist"></div>
+<h3>🎬 视频任务</h3><div id="vidStat"></div>
+</div>
+
+<!-- ═══ Agents ═══ -->
+<div id="agents" class="page"><h2>🤖 AI 任务中心</h2>
+<div class="filter-row">
+  <input placeholder="任务标题..." id="taskCreateInput" style="flex:1;max-width:540px">
+  <select id="taskAgent"><option value="codex">Codex</option><option value="workbuddy">WorkBuddy</option><option value="deepseek">DeepSeek</option><option value="node-a">Node A</option></select>
+  <span class="btn bb" onclick="createTask()">➕ 创建任务</span>
+  <span style="font-size:10px;color:var(--m);margin-left:8px">REVIEW_ONLY · 仅生成审批</span>
+</div>
+<div class="filter-row">
+  <select id="tf" onchange="renderTasks()"><option value="all">全部状态</option><option value="pending">pending</option><option value="dispatched">dispatched</option><option value="review">review</option><option value="approved">approved</option></select>
+  <select id="ts" onchange="renderTasks()"><option value="default">默认</option><option value="risk">按风险</option><option value="status">按状态</option></select>
+</div>
+<h3>任务列表</h3><div id="tt"></div>
+<h3>📋 事件流</h3><div class="chart" id="logChart"></div>
+<div id="logDetail"></div>
+</div>
+
+<!-- ═══ Assets ═══ -->
+<div id="assets" class="page"><h2>📦 Product Asset System</h2>
+<div class="filter-row">
+  <input placeholder="搜索素材..." id="assetSearch" oninput="renderAssets()" style="flex:1;max-width:540px">
+  <span class="btn" onclick="alert('📥 导入素材请求已生成 (REVIEW_ONLY)')">📥 导入</span>
+  <span class="btn" onclick="alert('📤 导出素材请求已生成 (REVIEW_ONLY)')">📤 导出</span>
+</div>
+<h3>素材库 (12 项)</h3><div id="assetList"></div>
+<h3>🏷️ 分类统计</h3><div id="assetStats"></div>
+</div>
+
+<!-- ═══ Deploy ═══ -->
+<div id="deploy" class="page"><h2>🚀 系统部署</h2>
+<div class="grid2" id="dp"></div>
+<h3>📊 资源趋势</h3><div class="chart" id="resChart"></div>
+<div style="font-size:9px;color:var(--m);margin-top:2px">CPU% 7天</div>
+<h3>🖥️ PM2 进程</h3><div id="pm2Detail"></div>
+</div>
+
+<!-- ═══ Approvals ═══ -->
+<div id="approvals" class="page"><h2>✋ 审批中心</h2>
+<div class="filter-row">
+  <input placeholder="搜索审批..." id="apprSearch" oninput="renderApprovals(1)" style="flex:1;max-width:540px">
+  <span class="btn bg" onclick="batchAct('approve')">✅ 批量批准</span>
+  <span class="btn brd" onclick="batchAct('reject')">❌ 拒绝</span>
+  <span style="font-size:10px;color:var(--m)">选中: <span id="sc2">0</span></span>
+</div><div id="al"></div><div class="pagination" id="apg"></div>
+<h3>📜 审批历史</h3><div id="ah"></div>
+</div>
+
+<!-- ═══ 7 Days ═══ -->
+<div id="week7" class="page"><h2>📅 7天运营验证</h2>
+<div class="grid3" id="w7c"></div>
+<h3>📈 逐日趋势</h3><div class="chart" id="w7chart"></div>
+<div style="font-size:9px;color:var(--m);margin-top:2px">D1-D7: GMV(k¥) | 订单(十) | ROI%</div>
+<h3>📋 每日摘要</h3><div id="w7summary"></div>
+</div>
+
+<!-- ═══ Autonomous ═══ -->
+<div id="autonomous" class="page"><h2>⚡ Autonomous Company Loop</h2>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:16px 0;font-size:12px" id="loopFlow"></div>
+<div class="two-col">
+  <div><h3>Phase 1: 数据采集</h3><div id="loopPhase1"></div></div>
+  <div><h3>Phase 2: 任务调度</h3><div id="loopPhase2"></div></div>
+</div>
+<div class="two-col">
+  <div><h3>Phase 3: 执行</h3><div id="loopPhase3"></div></div>
+  <div><h3>Phase 4: Review</h3><div id="loopPhase4"></div></div>
+</div>
+</div>
+
+<div id="system" class="page"><h2>🖥️ Enterprise OS 系统中心</h2><div class="grid2" id="sysOV"></div><h3>📊 业务完成度</h3><div id="bizProg"></div><h3>🔎 OSS Radar 状态</h3><div id="ossRadarWidget"></div></div><div id="dispatch" class="page"><h2>📡 任务调度中心</h2><h3>🌐 服务器拓扑</h3><div class="grid3" id="serverTopo"></div><h3>📋 任务派发</h3><div class="filter-row"><select id="dispatchNode"><option>主服务器</option><option>Node A</option><option>日本节点</option></select><select id="dispatchTask" style="width:300px"></select><span class="btn bb" onclick="dispatchToNode()">🚀 派发</span></div><div id="dispatchResult"></div><h3>🔄 路由规则</h3><div id="routeRules"></div></div><div id="runtime" class="page"><h2>⚙️ Worker 运行时监控</h2><div class="grid3" id="workerCards"></div><h3>💓 Heartbeat</h3><div id="hbMonitor"></div><h3>🖥️ CPU/Memory</h3><div class="chart" id="cpuChart2" style="height:60px"></div><h3>📋 任务执行</h3><div id="taskExecMon"></div></div></main>
+<script>
+// ═══ Core ═══
+function show(id){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
+  document.querySelectorAll('.topbar a').forEach(function(a){a.classList.remove('active')});
+  document.getElementById(id).classList.add('active');event.target.classList.add('active');
+  window['render'+id.charAt(0).toUpperCase()+id.slice(1)]();
+}
+function b(s){var m={online:'br',ready:'br',dispatched:'br',approved:'br',running:'br',completed:'br',pending:'bp',review:'bv',cancelled:'bd',rejected:'bd',high:'bd',medium:'bp',low:'bp'};return'<span class="b '+(m[s]||'bp')+'">'+s+'</span>'}
+function ct(t,v,s,c){return'<div class="card'+(c?' '+c:'')+'"><h3>'+t+'</h3><div class="val '+(c||'')+'">'+v+'</div><div class="sub">'+s+'</div></div>'}
+function tr(n,bv){var d=((n-bv)/bv*100).toFixed(1);return d>0?'<span style="color:var(--g);font-weight:700">+'+d+'%</span>':d<0?'<span style="color:var(--r);font-weight:700">'+d+'%</span>':''}
+
+// ═══ Data ═══
+var D={
+  gmv:[145,138,142,152,148,158,162],orders:[290,280,295,310,305,320,328],profit:[58,55,60,64,62,64,67],
+  ctr:[3.5,3.8,3.6,4.0,3.9,4.1,4.0],roi:[150,155,160,165,170,175,180],cvr:[8.2,8.5,8.3,8.8,8.6,9.0,8.9],
+  sku:[
+    {id:'SKU-001',name:'夏季T恤',gmv:45200,orders:95,ctr:4.2,roi:190,stock:320,risk:'low'},
+    {id:'SKU-002',name:'防晒霜',gmv:38000,orders:82,ctr:3.8,roi:175,stock:85,risk:'medium'},
+    {id:'SKU-003',name:'运动鞋',gmv:29000,orders:58,ctr:4.5,roi:210,stock:45,risk:'low'},
+    {id:'SKU-004',name:'蓝牙耳机',gmv:22000,orders:48,ctr:3.2,roi:155,stock:12,risk:'high'},
+    {id:'SKU-005',name:'智能手表',gmv:18500,orders:35,ctr:4.8,roi:230,stock:8,risk:'high'}
+  ],
+  campaigns:[
+    {name:'618大促',gmv:28000,roi:195,days:7,status:'running'},{name:'五一活动',gmv:45000,roi:210,days:5,status:'completed'},{name:'周末闪购',gmv:12000,roi:160,days:2,status:'completed'}
+  ],
+  assets:[
+    {id:'ast-001',name:'ROI Report Q1',type:'json',category:'roi_report',tags:['roi','q1'],score:85,size:'12KB',updated:'2026-05-30'},
+    {id:'ast-002',name:'Ad Creative Banner',type:'image',category:'ad_creative',tags:['banner'],score:72,size:'240KB',updated:'2026-05-29'},
+    {id:'ast-003',name:'Product Video Clip',type:'video',category:'video_clip',tags:['tutorial'],score:90,size:'15MB',updated:'2026-05-31'},
+    {id:'ast-004',name:'CTR Dataset May',type:'json',category:'ctr_data',tags:['ctr','may'],score:78,size:'45KB',updated:'2026-05-31'},
+    {id:'ast-005',name:'Strategy Doc v2',type:'json',category:'strategy_doc',tags:['strategy'],score:88,size:'8KB',updated:'2026-06-01'},
+    {id:'ast-006',name:'Campaign Banner',type:'image',category:'ad_creative',tags:['promo'],score:65,size:'180KB',updated:'2026-05-28'},
+    {id:'ast-007',name:'Tutorial Script',type:'json',category:'general',tags:['script'],score:70,size:'6KB',updated:'2026-05-27'},
+    {id:'ast-008',name:'Risk Assessment',type:'json',category:'roi_report',tags:['risk'],score:82,size:'14KB',updated:'2026-05-31'},
+    {id:'ast-009',name:'Summer Sale Image',type:'image',category:'product_image',tags:['summer'],score:75,size:'320KB',updated:'2026-05-25'},
+    {id:'ast-010',name:'Budget Forecast',type:'json',category:'strategy_doc',tags:['budget'],score:80,size:'9KB',updated:'2026-06-01'},
+    {id:'ast-011',name:'Video Intro',type:'video',category:'video_clip',tags:['intro'],score:92,size:'22MB',updated:'2026-05-30'},
+    {id:'ast-012',name:'GMV Dashboard',type:'json',category:'general',tags:['gmv'],score:68,size:'11KB',updated:'2026-05-31'}
+  ],
+  agents:[
+    {id:'codex',name:'Codex',online:true,tasks:4,role:'development',cpu:2,mem:38},
+    {id:'workbuddy',name:'WorkBuddy',online:true,tasks:6,role:'executor',cpu:1,mem:42},
+    {id:'deepseek',name:'DeepSeek',online:true,tasks:3,role:'analysis',cpu:5,mem:55},
+    {id:'node-a',name:'Node A',online:true,tasks:2,role:'worker_node',cpu:0,mem:28}
+  ],
+  tasks:[
+    {id:'task-mptg89ev',title:'OSS Radar v0.1',status:'dispatched',agent:'codex',risk:'low',created:Date.now()-2e6,log:[{ts:Date.now()-2e6,ev:'created'},{ts:Date.now()-1e6,ev:'planned'},{ts:Date.now()-5e5,ev:'dispatched→codex'}]},
+    {id:'task-mptcn6vg',title:'DeepSeek Analysis',status:'approved',agent:'deepseek',risk:'medium',created:Date.now()-3.6e7,log:[{ts:Date.now()-3.6e7,ev:'created'},{ts:Date.now()-1.8e7,ev:'planned'},{ts:Date.now()-9e6,ev:'dispatched→deepseek'},{ts:Date.now()-3.6e6,ev:'reviewed'},{ts:Date.now()-6e5,ev:'approved'}]},
+    {id:'task-mptdc8em',title:'Marketing Cmd',status:'cancelled',agent:'workbuddy',risk:'low',created:Date.now()-8.6e7,log:[{ts:Date.now()-8.6e7,ev:'created'},{ts:Date.now()-4.3e7,ev:'planned'},{ts:Date.now()-2.1e7,ev:'dispatched→workbuddy'},{ts:Date.now()-1e7,ev:'cancelled'}]},
+    {id:'task-mpt7pfox',title:'WorkBuddy Video',status:'review',agent:'workbuddy',risk:'high',created:Date.now()-1.8e7,log:[{ts:Date.now()-1.8e7,ev:'created'},{ts:Date.now()-9e6,ev:'planned'},{ts:Date.now()-4.5e6,ev:'dispatched'},{ts:Date.now()-1.8e6,ev:'artifact'},{ts:Date.now()-9e5,ev:'review'}]},
+    {id:'task-mptr2edy',title:'Daily Loop',status:'pending',agent:'deepseek',risk:'low',created:Date.now()-6e5,log:[{ts:Date.now()-6e5,ev:'created'}]}
+  ],
+  pm2:[{name:'wecom-adapter',status:'online',cpu:'2%',mem:'64MB',uptime:'13m',restarts:47},{name:'web-console',status:'online',cpu:'0%',mem:'16MB',uptime:'10m',restarts:0},{name:'ads-worker',status:'online',cpu:'0%',mem:'58MB',uptime:'4d',restarts:0},{name:'openclaw-ai-host',status:'online',cpu:'0%',mem:'59MB',uptime:'4d',restarts:0},{name:'node-a-worker',status:'online',cpu:'0%',mem:'57MB',uptime:'44h',restarts:0}],
+  system:{cpu:[22,25,23,28,24,20,23],mem:[1.1,1.3,1.2,1.4,1.2,1.1,1.2],disk:[20,20,21,21,21,21,21]},
+  approvals:[
+    {id:'a1',type:'deploy',title:'v1 Beta→生产',by:'WorkBuddy',risk:'high',status:'pending',ts:Date.now()-3e5,reason:'灰度通过'},
+    {id:'a2',type:'budget',title:'投流+20%',by:'DeepSeek',risk:'medium',status:'pending',ts:Date.now()-6e5,reason:'ROI≥180'},
+    {id:'a3',type:'config',title:'GMV阈值',by:'Codex',risk:'low',status:'pending',ts:Date.now()-1.8e6,reason:'优化'},
+    {id:'a4',type:'campaign',title:'618报名',by:'WorkBuddy',risk:'medium',status:'pending',ts:Date.now()-3.6e6,reason:'效益预估'},
+    {id:'a5',type:'publish',title:'发布视频',by:'Codex',risk:'high',status:'pending',ts:Date.now()-7.2e6,reason:'审核OK'},
+    {id:'a6',type:'price',title:'SKU-004调价',by:'DeepSeek',risk:'medium',status:'pending',ts:Date.now()-9e6,reason:'库存低'},
+    {id:'a7',type:'config',title:'nginx timeout',by:'WorkBuddy',risk:'medium',status:'pending',ts:Date.now()-1.08e7,reason:'优化'},
+    {id:'a8',type:'deploy',title:'hotfix v0.9.1',by:'Codex',risk:'high',status:'pending',ts:Date.now()-1.44e7,reason:'bug'},
+    {id:'a9',type:'inventory',title:'SKU-005补货',by:'WorkBuddy',risk:'high',status:'pending',ts:Date.now()-2.16e7,reason:'库存=8'},
+    {id:'a10',type:'campaign',title:'618二波',by:'DeepSeek',risk:'low',status:'pending',ts:Date.now()-2.88e7,reason:'追加'}
+  ],
+  history:[
+    {id:'h1',type:'deploy',title:'v0.9 hotfix',by:'Codex',status:'approved',ts:Date.now()-8.64e7,approver:'Admin',reason:'security'},
+    {id:'h2',type:'campaign',title:'五一活动',by:'WorkBuddy',status:'approved',ts:Date.now()-1.728e8,approver:'Admin',reason:'ROI+30%'},
+    {id:'h3',type:'budget',title:'预算+15%',by:'DeepSeek',status:'rejected',ts:Date.now()-2.592e8,approver:'Admin',reason:'ROI未达标'},
+    {id:'h4',type:'config',title:'告警调整',by:'Codex',status:'approved',ts:Date.now()-3.456e8,approver:'Admin',reason:'合理'}
+  ]
+};
+
+setInterval(function(){
+  document.getElementById('clock2').textContent=new Date().toLocaleTimeString('zh-CN');
+  if(document.getElementById('dashboard').classList.contains('active')){D.gmv[6]+=Math.round(Math.random()*2);renderDashboard()}
+},5000);
+
+// ═══ Dashboard ═══
+function renderDashboard(){
+  var d=D;
+  document.getElementById('dc').innerHTML=[
+    ct('📈 GMV','¥'+d.gmv[6].toLocaleString(),tr(d.gmv[6],d.gmv[5])+' · 周均 ¥'+Math.round(d.gmv.reduce(function(a,b){return a+b})/7).toLocaleString(),'g'),
+    ct('📦 订单',d.orders[6],tr(d.orders[6],d.orders[5]),''),ct('💰 利润','¥'+(d.profit[6]*1000).toLocaleString(),tr(d.profit[6],d.profit[5]),'g'),
+    ct('🎯 ROAS',d.roi[6]/100+'x',tr(d.roi[6],d.roi[5]),'g'),ct('🖱️ CTR',d.ctr[6]+'%',tr(d.ctr[6],d.ctr[5]),''),ct('🔄 CVR',d.cvr[6]+'%',tr(d.cvr[6],d.cvr[5]),'bl')
+  ].join('');
+  var mx=Math.max.apply(null,d.gmv);
+  document.getElementById('kpiChart').innerHTML=d.gmv.map(function(v,i){return'<div style="height:'+(v/mx*85)+'%;background:var(--bl)"><span>D'+(i+1)+'</span></div>'}).join('');
+  // ROI/CTR/CVR mini chart
+  var mr=Math.max.apply(null,d.roi);
+  document.getElementById('roiChart').innerHTML='<div style="display:flex;gap:4px;flex:1">'+d.roi.map(function(v,i){return'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="flex:1;width:100%;background:var(--g);border-radius:3px 3px 0 0;height:'+(v/mr*60)+'px"></div><span style="font-size:7px;color:var(--m);writing-mode:vertical-lr">D'+(i+1)+'</span></div>'}).join('')+'</div>';
+}
+
+// ═══ Commerce ═══
+function renderCommerce(){renderDashboard();
+  document.getElementById('skuBody').innerHTML=D.sku.map(function(s,i){return'<tr id="sku'+i+'" class="'+(s.risk==='high'?'ai':'')+'" onclick="tgl('+i+')" style="cursor:pointer"><td>'+s.id+'</td><td>'+s.name+'</td><td>¥'+s.gmv.toLocaleString()+'</td><td>'+s.orders+'</td><td>'+s.roi+'%</td><td class="'+(s.stock<20?'r':'g')+'">'+s.stock+'</td><td>'+b(s.risk)+'</td></tr><tr id="sd'+i+'" style="display:none"><td colspan="7" style="background:rgba(59,130,246,.04);font-size:10px;padding:6px 14px">📊 <b>'+s.name+'</b>: GMV ¥'+s.gmv.toLocaleString()+' | 订单 '+s.orders+' | CTR '+s.ctr+'% | ROI '+s.roi+'% | '+(s.stock<20?'<span class="r">⚠️ 库存='+s.stock+' 需补货</span>':'✅ 正常')+'</td></tr>'}).join('');
+  document.getElementById('campHist').innerHTML='<table><tr><th>活动</th><th>GMV</th><th>ROI</th><th>天数</th><th>状态</th></tr>'+D.campaigns.map(function(c){return'<tr><td>'+c.name+'</td><td>¥'+c.gmv.toLocaleString()+'</td><td>'+c.roi+'%</td><td>'+c.days+'d</td><td>'+b(c.status)+'</td></tr>'}).join('')+'</table>';
+  document.getElementById('vidStat').innerHTML=D.tasks.filter(function(t){return t.title.indexOf('Video')>=0||t.title.indexOf('视频')>=0}).map(function(t){return'<div class="card"><div class="meta">VIDEO</div><div class="title">'+t.title+'</div>'+b(t.status)+' · '+t.agent+'</div>'}).join('')||'<div class="card">暂无视频任务</div>';
+}
+function tgl(i){var e=document.getElementById('sd'+i);e.style.display=e.style.display==='none'?'':'none'}
+
+// ═══ Agents ═══
+var nextTaskId=10;
+function createTask(){
+  var ti=document.getElementById('taskCreateInput'),ta=document.getElementById('taskAgent');
+  var title=ti.value.trim();if(!title)return alert('请输入任务标题');
+  var task={id:'task-new-'+nextTaskId,title:title,status:'pending',agent:ta.value,risk:'low',created:Date.now(),log:[{ts:Date.now(),ev:'created→'+ta.value}]};
+  D.tasks.unshift(task);nextTaskId++;ti.value='';
+  alert('✅ 任务创建请求已生成\n\nID: '+task.id+'\n标题: '+title+'\nAgent: '+ta.value+'\n\nREVIEW_ONLY — 需人工审批后执行\n已进入审批队列');
+  D.approvals.push({id:'a-task-'+nextTaskId,type:'task_create',title:'创建任务: '+title,by:'User',risk:'low',status:'pending',ts:Date.now(),reason:'用户手动创建'});
+  renderAgents();
+}
+function renderAgents(){
+  renderTasks();
+  var cr=D.tasks.reduce(function(s,t){return s+t.log.filter(function(l){return l.ev.indexOf('created')>=0}).length},0);
+  var dp=D.tasks.reduce(function(s,t){return s+t.log.filter(function(l){return l.ev.indexOf('dispatched')>=0}).length},0);
+  var rv=D.tasks.reduce(function(s,t){return s+t.log.filter(function(l){return l.ev.indexOf('review')>=0||l.ev.indexOf('approved')>=0}).length},0);
+  var er=D.tasks.reduce(function(s,t){return s+t.log.filter(function(l){return l.ev.indexOf('cancelled')>=0||l.ev.indexOf('error')>=0}).length},0);
+  var mc=Math.max(cr,dp,rv,er,1);
+  document.getElementById('logChart').innerHTML='<div style="height:'+(cr/mc*75)+'%;background:var(--bl);flex:1;min-width:40px;border-radius:3px 3px 0 0" title="created:'+cr+'"></div><div style="height:'+(dp/mc*75)+'%;background:var(--g);flex:1;min-width:40px;border-radius:3px 3px 0 0" title="dispatched:'+dp+'"></div><div style="height:'+(rv/mc*75)+'%;background:var(--p);flex:1;min-width:40px;border-radius:3px 3px 0 0" title="review:'+rv+'"></div><div style="height:'+(er/mc*75)+'%;background:var(--r);flex:1;min-width:40px;border-radius:3px 3px 0 0" title="error:'+er+'"></div>';
+  document.getElementById('logDetail').innerHTML=D.tasks.map(function(t){return t.log.map(function(l){return'<div class="log-line"><span class="ts">'+new Date(l.ts).toLocaleTimeString()+'</span>'+b(l.ev.replace(/→.*/,''))+'<span>'+t.id.substring(0,16)+' '+l.ev+'</span></div>'}).join('')}).join('');
+}
+function renderTasks(){
+  var f=document.getElementById('tf').value,s=document.getElementById('ts').value,ts=D.tasks.slice();
+  if(f!=='all') ts=ts.filter(function(t){return t.status===f});
+  if(s==='risk'){var o={high:0,medium:1,low:2};ts.sort(function(a,b){return(o[a.risk]||9)-(o[b.risk]||9)})}else if(s==='status'){var o2={pending:0,dispatched:1,review:2,approved:3,cancelled:4};ts.sort(function(a,b){return(o2[a.status]||9)-(o2[b.status]||9)})}
+  document.getElementById('tt').innerHTML='<table><tr><th>ID</th><th>标题</th><th>状态</th><th>Agent</th><th>风险</th></tr>'+ts.map(function(t){return'<tr><td>'+t.id+'</td><td>'+t.title+'</td><td>'+b(t.status)+'</td><td>'+t.agent+'</td><td>'+b(t.risk)+'</td></tr>'}).join('')+'</table>';
+}
+
+// ═══ Assets ═══
+function renderAssets(){
+  var q=(document.getElementById('assetSearch').value||'').toLowerCase();
+  var as=D.assets.slice();
+  if(q) as=as.filter(function(a){return a.name.toLowerCase().indexOf(q)>=0||a.id.indexOf(q)>=0||a.tags.some(function(t){return t.indexOf(q)>=0})});
+  document.getElementById('assetList').innerHTML=as.map(function(a){
+    var icon={json:'📄',image:'🖼️',video:'🎬'};
+    return'<div class="asset-card"><div class="icon">'+(icon[a.type]||'📦')+'</div><div class="info"><b>'+a.name+'</b><br><span style="font-size:10px;color:var(--m)">'+a.category+' · '+a.size+' · '+a.updated+'</span><br>'+a.tags.map(function(t){return'<span class="b bp">'+t+'</span>'}).join(' ')+'</div><div class="score '+(a.score>=80?'g':a.score>=60?'y':'r')+'">'+a.score+'</div></div>';
+  }).join('');
+  // Stats
+  var bt={},bc={};
+  D.assets.forEach(function(a){bt[a.type]=(bt[a.type]||0)+1;bc[a.category]=(bc[a.category]||0)+1});
+  document.getElementById('assetStats').innerHTML='<div class="grid3">'+
+    Object.keys(bt).map(function(k){return ct('📁 '+k,bt[k],'type','')}).join('')+
+    Object.keys(bc).map(function(k){return ct('🏷️ '+k.replace(/_/g,' '),bc[k],'category','')}).join('')+'</div>';
+}
+
+// ═══ Deploy ═══
+function renderDeploy(){var s=D.system;
+  document.getElementById('dp').innerHTML=[
+    ct('🖥️ CPU',s.cpu[6]+'%','7d avg: '+Math.round(s.cpu.reduce(function(a,b){return a+b})/7)+'%','g'),
+    ct('🧠 Memory',s.mem[6]+'G',(s.mem.reduce(function(a,b){return a+b})/7).toFixed(1)+'G avg',''),
+    ct('💾 Disk',s.disk[6]+'%','stable','g'),
+    ct('🚫 Deploy','LOCKED','REVIEW_ONLY','r ai'),ct('🚫 Merge','LOCKED','PR+approval','r ai'),ct('🔒 Env','LOCKED','No direct','r ai')
+  ].join('');
+  var mc=Math.max.apply(null,s.cpu);
+  document.getElementById('resChart').innerHTML=s.cpu.map(function(v,i){return'<div style="height:'+(v/mc*80)+'%;background:'+(v>25?'var(--r)':v<22?'var(--g)':'var(--y)')+'"><span>D'+(i+1)+'</span></div>'}).join('');
+  document.getElementById('pm2Detail').innerHTML='<table><tr><th>进程</th><th>状态</th><th>CPU</th><th>内存</th><th>运行</th><th>重启</th></tr>'+D.pm2.map(function(p){return'<tr><td>'+p.name+'</td><td><span class="status-dot" style="background:var(--g)"></span>'+p.status+'</td><td>'+p.cpu+'</td><td>'+p.mem+'</td><td>'+p.uptime+'</td><td class="'+(p.restarts>10?'r':'')+'">'+p.restarts+'</td></tr>'}).join('')+'</table>';
+}
+
+// ═══ Approvals ═══
+var sel=[],apprPage=1,PP=6;
+function toggleSel(id){var i=sel.indexOf(id);if(i>=0)sel.splice(i,1);else sel.push(id);document.getElementById('sc2').textContent=sel.length}
+function batchAct(a){alert((a==='approve'?'✅ 批准':'❌ 拒绝')+' 请求已生成: '+sel.length+' 项\nREVIEW_ONLY · 需人工确认');sel=[];document.getElementById('sc2').textContent='0';renderApprovals(1)}
+function renderApprovals(pg){apprPage=pg||1;var q=(document.getElementById('apprSearch')||{}).value||'';var apps=D.approvals.slice();if(q)apps=apps.filter(function(a){return a.title.indexOf(q)>=0||a.id.indexOf(q)>=0});var tp=Math.ceil(apps.length/PP),p=apps.slice((apprPage-1)*PP,apprPage*PP);
+  document.getElementById('al').innerHTML=p.map(function(a){return'<div class="approval-item"><input type="checkbox" onchange="toggleSel(\''+a.id+'\')"><span class="meta">'+a.type.toUpperCase()+' · '+a.id+'</span><div class="title">'+a.title+'</div><div class="meta">👤 '+a.by+' · Risk: '+b(a.risk)+' · '+b(a.status)+' · 📅 '+new Date(a.ts).toLocaleString()+' · 📝 '+a.reason+'</div></div>'}).join('');
+  var h='';for(var i=1;i<=tp;i++)h+='<span class="'+(i===apprPage?'active':'')+'" onclick="renderApprovals('+i+')">'+i+'</span>';document.getElementById('apg').innerHTML=h;
+  document.getElementById('ah').innerHTML='<table><tr><th>ID</th><th>类型</th><th>标题</th><th>审批人</th><th>状态</th><th>理由</th><th>时间</th></tr>'+D.history.map(function(h){return'<tr><td>'+h.id+'</td><td>'+h.type+'</td><td>'+h.title+'</td><td>'+h.approver+'</td><td>'+b(h.status)+'</td><td>'+h.reason+'</td><td>'+new Date(h.ts).toLocaleDateString()+'</td></tr>'}).join('')+'</table>';
+}
+
+// ═══ 7 Days ═══
+function renderWeek7(){
+  document.getElementById('w7c').innerHTML=D.gmv.map(function(v,i){return ct('D'+(i+1),'¥'+v.toLocaleString(),'订单:'+D.orders[i]+' · ROI:'+D.roi[i]+'%',D.roi[i]>=180?'g':'')}).join('');
+  var mx=Math.max.apply(null,D.gmv);
+  document.getElementById('w7chart').innerHTML=D.gmv.map(function(v,i){return'<div style="height:'+(v/mx*80)+'%;background:var(--bl)" title="GMV:'+v+'k"><span>D'+(i+1)+'</span></div>'}).join('');
+  document.getElementById('w7summary').innerHTML='<table><tr><th>日期</th><th>GMV(k¥)</th><th>订单</th><th>ROI%</th><th>CTR%</th><th>CVR%</th><th>利润(k¥)</th><th>趋势</th></tr>'+D.gmv.map(function(v,i){return'<tr><td>D'+(i+1)+'</td><td>'+v+'</td><td>'+D.orders[i]+'</td><td>'+D.roi[i]+'</td><td>'+D.ctr[i]+'</td><td>'+D.cvr[i]+'</td><td>'+D.profit[i]+'</td><td>'+(i>0?tr(v,D.gmv[i-1]):'—')+'</td></tr>'}).join('')+'</table>';
+}
+
+// ═══ Autonomous ═══
+function renderAutonomous(){
+  var phases=[{n:'Collect',s:'active'},{n:'Schedule',s:'active'},{n:'Execute',s:'wait'},{n:'Review',s:'wait'}];
+  document.getElementById('loopFlow').innerHTML=phases.map(function(p,i){return(i>0?'<span class="flow-arrow">→</span>':'')+'<span class="flow-step '+p.s+'">Phase '+(i+1)+'<br>'+p.n+'</span>'}).join('');
+  document.getElementById('loopPhase1').innerHTML='<div class="card"><b>📊 已采集</b><br>GMV: ¥158.2k · 订单: 328 · 利润: ¥64.4k<br>ROI: 180% · CTR: 4.0% · CVR: 8.9%<br><span class="b br">mock</span></div>';
+  document.getElementById('loopPhase2').innerHTML='<div class="card"><b>📋 15 任务已生成</b><br>deepseek: 8 · workbuddy: 3 · codex: 2 · node-a: 2<br><span class="b br">pending</span></div>';
+  document.getElementById('loopPhase3').innerHTML='<div class="card"><b>⚙️ 执行中</b><br>Artifacts: 28 generated<br>By category: analysis(10) risk(5) video(6) audit(4) smoke(3)<br><div class="progress-bar"><div style="width:65%"></div></div>65%</div>';
+  document.getElementById('loopPhase4').innerHTML='<div class="card"><b>👁️ Review</b><br>待审批: 10 项<br>REVIEW_ONLY=true<br><span class="b bp">requiresHumanApproval</span></div>';
+}
+
+// ═══ Global Search ═══
+function globalSearch(){var q=(document.getElementById('gs').value||'').toLowerCase();if(!q)return;
+  if(D.tasks.find(function(t){return t.id.indexOf(q)>=0||t.title.toLowerCase().indexOf(q)>=0})){show('agents');return}
+  if(D.sku.find(function(s){return s.id.toLowerCase().indexOf(q)>=0||s.name.indexOf(q)>=0})){show('commerce');return}
+  if(D.assets.find(function(a){return a.id.indexOf(q)>=0||a.name.toLowerCase().indexOf(q)>=0})){show('assets');return}
+  if(D.approvals.find(function(a){return a.id.indexOf(q)>=0||a.title.toLowerCase().indexOf(q)>=0})){show('approvals');return}
+}
+
+
+// ═══ System ═══
+function renderSystem(){
+  document.getElementById('sysOV').innerHTML=[
+    ct('🏢 Modules','13','P11-P17 deployed','g'),
+    ct('🚀 Deploy','v1 Beta','fea32f2 · main','g'),
+    ct('🔒 Status','REVIEW_ONLY','Security enforced','r'),
+    ct('🤖 Agents','4/4 online','codex·workbuddy·deepseek·node-a','g'),
+    ct('📅 Days','7d uptime','No crash','g'),
+    ct('📦 Assets','12 items','6 types','g')
+  ].join('');
+  document.getElementById('bizProg').innerHTML='<table><tr><th>模块</th><th>完成度</th><th>状态</th></tr>'+
+    ['P11 Task Graph','P12 Agent Registry','P13 Product Asset','P14 Video Engine','P15 Marketing','P16 Domain Gateway','P17 Autonomous Loop'].map(function(m,i){
+      var pct=[100,100,100,100,100,100,85][i];var s=pct>=100?'br':'bp';
+      return '<tr><td>'+m+'</td><td><div class="progress-bar"><div style="width:'+pct+'%"></div></div>'+pct+'%</td><td><span class="b '+s+'">'+(pct>=100?'done':'pending')+'</span></td></tr>';
+    }).join('')+'</table>';
+  document.getElementById('ossRadarWidget').innerHTML='<table><tr><th>项目</th><th>分类</th><th>评分</th><th>建议</th></tr>'+
+    [{n:'microsoft/qlib',l:'Quant Research',s:82,r:'优先研究'},{n:'langchain-ai/langgraph',l:'Workflow Graph',s:78,r:'候选库'},{n:'crewAIInc/crewAI',l:'Agent Runtime',s:70,r:'观察'}].map(function(o){
+      return '<tr><td>'+o.n+'</td><td>'+o.l+'</td><td class="'+(o.s>=80?'g':o.s>=65?'y':'r')+'">'+o.s+'</td><td>'+o.r+'</td></tr>';
+    }).join('')+'</table>';
+}
+
+// ═══ Dispatch ═══
+function dispatchToNode(){
+  var node=document.getElementById('dispatchNode').value;
+  var task=document.getElementById('dispatchTask').value;
+  alert('🚀 任务派发请求已生成\n\n节点: '+node+'\n任务: '+task+'\n\nREVIEW_ONLY — 需人工审批后执行');
+  document.getElementById('dispatchResult').innerHTML='<div class="card"><span class="b bp">pending</span> 派发请求已提交审批: '+node+' ← '+task+'</div>';
+}
+function renderDispatch(){
+  document.getElementById('serverTopo').innerHTML=[
+    ct('🖥️ 主服务器','online','49.232.24.120 · China','g'),
+    ct('🖥️ Node A','online','VM-0-13 · Worker','g'),
+    ct('🖥️ 日本节点','online','43.163.229.96 · Tokyo','g')
+  ].join('');
+  // Populate task dropdown
+  var opts=D.tasks.map(function(t){return '<option value="'+t.id+'">'+t.title+' ('+t.status+')</option>'}).join('');
+  document.getElementById('dispatchTask').innerHTML=opts;
+  document.getElementById('routeRules').innerHTML='<table><tr><th>任务类型</th><th>目标节点</th><th>优先级</th><th>条件</th></tr>'+
+    '<tr><td>development/patch</td><td>主服务器</td><td>1</td><td>requiresHumanApproval</td></tr>'+
+    '<tr><td>analysis/roi/risk</td><td>主服务器</td><td>1</td><td>deepseek worker</td></tr>'+
+    '<tr><td>validation/audit</td><td>Node A</td><td>2</td><td>workbuddy worker</td></tr>'+
+    '<tr><td>smoke_test/file_inspect</td><td>Node A</td><td>2</td><td>readonly check</td></tr>'+
+    '<tr><td>github/artifact</td><td>日本节点</td><td>3</td><td>Tokyo server</td></tr></table>';
+}
+
+// ═══ Runtime ═══
+function renderRuntime(){
+  document.getElementById('workerCards').innerHTML=[
+    ct('🖥️ 主服务器','online','CPU 23% · Mem 1.2G/7.6G · 49d uptime','g'),
+    ct('🖥️ Node A','online','CPU 12% · Mem 0.8G/3.6G · 44h uptime','g'),
+    ct('🖥️ 日本节点','online','CPU 8% · Mem 0.5G/2G · 12h uptime','g'),
+    ct('🤖 Codex','online','4 tasks · last hb: 30s','g'),
+    ct('🤖 WorkBuddy','online','6 tasks · last hb: 15s','g'),
+    ct('🤖 DeepSeek','online','3 tasks · last hb: 45s','g')
+  ].join('');
+  document.getElementById('hbMonitor').innerHTML='<table><tr><th>Worker</th><th>Heartbeat</th><th>延迟</th><th>状态</th></tr>'+
+    [{w:'wecom-adapter',hb:'5s ago',d:'2ms',s:'online'},{w:'web-console',hb:'3s ago',d:'1ms',s:'online'},{w:'node-a-worker',hb:'10s ago',d:'5ms',s:'online'},{w:'ads-worker',hb:'8s ago',d:'3ms',s:'online'},{w:'ai-agent-host',hb:'6s ago',d:'2ms',s:'online'}].map(function(h){
+      return '<tr><td>'+h.w+'</td><td>'+h.hb+'</td><td>'+h.d+'</td><td><span class="status-dot pulse" style="background:var(--g)"></span>'+h.s+'</td></tr>';
+    }).join('')+'</table>';
+  document.getElementById('cpuChart2').innerHTML='<div style="width:23%;background:var(--g);height:100%;border-radius:3px"></div><div style="width:12%;background:var(--bl);height:100%;border-radius:3px"></div><div style="width:8%;background:var(--p);height:100%;border-radius:3px"></div>';
+  document.getElementById('taskExecMon').innerHTML='<table><tr><th>任务</th><th>节点</th><th>状态</th><th>耗时</th></tr>'+
+    D.tasks.map(function(t){var node=t.agent==='codex'?'主服务器':t.agent==='node-a'?'Node A':'主服务器';return '<tr><td>'+t.title+'</td><td>'+node+'</td><td>'+b(t.status)+'</td><td>'+Math.round(Math.random()*30+5)+'s</td></tr>'}).join('')+'</table>';
+}
+
+renderDashboard();renderApprovals(1);
+</script>
+</body>
+</html>
