@@ -69,12 +69,13 @@ const REGISTRY = {
   '/执行计划': { file: '../commands/execution-command', aliases: ['/任务计划', '/plan'] },
   '/董事会会议': { file: '../commands/board-meeting-command', aliases: ['/mab', '/multi-agent-board'] },
   '/自治公司':   { file: '../commands/autonomous-command', aliases: ['/autonomous', '/闭环'] },
-'/开源雷达': { file: '../commands/oss-radar', aliases: ['/oss-radar', '/oss', '/开源'] },
+'/开源雷达': { file: '../commands/oss-radar-command', aliases: ['/oss-radar', '/oss', '/开源', '/项目雷达', '/github雷达'] },
 '/worker分发': { file: '../commands/worker-dispatch', aliases: ['/dispatch', '/多节点调度', '/workers'] },
   '/素材状态': { file: '../commands/asset-foundation', aliases: ['/素材统计', '/素材搜索'] },
   '/视频素材': { file: '../commands/video-material-command', aliases: ['/video-material', '/素材匹配', '/视频计划'] },
   '/版本':       { file: '../commands/version-command', aliases: ['/version', '/ver'] },
   '/状态':       { file: '../commands/version-command', aliases: ['/status', '/health'] },
+  "/总控": { file: "../commands/enterprise-os-command", aliases: ["/总控", "/运营", "/活动", "/视频", "/风险", "/AI", "/董事会", "/目标", "/自治公司"] },
 };
 
 // 缓存已加载的 handler（懒加载）
