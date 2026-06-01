@@ -1,0 +1,3 @@
+// P52 Console API — unified surface
+var session = require('./session-manager'); var planner = require('./operation-planner'); var screenshot = require('./screenshot-artifact'); var approval = require('./console-approval'); var audit = require('./console-audit'); var command = require('./console-command');
+module.exports = { getStatus: function () { return { session: session.getStatus(), planner: planner.getStatus() }; }, login: session.login, logout: session.logout, screenshot: screenshot.capture, createPlan: planner.createPlan, getPlans: planner.getPlans, getApprovalStatus: approval, handleCommand: command.handle, audit: audit };

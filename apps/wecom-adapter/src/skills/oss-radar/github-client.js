@@ -1,74 +1,44 @@
 'use strict';
+// P0 — GitHub API client (read-only, no clone)
+var https = require('https');
 
-/**
- * github-client.js — GitHub API client (zero npm deps)
- *
- * Uses Node.js built-in https module. No octokit, no fetch, no axios.
- */
+function getToken() { return process.env.GITHUB_TOKEN || ''; }
 
-const https = require('https');
-
-var GITHUB_HOST = 'api.github.com';
-var USER_AGENT = 'oss-radar-skill/1.0';
-var TIMEOUT_MS = 15000;
-
-function setHost(host) { GITHUB_HOST = host; }
-
-function apiGet(path, token) {
+function ghGet(path) {
   return new Promise(function (resolve, reject) {
-    var options = {
-      hostname: GITHUB_HOST,
+    var opts = {
+      hostname: 'api.github.com',
       path: path,
-      method: 'GET',
-      headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'application/vnd.github.v3+json'
-      },
-      timeout: TIMEOUT_MS
+      headers: { 'User-Agent': 'OpenClaw-OSS-Radar', 'Accept': 'application/vnd.github+json' }
     };
+    var token = getToken();
+    if (token) opts.headers['Authorization'] = 'token ' + token;
 
-    if (token) {
-      options.headers['Authorization'] = 'token ' + token;
-    }
-
-    var req = https.get(options, function (res) {
-      var data = '';
-      res.on('data', function (chunk) { data += chunk; });
+    https.get(opts, function (res) {
+      var body = '';
+      res.on('data', function (d) { body += d; });
       res.on('end', function () {
-        if (res.statusCode === 200) {
-          try {
-            resolve(JSON.parse(data));
-          } catch (e) {
-            reject(new Error('JSON parse error: ' + e.message));
-          }
-        } else if (res.statusCode === 403 && data.indexOf('rate limit') !== -1) {
-          reject(new Error('GitHub API rate limit exceeded. Try again later.'));
-        } else if (res.statusCode === 404) {
-          reject(new Error('Repository not found (404)'));
-        } else {
-          reject(new Error('GitHub API error: HTTP ' + res.statusCode));
-        }
+        try { resolve(JSON.parse(body)); } catch (e) { reject(new Error('Parse error')); }
       });
-    });
-
-    req.on('error', function (e) { reject(new Error('GitHub API request failed: ' + e.message)); });
-    req.on('timeout', function () { req.destroy(); reject(new Error('GitHub API timeout')); });
+    }).on('error', reject);
   });
 }
 
-function searchRepos(query, token) {
-  var path = '/search/repositories?q=' + encodeURIComponent(query) + '&sort=stars&order=desc&per_page=10';
-  return apiGet(path, token);
+function getRepo(owner, repo) {
+  return ghGet('/repos/' + owner + '/' + repo);
 }
 
-function getRepo(owner, repo, token) {
-  var path = '/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo);
-  return apiGet(path, token);
+function getReadme(owner, repo) {
+  return ghGet('/repos/' + owner + '/' + repo + '/readme');
 }
 
-module.exports = {
-  apiGet: apiGet,
-  searchRepos: searchRepos,
-  getRepo: getRepo,
-  setHost: setHost
-};
+function searchRepos(query, page) {
+  return ghGet('/search/repositories?q=' + encodeURIComponent(query) + '&per_page=5&page=' + (page || 1));
+}
+
+function parseUrl(url) {
+  var m = (url || '').match(/github\.com\/([^\/]+)\/([^\/\s#?]+)/);
+  return m ? { owner: m[1], repo: m[2].replace(/\.git$/, '') } : null;
+}
+
+module.exports = { getRepo: getRepo, getReadme: getReadme, searchRepos: searchRepos, parseUrl: parseUrl };

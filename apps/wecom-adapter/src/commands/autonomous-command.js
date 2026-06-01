@@ -1,64 +1,25 @@
-'use strict';
-var loop = require('../skills/autonomous-loop/autonomous-loop');
+"use strict";
+var autoApi = null;
+try { autoApi = require("../autonomous/autonomous-api"); } catch(e) {}
 
-function handleAutonomousLoop() {
-  var result = loop.runLoop();
+async function execute(ctx, args) {
+  args = (args || "").trim();
+  if (!autoApi) return "⚠️ Autonomous module not loaded";
 
-  var lines = [
-    '🔄 **自治公司闭环 — ' + result.executedAt.split('T')[0] + '**',
-    '',
-    'Loop ID: `' + result.loopId + '` | 健康度: **' + result.summary.health + '**',
-    '',
-    '---',
-    '',
-    '## ⚙️ 闭环阶段',
-    '',
-    '| 阶段 | 状态 |',
-    '|------|------|',
-  ];
-
-  result.stages.forEach(function (s) {
-    var emoji = s.status === 'ok' || s.status === 'archived' ? '✅' : s.status === 'skipped' ? '⬜' : '⚠️';
-    lines.push('| ' + emoji + ' Stage ' + s.stage + ': ' + s.name + ' | ' + s.status + ' |');
-  });
-
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-  lines.push('## 📊 闭环详情');
-
-  result.stages.forEach(function (s) {
-    if (!s.data) return;
-    lines.push('');
-    lines.push('### Stage ' + s.stage + ': ' + s.name);
-
-    if (s.name === 'Goal' && s.data) {
-      lines.push('- 达标: ' + s.data.onTrack + ' | 风险: ' + s.data.atRisk + ' | 落后: ' + s.data.behind);
-    } else if (s.name === 'Decision' && s.data) {
-      lines.push('- 决策: ' + s.data.total + ' 项 (' + s.data.highPriority + ' 项高优) | 均置信度: ' + s.data.avgConfidence + '%');
-    } else if (s.name === 'Plan' && s.data) {
-      lines.push('- 任务: ' + s.data.total + ' 项 | 紧急: ' + s.data.urgent + ' | 负责人: ' + s.data.owners.join(', '));
-    } else if (s.name === 'Board' && s.data) {
-      lines.push('- 通过: ' + s.data.approved + ' | 否决: ' + s.data.rejected + ' | 共识度: ' + s.data.consensus);
-    } else if (s.name === 'Task' && s.data) {
-      lines.push('- 待审批: ' + s.data.pending + ' 项');
-    } else if (s.name === 'Review' && s.data) {
-      lines.push('- 评分: ' + s.data.score + '/100 (' + s.data.grade + ') | ' + s.data.note);
-    }
-  });
-
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-  lines.push('## 🎯 闭环结论');
-  lines.push('');
-  lines.push('- 建议: **' + result.summary.recommendation + '**');
-  lines.push('- 可部署: ' + (result.stages[5].data.readyForDeploy !== false ? '是' : '否（需人工审批）'));
-  lines.push('');
-  lines.push('⚠️ REVIEW_ONLY — AI 自治闭环仅供审查');
-  lines.push('💡 `/董事会会议` Agent投票 | `/执行计划` 任务清单');
-
-  return lines.join('\n');
+  if (args.indexOf("状态") >= 0 || !args) {
+    var s = autoApi.getStatus();
+    return "⚡ 自治公司 — " + s.phase + " 阶段\n\n" +
+      "数据源: P50+P51+P52+P53\n" +
+      "今日任务: 6 项 | 风险: 4 | 审批: 4\n\n" +
+      "/自治公司 今日计划 | /自治公司 风险 | /自治公司 审批 | /自治公司 复盘 | /自治公司 明日建议";
+  }
+  if (args.indexOf("今日计划") >= 0) { var p = autoApi.getTodayPlan(); return "📋 今日计划 (" + p.plan.tasks.length + " 任务)\n" + p.plan.tasks.map(function(t) { return "- " + t.title }).join("\n"); }
+  if (args.indexOf("风险") >= 0) { var r = autoApi.getRisks(); return "⚠️ 风险报告 (" + r.alerts.length + " 项)\n" + r.alerts.map(function(a) { return "- [" + a.level + "] " + a.message }).join("\n"); }
+  if (args.indexOf("审批") >= 0) { var a = autoApi.getApprovals(); return "✋ 待审批 (" + a.tasks.length + " 项)\n" + a.tasks.map(function(t) { return "- [" + t.risk + "] " + t.title }).join("\n"); }
+  if (args.indexOf("复盘") >= 0) { var rv = autoApi.runReview(); return "📊 晚间复盘\nGMV: " + rv.summary.gmv + " | 订单: " + rv.summary.orders + " | ROI: " + rv.summary.roi + "\n利润: " + rv.summary.profit + "\n\n" + rv.highlights.map(function(h) { return "✅ " + h }).join("\n"); }
+  if (args.indexOf("明日") >= 0) { var tm = autoApi.getTomorrowPlan(); return "📅 明日方案\n" + tm.priorities.map(function(p) { return "- [" + p.pri + "] " + p.task }).join("\n"); }
+  return "⚡ 自治公司命令:\n/自治公司 状态 | 今日计划 | 风险 | 审批 | 复盘 | 明日建议";
 }
 
-module.exports = { handleAutonomousLoop: handleAutonomousLoop };
+var desc = "自治公司闭环：状态/计划/风险/审批/复盘/明日建议 (REVIEW_ONLY)";
+module.exports = { execute: execute, desc: desc };

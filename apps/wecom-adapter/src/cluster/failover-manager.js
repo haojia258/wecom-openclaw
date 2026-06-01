@@ -1,0 +1,3 @@
+var reg=require('./node-registry');
+function checkAndFailover(){var nodes=reg.getAll();var failures=[];nodes.forEach(function(n){if(n.status==='offline'){var alt=nodes.filter(function(x){return x.nodeId!==n.nodeId&&x.status==='online'});if(alt.length>0)failures.push({failedNode:n.nodeId,failoverTo:alt[0].nodeId,timestamp:new Date().toISOString()})}});var online=nodes.filter(function(n){return n.status==='online'}).length;return{ready:failures.length===0||online>=2,failures:failures,onlineCount:online,message:failures.length===0?'All nodes healthy':'Failover ready'}}
+module.exports={checkAndFailover:checkAndFailover};

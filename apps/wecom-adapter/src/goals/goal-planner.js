@@ -1,0 +1,1 @@
+module.exports = { decompose: function (g) { return { goal: g, tasks: [{ task: '提升GMV', kpi: 'gmv', target: g.target || 100, unit: 'k¥' }, { task: '降低退款率', kpi: 'refundRate', target: 2.5, unit: '%' }, { task: '优化ROI', kpi: 'roi', target: 2.0, unit: 'x' }] }; } };

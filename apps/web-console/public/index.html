@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenClaw Enterprise OS v1</title>
+<style>
+:root{--bg:#faf6f0;--card:#fffefb;--b:#e8e0d5;--t:#3d3529;--m:#8c7b6b;--g:#10b981;--r:#ef4444;--y:#f59e0b;--bl:#3b82f6;--p:#8b5cf6}
+*{margin:0;padding:0;box-sizing:border-box}body{font:13px/1.6 -apple-system,sans-serif;background:var(--bg);color:var(--t)}
+.topbar{background:var(--card);border-bottom:1px solid var(--b);padding:0 14px;display:flex;align-items:center;gap:2px;position:sticky;top:0;z-index:100;flex-wrap:wrap}
+.topbar .logo{font-weight:700;font-size:16px;margin-right:10px;color:var(--bl)}
+.topbar a{padding:10px 11px;color:var(--m);text-decoration:none;border-bottom:2px solid transparent;cursor:pointer;font-size:11px;transition:all .2s}
+.topbar a:hover,.topbar a.active{color:var(--t);border-bottom-color:var(--bl)}
+.topbar input{padding:12px 16px;background:var(--bg);border:1px solid var(--b);color:var(--t);border-radius:6px;font-size:16px;width:540px;margin-left:auto}
+main{max-width:1480px;margin:0 auto;padding:14px}.page{display:none}.page.active{display:block}
+h2{font-size:18px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+h3{font-size:13px;color:var(--m);margin:16px 0 8px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.card{background:var(--card);border:1px solid var(--b);border-radius:8px;padding:14px}
+.card h3{font-size:11px;color:var(--m);margin:0 0 4px;text-transform:none}
+.card .val{font-size:22px;font-weight:700}.card .sub{font-size:10px;color:var(--m);margin-top:1px}
+.ai{border:1px dashed var(--r);background:rgba(239,68,68,.04)}.ai .val{color:var(--r)}
+.g{color:var(--g)}.r{color:var(--r)}.y{color:var(--y)}.bl{color:var(--bl)}.p{color:var(--p)}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th,td{padding:6px 9px;text-align:left;border-bottom:1px solid var(--b)}
+th{color:var(--m);font-weight:600;font-size:10px;text-transform:uppercase}tr:hover{background:rgba(140,123,107,.06)}
+.b{display:inline-block;padding:2px 6px;border-radius:9px;font-size:9px;font-weight:600}
+.br{background:rgba(16,185,129,.15);color:var(--g)}.bp{background:rgba(245,158,11,.15);color:var(--y)}
+.bv{background:rgba(139,92,246,.15);color:var(--p)}.bd{background:rgba(239,68,68,.15);color:var(--r)}
+.btn{padding:4px 10px;border-radius:5px;border:1px solid var(--b);background:var(--card);color:var(--t);cursor:pointer;font-size:10px}.btn:hover{background:var(--b)}
+.bb{border-color:var(--bl);color:var(--bl)}.brd{border-color:var(--r);color:var(--r)}.bg{border-color:var(--g);color:var(--g)}
+.filter-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.filter-row select,.filter-row input{padding:10px 14px;background:var(--bg);border:1px solid var(--b);color:var(--t);border-radius:6px;font-size:15px;width:540px}
+.chart{display:flex;align-items:flex-end;gap:3px;height:80px;padding:4px 0}
+.chart div{flex:1;border-radius:3px 3px 0 0;min-width:16px;position:relative}.chart div span{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:7px;color:var(--m)}
+.flow-step{display:inline-block;padding:6px 12px;background:var(--card);border:1px solid var(--b);border-radius:20px;margin:4px;font-size:10px;text-align:center;min-width:70px}
+.flow-step.active{border-color:var(--g);background:rgba(16,185,129,.08)}.flow-step.wait{border-color:var(--y);background:rgba(245,158,11,.08)}
+.flow-arrow{display:inline-block;margin:0 2px;color:var(--m)}
+.approval-item{background:var(--card);border:1px solid var(--b);border-radius:8px;padding:12px;margin-bottom:8px}
+.approval-item .meta{font-size:10px;color:var(--m)}.approval-item .title{font-weight:600;margin:3px 0}
+.asset-card{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--b);border-radius:6px;margin-bottom:6px}
+.asset-card .icon{font-size:24px}.asset-card .info{flex:1}.asset-card .score{font-size:18px;font-weight:700}
+.pagination{display:flex;gap:3px;justify-content:center;margin-top:8px}.pagination span{padding:3px 8px;border:1px solid var(--b);border-radius:4px;cursor:pointer;font-size:10px}
+.pagination span.active{background:var(--bl);border-color:var(--bl)}.pagination span:hover{background:var(--b)}
+.progress-bar{height:6px;background:var(--b);border-radius:3px;overflow:hidden;margin:4px 0}.progress-bar div{height:100%;background:var(--g);border-radius:3px;transition:width .3s}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}.pulse{animation:pulse 2s infinite}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">⚡ OpenClaw OS</div>
+  <a class="active" onclick="show('enterprise')">🏢 总办</a>
+  <a onclick="show('dashboard')">📊 总控</a>
+  <a onclick="show('commerce')">🛒 抖店</a>
+  <a onclick="show('agents')">🤖 AI</a>
+  <a onclick="show('assets')">📦 素材</a>
+  <a onclick="show('compass')">🧭 罗盘</a>
+  <a onclick="show('console')">🖥️ 抖店</a>
+  <a onclick="show('activities')">🎯 活动</a>
+  <a onclick="show('kpi')">📊 KPI</a>
+  <a onclick="show('goals')">🎯 目标</a>
+  <a onclick="show('board')">🏛️ 董事会</a>
+  <a onclick="show('memory')">🧠 记忆</a>
+  <a onclick="show('brain')">💡 Brain</a>
+  <a onclick="show('deploy')">🚀 系统</a>
+  <a onclick="show('cluster')">🖥️ 集群</a>
+  <a onclick="show('approvals')">✋ 审批</a>
+  <a onclick="show('week7')">📅 7天</a>
+  <a onclick="show('autonomous')">⚡ 自治</a>
+  <a onclick="show('audit')">🔍 审计</a>
+  <input id="gs" placeholder="🔍 搜索任务/Agent/SKU/审批/素材/审计..." oninput="globalSearch()">
+  <span style="font-size:10px;color:var(--m)" id="clock2"></span>
+  <span style="font-size:10px;color:var(--bl);margin-left:8px" id="userInfo"></span>
+  <a onclick="doLogout()" style="font-size:10px;padding:5px 8px" title="退出登录">🚪 退出</a>
+</div>
+<main>
+
+<!-- ═══ Dashboard ═══ -->
+<div id="dashboard" class="page active"><h2>📊 总控 · 指挥中心</h2>
+<div class="grid2" id="dc"></div>
+<h3>📈 KPI 趋势 (7天)</h3><div class="chart" id="kpiChart"></div>
+<div style="font-size:9px;color:var(--m);margin-top:2px">D1-D7 GMV(k¥)</div>
+<h3>🎯 投流概览</h3><div class="chart" id="roiChart"></div>
+<div style="font-size:9px;color:var(--m);margin-top:2px">ROI% · CTR% · CVR% 7天趋势</div>
+</div>
+
+<!-- ═══ Commerce ═══ -->
+<div id="commerce" class="page"><h2>🛒 抖店业务</h2>
+<div class="grid2" id="cc"></div>
+<h3>📦 SKU 明细</h3><table><tr><th>SKU</th><th>名称</th><th>GMV</th><th>订单</th><th>ROI</th><th>库存</th><th>风险</th></tr><tbody id="skuBody"></tbody></table>
+<h3>📊 活动/投流历史</h3><div id="campHist"></div>
+<h3>🎬 视频任务</h3><div id="vidStat"></div>
+</div>
+
+<!-- ═══ Agents ═══ -->
+<div id="agents" class="page"><h2>🤖 AI 任务中心</h2>
+<div class="filter-row">
+  <input placeholder="任务标题..." id="taskCreateInput" style="flex:1;max-width:540px">
+  <select id="taskAgent"><option value="codex">Codex</option><option value="workbuddy">WorkBuddy</option><option value="deepseek">DeepSeek</option><option value="node-a">Node A</option></select>
+  <span class="btn bb" onclick="createTask()">➕ 创建任务</span>
+  <span style="font-size:10px;color:var(--m);margin-left:8px">REVIEW_ONLY · 仅生成审批</span>
+</div>
+<div class="filter-row">
+  <select id="tf" onchange="renderTasks()"><option value="all">全部状态</option><option value="pending">pending</option><option value="dispatched">dispatched</option><option value="review">review</option><option value="approved">approved</option></select>
+  <select id="ts" onchange="renderTasks()"><option value="default">默认</option><option value="risk">按风险</option><option value="status">按状态</option></select>
+</div>
+<h3>任务列表</h3><div id="tt"></div>
+<h3>📋 事件流</h3><div class="chart" id="logChart"></div>
+<div id="logDetail"></div>
+</div>
+
+<!-- ═══ Assets (P50.1 Enhanced) ═══ -->
+<div id="assets" class="page"><h2>📦 Asset Library · 素材资产库</h2>
+
+<!-- Tab navigation -->
+<div style="display:flex;gap:2px;margin-bottom:14px;flex-wrap:wrap">
+  <span class="btn" id="tab-browse" onclick="switchAssetTab('browse')" style="font-size:11px">📁 浏览 Browse</span>
+  <span class="btn" id="tab-harvester" onclick="switchAssetTab('harvester')" style="font-size:11px">🔍 采集 Harvester</span>
+  <span class="btn" id="tab-tasks" onclick="switchAssetTab('tasks')" style="font-size:11px">📋 任务 Tasks</span>
+  <span class="btn" id="tab-sync" onclick="switchAssetTab('sync')" style="font-size:11px">🔄 同步 Sync</span>
+  <span class="btn" id="tab-audit" onclick="switchAssetTab('audit')" style="font-size:11px">📜 审计 Audit</span>
+</div>
+
+<!-- Tab: Browse -->
+<div id="tab-content-browse">
+  <div class="filter-row">
+    <input placeholder="搜索素材..." id="assetSearch" oninput="renderAssets()" style="flex:1;max-width:540px">
+    <select id="assetTypeFilter" onchange="renderAssets()">
+      <option value="all">全部</option><option value="text">📄 text</option><option value="image">🖼️ image</option><option value="audio">🎵 audio</option><option value="video">🎬 video</option></select>
+    <select id="assetRiskFilter" onchange="renderAssets()"><option value="all">风险</option><option value="low">🟢</option><option value="medium">🟡</option><option value="high">🔴</option></select>
+    <span class="btn bb" onclick="showImportDialog()">📥 导入</span>
+  </div>
+  <div class="grid3" id="assetStatsGrid"></div>
+  <table><tr><th>ID</th><th>标题</th><th>类型</th><th>平台</th><th>标签</th><th>评分</th><th>风险</th><th>操作</th></tr><tbody id="assetList"></tbody></table>
+  <div id="assetTagCloud" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px"></div>
+  <div id="importDialog" style="display:none;background:var(--card);border:1px solid var(--b);border-radius:8px;padding:14px;margin:8px 0">
+    <h4 style="margin:0 0 8px">📥 导入素材</h4>
+    <div class="filter-row">
+      <input placeholder="标题" id="importTitle" style="flex:1;max-width:540px">
+      <select id="importType"><option value="text">text</option><option value="image">image</option><option value="audio">audio</option><option value="video">video</option></select>
+      <select id="importPlatform"><option value="douyin">抖音</option><option value="taobao">淘宝</option><option value="jd">京东</option><option value="other">其他</option></select>
+    </div>
+    <div class="filter-row">
+      <input placeholder="标签 (逗号分隔)" id="importTags" style="flex:1;max-width:540px">
+      <span class="btn bg" onclick="doImportAsset()">✅ 确认导入</span><span class="btn" onclick="document.getElementById('importDialog').style.display='none'">取消</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Harvester -->
+<div id="tab-content-harvester" style="display:none">
+  <div class="filter-row">
+    <input placeholder="采集URL..." id="harvestUrl" style="flex:1;max-width:540px">
+    <input placeholder="任务标题" id="harvestTitle" style="flex:1;max-width:540px">
+  </div>
+  <div class="filter-row">
+    <select id="harvestPlatform"><option value="douyin">抖音</option><option value="taobao">淘宝</option><option value="jd">京东</option><option value="pinduoduo">拼多多</option><option value="kuaishou">快手</option><option value="xiaohongshu">小红书</option></select>
+    <label style="font-size:11px;display:flex;align-items:center;gap:2px"><input type="checkbox" id="harvestText" checked>Text</label>
+    <label style="font-size:11px;display:flex;align-items:center;gap:2px"><input type="checkbox" id="harvestImage" checked>Image</label>
+    <label style="font-size:11px;display:flex;align-items:center;gap:2px"><input type="checkbox" id="harvestAudio">Audio</label>
+    <label style="font-size:11px;display:flex;align-items:center;gap:2px"><input type="checkbox" id="harvestVideo">Video</label>
+    <span class="btn bb" onclick="createHarvesterTask()">➕ 创建采集任务</span>
+    <span style="font-size:10px;color:var(--r)">⚠️ 需审批</span>
+  </div>
+  <div style="font-size:10px;color:var(--m);margin:8px 0">
+    🛡️ REVIEW_ONLY · 不绕过验证码/风控/付费墙 · 仅合法公开页面
+  </div>
+  <h3>🥷 Browser Collector Status</h3>
+  <div class="grid3" id="collectorCards"></div>
+</div>
+
+<!-- Tab: Tasks -->
+<div id="tab-content-tasks" style="display:none">
+  <div class="filter-row">
+    <select id="taskStatusFilter" onchange="renderHarvesterTasks()">
+      <option value="all">全部</option><option value="pending">pending</option><option value="approved">approved</option><option value="running">running</option><option value="done">done</option><option value="failed">failed</option></select>
+  </div>
+  <table><tr><th>ID</th><th>标题</th><th>平台</th><th>状态</th><th>进度</th><th>类型</th><th>创建</th></tr><tbody id="harvesterTaskBody"></tbody></table>
+</div>
+
+<!-- Tab: Sync -->
+<div id="tab-content-sync" style="display:none">
+  <div class="grid2" id="syncCards"></div>
+  <div style="font-size:10px;color:var(--m);margin:8px 0">🔒 NAS/Notion 当前默认关闭 · 仅作为可选同步目标 · 本地存储为主存储</div>
+  <table><tr><th>同步目标</th><th>状态</th><th>最后同步</th><th>操作</th></tr><tbody id="syncBody"></tbody></table>
+</div>
+
+<!-- Tab: Audit -->
+<div id="tab-content-audit" style="display:none">
+  <table><tr><th>Audit ID</th><th>Asset</th><th>动作</th><th>用户</th><th>风险</th><th>时间</th></tr><tbody id="assetAuditBody"></tbody></table>
+</div>
+
+</div>
+<!-- ═══ End Assets P50.2-P50.5 ═══ -->
+
+<!-- ═══ Deployment Center (P43.1-P45.1) ═══ -->
+<div id="deploy" class="page"><h2>🚀 Deployment Center · 部署中心</h2>
+
+<!-- Module 1: Branch Monitor -->
+<h3>🌿 Branch Monitor</h3>
+<table><tr><th>分支</th><th>Commit</th><th>更新时间</th><th>PR 状态</th><th>PR</th><th>作者</th></tr><tbody id="branchBody"></tbody></table>
+
+<!-- Module 2: PR Monitor -->
+<h3>📋 PR Monitor</h3>
+<div class="filter-row">
+  <select id="prFilter" onchange="renderPRs()">
+    <option value="all">全部状态</option><option value="Open">Open</option><option value="Merged">Merged</option><option value="Closed">Closed</option>
+  </select>
+</div>
+<table><tr><th>PR</th><th>标题</th><th>作者</th><th>状态</th><th>分支</th><th>目标</th><th>更新</th></tr><tbody id="prBody"></tbody></table>
+
+<!-- Module 3: Test Center -->
+<h3>🧪 Test Center</h3>
+<div class="grid3" id="testCards"></div>
+<h4 style="font-size:11px;color:var(--m);margin-top:10px">📜 最近测试记录</h4>
+<table><tr><th>Run ID</th><th>套件</th><th>结果</th><th>耗时</th><th>状态</th></tr><tbody id="testBody"></tbody></table>
+
+<!-- Module 4: Deployment Plan -->
+<h3>📦 Deployment Plan</h3>
+<div class="filter-row">
+  <input placeholder="部署计划标题..." id="dpTitle" style="flex:1;max-width:540px">
+  <select id="dpBranch">
+    <option value="main">main</option><option value="develop">develop</option>
+  </select>
+  <select id="dpNode">
+    <option value="主服务器">主服务器</option><option value="Node A">Node A</option><option value="日本节点">日本节点</option>
+  </select>
+  <span class="btn bb" onclick="createDeploymentPlan()">➕ 创建部署计划</span>
+  <span style="font-size:10px;color:var(--m);margin-left:4px">REVIEW_ONLY · 仅生成审批</span>
+</div>
+<div style="font-size:10px;color:var(--r);margin:4px 0 10px">⚠️ 部署计划创建后进入 pending 状态，需审批通过后调度执行，不得直接执行</div>
+<table><tr><th>计划ID</th><th>标题</th><th>目标分支</th><th>目标节点</th><th>状态</th><th>审批人</th><th>创建</th></tr><tbody id="dpBody"></tbody></table>
+
+<!-- Module 5: Rollback Registry -->
+<h3>⏪ Rollback Registry</h3>
+<div style="font-size:10px;color:var(--r);margin:4px 0 10px">🔒 禁止直接回滚 · 仅可查看回滚点 · 需创建回滚审批</div>
+<table><tr><th>部署ID</th><th>标题</th><th>分支</th><th>节点</th><th>状态</th><th>Artifact</th><th>回滚点</th><th>部署时间</th><th>操作</th></tr><tbody id="rollbackBody"></tbody></table>
+
+<!-- Module 7: Smoke Test Gate (HOTFIX-003) -->
+<h3>🛡️ WeCom Smoke Test Gate <span style="font-size:10px;color:var(--m);font-weight:400">HOTFIX-003</span></h3>
+<div style="display:flex;gap:14px;align-items:center;margin:8px 0">
+  <div id="smokeGateStatus" style="width:12px;height:12px;border-radius:50%;background:var(--m)"></div>
+  <div style="font-weight:600" id="smokeGateLabel">Loading...</div>
+  <div style="font-size:10px;color:var(--m)" id="smokeGateDetail"></div>
+</div>
+<div class="grid3" id="smokeGateCards"></div>
+<div style="font-size:10px;color:var(--m);margin-top:4px">⚠️ 任何 Gate FAIL → PM2 reload 自动阻断</div>
+
+<!-- Module 6: Approval Queue -->
+<h3>✋ Approval Queue · 部署审批队列</h3>
+<div style="display:flex;align-items:center;gap:8px;margin:8px 0">
+  <span class="flow-step wait">pending</span><span class="flow-arrow">→</span><span class="flow-step" style="border-color:var(--g);background:rgba(16,185,129,.08)">approved</span><span class="flow-arrow">→</span><span class="flow-step active">dispatch</span>
+</div>
+<div style="font-size:10px;color:var(--r);margin:0 0 10px">🔒 NO_DIRECT_EXEC — 所有部署计划必须走 pending→approved→dispatch 流程</div>
+<table><tr><th>审批ID</th><th>类型</th><th>标题</th><th>状态</th><th>风险</th><th>审批人</th><th>时间</th></tr><tbody id="deployApprBody"></tbody></table>
+</div>
+
+<!-- ═══ Approvals ═══ -->
+<div id="approvals" class="page"><h2>✋ 审批中心</h2>
+<div class="filter-row">
+  <input placeholder="搜索审批..." id="apprSearch" oninput="renderApprovals(1)" style="flex:1;max-width:540px">
+  <span class="btn bg" onclick="batchAct('approve')">✅ 批量批准</span>
+  <span class="btn brd" onclick="batchAct('reject')">❌ 拒绝</span>
+  <span style="font-size:10px;color:var(--m)">选中: <span id="sc2">0</span></span>
+</div><div id="al"></div><div class="pagination" id="apg"></div>
+<h3>📜 审批历史</h3><div id="ah"></div>
+</div>
+
+<!-- ═══ 7 Days ═══ -->
+<div id="week7" class="page"><h2>📅 7天运营验证</h2>
+<div class="grid3" id="w7c"></div>
+<h3>📈 逐日趋势</h3><div class="chart" id="w7chart"></div>
+<div style="font-size:9px;color:var(--m);margin-top:2px">D1-D7: GMV(k¥) | 订单(十) | ROI%</div>
+<h3>📋 每日摘要</h3><div id="w7summary"></div>
+</div>
+
+<!-- ═══ Autonomous ═══ -->
+<div id="autonomous" class="page"><h2>⚡ Autonomous Company Loop · 自主运营循环</h2>
+
+<div class="grid3" id="autoCards"></div>
+
+<!-- Phase flow -->
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:16px 0;font-size:12px" id="loopFlow"></div>
+
+<!-- Today Plan -->
+<h3>📋 今日运营计划</h3>
+<table><tr><th>ID</th><th>任务</th><th>类型</th><th>优先级</th><th>状态</th></tr><tbody id="autoPlanBody"></tbody></table>
+
+<!-- Risk + Approval -->
+<div class="two-col">
+  <div><h3>⚠️ 风险告警</h3><div id="autoRiskBody"></div></div>
+  <div><h3>✋ 待审批任务</h3><div id="autoApprovalBody"></div></div>
+</div>
+
+<!-- Content + Tomorrow -->
+<div class="two-col">
+  <div><h3>🎬 运营建议</h3><div id="autoRecBody"></div></div>
+  <div><h3>📅 明日优化方案</h3><div id="autoTomorrowBody"></div></div>
+</div>
+
+<!-- Review -->
+<h3>📊 晚间复盘</h3><div id="autoReviewBody"></div>
+
+<!-- Audit -->
+<h3>📜 审计记录</h3><table><tr><th>事件</th><th>Phase</th><th>时间</th></tr><tbody id="autoAuditBody"></tbody></table>
+</div>
+
+<!-- ═══ Audit (P48 Unified Audit Gate) ═══ -->
+<div id="audit" class="page"><h2>🔍 统一审计中心 · Audit Gate</h2>
+
+<!-- 1. Login Audit -->
+<h3>🔑 Login Audit</h3>
+<div class="filter-row">
+  <select id="loginAuditFilter" onchange="renderAudit()"><option value="all">全部</option><option value="login_success">成功</option><option value="login_failed">失败</option><option value="locked">锁定</option><option value="logout">登出</option></select>
+</div>
+<table><tr><th>Event ID</th><th>类型</th><th>用户</th><th>状态</th><th>风险</th><th>时间</th></tr><tbody id="loginAuditBody"></tbody></table>
+
+<!-- 2. Deployment Audit -->
+<h3>🚀 Deployment Audit</h3>
+<table><tr><th>Event ID</th><th>类型</th><th>资源</th><th>用户</th><th>状态</th><th>风险</th><th>时间</th></tr><tbody id="deployAuditBody"></tbody></table>
+
+<!-- 3. Dispatch Audit -->
+<h3>📡 Dispatch Audit</h3>
+<table><tr><th>Event ID</th><th>任务</th><th>源节点</th><th>目标节点</th><th>状态</th><th>时间</th></tr><tbody id="dispatchAuditBody"></tbody></table>
+
+<!-- 4. Worker Audit -->
+<h3>⚙️ Worker Audit</h3>
+<table><tr><th>Event ID</th><th>任务</th><th>状态</th><th>时长</th><th>Artifact</th><th>时间</th></tr><tbody id="workerAuditBody"></tbody></table>
+
+<!-- 5. Dangerous Action Audit -->
+<h3>⛔ Dangerous Action Audit</h3>
+<div style="font-size:10px;color:var(--r);margin:4px 0 10px">🔒 所有危险动作必须经过 审批→审计→执行 流程</div>
+<table><tr><th>Event ID</th><th>动作</th><th>用户</th><th>状态</th><th>风险</th><th>审批ID</th><th>时间</th></tr><tbody id="dangerAuditBody"></tbody></table>
+
+<!-- 6. Search -->
+<h3>🔎 Search</h3>
+<div class="filter-row">
+  <input placeholder="关键词搜索..." id="auditKeyword" style="flex:1;max-width:540px">
+  <input placeholder="用户ID" id="auditUser" style="max-width:200px">
+  <input placeholder="节点" id="auditNode" style="max-width:200px">
+  <span class="btn bb" onclick="searchAudit()">🔍 搜索</span>
+  <span class="btn" onclick="exportAudit('json')">📥 JSON</span>
+  <span class="btn" onclick="exportAudit('csv')">📊 CSV</span>
+</div>
+<div id="auditSearchResults"></div>
+</div>
+
+<!-- ═══ Compass (P51) ═══ -->
+<div id="compass" class="page"><h2>🧭 Compass Import · 罗盘数据导入</h2>
+
+<div class="filter-row">
+  <span class="btn bb" onclick="alert('📤 上传Excel (REVIEW_ONLY)\n请选择罗盘导出的 Excel 文件上传')">📤 上传Excel</span>
+  <select id="compassType" onchange="renderCompass()">
+    <option value="all">全部类型</option><option value="overview">核心概览</option><option value="products">商品明细</option><option value="videos">短视频明细</option><option value="live">直播明细</option><option value="audience">人群画像</option><option value="service">售后客服</option><option value="product_card">商品卡</option><option value="transaction">成交分析</option>
+  </select>
+  <span class="btn" onclick="doCompassImport()">🚀 导入</span>
+  <span style="font-size:10px;color:var(--r)">⚠️ 导入需审批 · import→approval→audit→execute</span>
+</div>
+
+<div style="font-size:10px;color:var(--m);margin:8px 0">
+  📋 功能开关: COMPASS_IMPORT_ENABLED=true | COMPASS_BROWSER_EXPORT=false | COMPASS_AUTO_LOGIN=false | COMPASS_MAPPING_EDIT=false
+</div>
+
+<!-- Status cards -->
+<div class="grid3" id="compassCards"></div>
+
+<!-- Data type mapping -->
+<h3>📊 数据类型 (8类)</h3>
+<table><tr><th>类型标识</th><th>名称</th><th>字段数</th><th>最新数据</th><th>操作</th></tr><tbody id="compassTypeBody"></tbody></table>
+
+<!-- Import history -->
+<h3>📋 导入历史</h3>
+<table><tr><th>ID</th><th>Import ID</th><th>类型</th><th>行数</th><th>来源文件</th><th>状态</th><th>用户</th><th>时间</th></tr><tbody id="compassHistoryBody"></tbody></table>
+
+<!-- Audit -->
+<h3>📜 罗盘审计</h3>
+<table><tr><th>事件类型</th><th>Import ID</th><th>类型</th><th>用户</th><th>状态</th><th>时间</th></tr><tbody id="compassAuditBody"></tbody></table>
+
+<!-- DAG Stage1 -->
+<h3>⚙️ DAG Stage1</h3>
+<div class="grid3" id="compassDagCards"></div>
+
+</div>
+
+<!-- ═══ Console (P52) ═══ -->
+<div id="console" class="page"><h2>🖥️ Douyin Console · 抖店后台操作中心</h2>
+<div class="grid3" id="consoleCards"></div>
+<div class="filter-row">
+  <span class="btn bb" onclick="doConsoleLogin()">🔑 模拟登录</span>
+  <span class="btn" onclick="doConsoleScreenshot()">📸 截图</span>
+  <span style="font-size:10px;color:var(--r)">⚠️ REVIEW_ONLY · 所有操作需 P48 审批</span>
+</div>
+<h3>📋 操作计划</h3>
+<div class="grid2" id="plannerCards"></div>
+<table><tr><th>Plan ID</th><th>类型</th><th>动作</th><th>状态</th><th>风险</th><th>时间</th></tr><tbody id="consolePlanBody"></tbody></table>
+<h3>📸 截图 Artifacts</h3><div class="grid3" id="screenshotCards"></div>
+<h3>📜 审计日志</h3>
+<table><tr><th>事件</th><th>动作</th><th>用户</th><th>状态</th><th>时间</th></tr><tbody id="consoleAuditBody"></tbody></table>
+</div>
+
+<!-- ═══ Activities (P53) ═══ -->
+<div id="activities" class="page"><h2>🎯 Activity Center · 活动中心</h2>
+<div class="grid3" id="actCards"></div>
+<div class="filter-row">
+  <span class="btn bb" onclick="doActEnroll()">📝 生成报名计划</span>
+  <span style="font-size:10px;color:var(--r)">⚠️ 禁止自动报名 · 报名需 P48 审批</span>
+</div>
+<h3>📋 活动列表</h3>
+<table><tr><th>ID</th><th>名称</th><th>类型</th><th>折扣</th><th>补贴</th><th>日期</th><th>状态</th><th>SKU</th></tr><tbody id="actBody"></tbody></table>
+<h3>💰 利润分析</h3><table><tr><th>活动</th><th>预估GMV</th><th>折扣成本</th><th>补贴</th><th>净利润</th><th>建议</th></tr><tbody id="actProfitBody"></tbody></table>
+<h3>⚠️ 风险评估</h3><table><tr><th>活动</th><th>风险分</th><th>风险等级</th></tr><tbody id="actRiskBody"></tbody></table>
+<h3>🏆 推荐排行</h3><table><tr><th>活动</th><th>推荐分</th><th>结果</th><th>CTA</th></tr><tbody id="actRecBody"></tbody></table>
+<h3>📜 审计记录</h3><table><tr><th>事件</th><th>活动</th><th>状态</th><th>时间</th></tr><tbody id="actAuditBody"></tbody></table>
+</div>
+
+<!-- ═══ P55 KPI ═══ -->
+<div id="kpi" class="page"><h2>📊 KPI Engine · 关键指标引擎</h2>
+<div class="grid3" id="kpiCards"></div>
+<h3>📈 指标趋势</h3><div id="kpiTrendBody" class="chart" style="height:100px"></div>
+<h3>⚠️ 异常指标</h3><table><tr><th>指标</th><th>消息</th><th>严重程度</th></tr><tbody id="kpiAnomalyBody"></tbody></table>
+</div>
+
+<!-- ═══ P56 Goals ═══ -->
+<div id="goals" class="page"><h2>🎯 Goal Registry · 目标管理</h2>
+<div class="filter-row"><input placeholder="目标标题..." id="goalInput" style="flex:1;max-width:540px"><input placeholder="目标值" id="goalTarget" style="max-width:100px"><span class="btn bb" onclick="doCreateGoal()">➕ 创建目标</span></div>
+<div class="grid3" id="goalCards"></div>
+<h3>📋 目标列表</h3><table><tr><th>ID</th><th>目标</th><th>KPI</th><th>截止</th><th>状态</th></tr><tbody id="goalBody"></tbody></table>
+<h3>📝 任务拆解</h3><table><tr><th>目标</th><th>任务</th><th>指标</th><th>目标值</th></tr><tbody id="goalPlanBody"></tbody></table>
+</div>
+
+<!-- ═══ P57 Board ═══ -->
+<div id="board" class="page"><h2>🏛️ Board Center · 董事会看板</h2>
+<div class="grid2" id="boardCards"></div>
+<h3>💰 现金流</h3><div class="grid3" id="cashflowCards"></div>
+</div>
+
+<!-- ═══ P58 Memory ═══ -->
+<div id="memory" class="page"><h2>🧠 Memory System · 记忆系统</h2>
+<div class="filter-row"><input placeholder="搜索记忆..." id="memSearch" oninput="renderMemory()" style="flex:1;max-width:540px"></div>
+<div class="grid3" id="memCards"></div>
+<table><tr><th>ID</th><th>类型</th><th>标题</th><th>时间</th></tr><tbody id="memBody"></tbody></table>
+</div>
+
+<!-- ═══ P59 Brain ═══ -->
+<div id="brain" class="page"><h2>💡 Enterprise Brain · 企业大脑</h2>
+<div class="grid3" id="brainCards"></div>
+<h3>🧠 经营建议</h3><table><tr><th>类别</th><th>建议</th><th>动作</th><th>优先级</th></tr><tbody id="brainRecBody"></tbody></table>
+<h3>⚠️ 风险预警</h3><div id="brainRiskBody"></div>
+<h3>📅 明日优化方案</h3><div id="brainTomorrowBody"></div>
+<p style="font-size:11px;color:var(--m)" id="brainSummary"></p>
+</div>
+
+<!-- ═══ Phase C /enterprise CEO Dashboard ═══ -->
+<div id="enterprise" class="page active"><h2>🏢 CEO Command Center · 总裁指挥中心</h2>
+<div style="font-size:10px;color:var(--m);margin-bottom:8px">OpenClaw Enterprise OS v2 · Production Candidate · <span id="ceoClock"></span></div>
+
+<!-- Top KPIs -->
+<div class="grid3" id="ceoTop"></div>
+
+<!-- Row 1: Board + Brain -->
+<div class="two-col">
+  <div>
+    <h3>🏛️ Board Center</h3>
+    <div class="grid2" id="ceoBoard"></div>
+    <div id="ceoCashflow" style="margin-top:6px"></div>
+  </div>
+  <div>
+    <h3>💡 Enterprise Brain</h3>
+    <div id="ceoBrain"></div>
+    <h4 style="margin-top:8px">⚠️ Risk Alerts</h4>
+    <div id="ceoRisk"></div>
+  </div>
+</div>
+
+<!-- Row 2: KPI + Goals -->
+<div class="two-col">
+  <div>
+    <h3>📊 KPI Center</h3>
+    <div class="chart" id="ceoKpiTrend" style="height:80px"></div>
+    <table><tr><th>指标</th><th>值</th><th>状态</th></tr><tbody id="ceoKpiBody"></tbody></table>
+  </div>
+  <div>
+    <h3>🎯 Goals & Activities</h3>
+    <table><tr><th>目标</th><th>状态</th><th>活动</th><th>收益</th></tr><tbody id="ceoGoalsBody"></tbody></table>
+    <h4 style="margin-top:8px">📋 Activity Status</h4>
+    <div id="ceoActivity"></div>
+  </div>
+</div>
+
+<!-- Row 3: Approvals + Deployment + Runtime -->
+<div class="two-col">
+  <div>
+    <h3>✋ Pending Approvals</h3>
+    <div id="ceoApprovals"></div>
+  </div>
+  <div>
+    <h3>🚀 Deployment & Runtime</h3>
+    <div class="grid2" id="ceoRuntime"></div>
+  </div>
+</div>
+
+<!-- Row 4: Memory + System -->
+<div class="two-col">
+  <div><h3>🧠 Memory Center</h3><div id="ceoMemory"></div></div>
+  <div><h3>⚡ System Status</h3><div class="grid2" id="ceoSystem"></div></div>
+</div>
+</div>
+
+<!-- ═══ Phase D /cluster ═══ -->
+<div id="cluster" class="page"><h2>🖥️ Node Cluster · 分布式集群</h2>
+<div class="grid3" id="clCards"></div>
+<div class="two-col">
+  <div><h3>🖥️ Node Status</h3><table><tr><th>Node</th><th>Host</th><th>Role</th><th>CPU</th><th>Mem</th><th>Status</th><th>Heartbeat</th></tr><tbody id="clNodeBody"></tbody></table></div>
+  <div><h3>⚙️ Worker Pool</h3><table><tr><th>Worker</th><th>Type</th><th>Node</th><th>Status</th><th>Tasks</th></tr><tbody id="clWorkerBody"></tbody></table></div>
+</div>
+<div class="two-col">
+  <div><h3>📋 Task Queue</h3><table><tr><th>Task ID</th><th>Type</th><th>Status</th><th>Node</th></tr><tbody id="clQueueBody"></tbody></table></div>
+  <div><h3>🔄 Failover</h3><div id="clFailover"></div><h4 style="margin-top:8px">💓 Heartbeat</h4><div id="clHeartbeat"></div></div>
+</div>
+<h3>📜 Audit</h3><table><tr><th>Event</th><th>Node</th><th>Time</th></tr><tbody id="clAuditBody"></tbody></table>
+</div>
+
+</main>
+<script>
+// ═══ Core ═══
+function show(id){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
+  document.querySelectorAll('.topbar a').forEach(function(a){a.classList.remove('active')});
+  document.getElementById(id).classList.add('active');event.target.classList.add('active');
+  window['render'+id.charAt(0).toUpperCase()+id.slice(1)]();
+}
+function b(s){var m={online:'br',ready:'br',dispatched:'br',approved:'br',running:'br',completed:'br',pending:'bp',review:'bv',cancelled:'bd',rejected:'bd',high:'bd',medium:'bp',low:'bp'};return'<span class="b '+(m[s]||'bp')+'">'+s+'</span>'}
+function ct(t,v,s,c){return'<div class="card'+(c?' '+c:'')+'"><h3>'+t+'</h3><div class="val '+(c||'')+'">'+v+'</div><div class="sub">'+s+'</div></div>'}
+function tr(n,bv){var d=((n-bv)/bv*100).toFixed(1);return d>0?'<span style="color:var(--g);font-weight:700">+'+d+'%</span>':d<0?'<span style="color:var(--r);font-weight:700">'+d+'%</span>':''}
+
+// ═══ Data ═══
+var D={
+  gmv:[145,138,142,152,148,158,162],orders:[290,280,295,310,305,320,328],profit:[58,55,60,64,62,64,67],
+  ctr:[3.5,3.8,3.6,4.0,3.9,4.1,4.0],roi:[150,155,160,165,170,175,180],cvr:[8.2,8.5,8.3,8.8,8.6,9.0,8.9],
+  sku:[
+    {id:'SKU-001',name:'夏季T恤',gmv:45200,orders:95,ctr:4.2,roi:190,stock:320,risk:'low'},
+    {id:'SKU-002',name:'防晒霜',gmv:38000,orders:82,ctr:3.8,roi:175,stock:85,risk:'medium'},
+    {id:'SKU-003',name:'运动鞋',gmv:29000,orders:58,ctr:4.5,roi:210,stock:45,risk:'low'},
+    {id:'SKU-004',name:'蓝牙耳机',gmv:22000,orders:48,ctr:3.2,roi:155,stock:12,risk:'high'},
+    {id:'SKU-005',name:'智能手表',gmv:18500,orders:35,ctr:4.8,roi:230,stock:8,risk:'high'}
+  ],
+  campaigns:[
+    {name:'618大促',gmv:28000,roi:195,days:7,status:'running'},{name:'五一活动',gmv:45000,roi:210,days:5,status:'completed'},{name:'周末闪购',gmv:12000,roi:160,days:2,status:'completed'}
+  ],
+  assets:[
+    {id:'ast-001',name:'ROI Report Q1',type:'json',category:'roi_report',tags:['roi','q1'],score:85,size:'12KB',updated:'2026-05-30'},
+    {id:'ast-002',name:'Ad Creative Banner',type:'image',category:'ad_creative',tags:['banner'],score:72,size:'240KB',updated:'2026-05-29'},
+    {id:'ast-003',name:'Product Video Clip',type:'video',category:'video_clip',tags:['tutorial'],score:90,size:'15MB',updated:'2026-05-31'},
+    {id:'ast-004',name:'CTR Dataset May',type:'json',category:'ctr_data',tags:['ctr','may'],score:78,size:'45KB',updated:'2026-05-31'},
+    {id:'ast-005',name:'Strategy Doc v2',type:'json',category:'strategy_doc',tags:['strategy'],score:88,size:'8KB',updated:'2026-06-01'},
+    {id:'ast-006',name:'Campaign Banner',type:'image',category:'ad_creative',tags:['promo'],score:65,size:'180KB',updated:'2026-05-28'},
+    {id:'ast-007',name:'Tutorial Script',type:'json',category:'general',tags:['script'],score:70,size:'6KB',updated:'2026-05-27'},
+    {id:'ast-008',name:'Risk Assessment',type:'json',category:'roi_report',tags:['risk'],score:82,size:'14KB',updated:'2026-05-31'},
+    {id:'ast-009',name:'Summer Sale Image',type:'image',category:'product_image',tags:['summer'],score:75,size:'320KB',updated:'2026-05-25'},
+    {id:'ast-010',name:'Budget Forecast',type:'json',category:'strategy_doc',tags:['budget'],score:80,size:'9KB',updated:'2026-06-01'},
+    {id:'ast-011',name:'Video Intro',type:'video',category:'video_clip',tags:['intro'],score:92,size:'22MB',updated:'2026-05-30'},
+    {id:'ast-012',name:'GMV Dashboard',type:'json',category:'general',tags:['gmv'],score:68,size:'11KB',updated:'2026-05-31'}
+  ],
+  agents:[
+    {id:'codex',name:'Codex',online:true,tasks:4,role:'development',cpu:2,mem:38},
+    {id:'workbuddy',name:'WorkBuddy',online:true,tasks:6,role:'executor',cpu:1,mem:42},
+    {id:'deepseek',name:'DeepSeek',online:true,tasks:3,role:'analysis',cpu:5,mem:55},
+    {id:'node-a',name:'Node A',online:true,tasks:2,role:'worker_node',cpu:0,mem:28}
+  ],
+  tasks:[
+    {id:'task-mptg89ev',title:'OSS Radar v0.1',status:'dispatched',agent:'codex',risk:'low',created:Date.now()-2e6,log:[{ts:Date.now()-2e6,ev:'created'},{ts:Date.now()-1e6,ev:'planned'},{ts:Date.now()-5e5,ev:'dispatched→codex'}]},
+    {id:'task-mptcn6vg',title:'DeepSeek Analysis',status:'approved',agent:'deepseek',risk:'medium',created:Date.now()-3.6e7,log:[{ts:Date.now()-3.6e7,ev:'created'},{ts:Date.now()-1.8e7,ev:'planned'},{ts:Date.now()-9e6,ev:'dispatched→deepseek'},{ts:Date.now()-3.6e6,ev:'reviewed'},{ts:Date.now()-6e5,ev:'approved'}]},
+    {id:'task-mptdc8em',title:'Marketing Cmd',status:'cancelled',agent:'workbuddy',risk:'low',created:Date.now()-8.6e7,log:[{ts:Date.now()-8.6e7,ev:'created'},{ts:Date.now()-4.3e7,ev:'planned'},{ts:Date.now()-2.1e7,ev:'dispatched→workbuddy'},{ts:Date.now()-1e7,ev:'cancelled'}]},
+    {id:'task-mpt7pfox',title:'WorkBuddy Video',status:'review',agent:'workbuddy',risk:'high',created:Date.now()-1.8e7,log:[{ts:Date.now()-1.8e7,ev:'created'},{ts:Date.now()-9e6,ev:'planned'},{ts:Date.now()-4.5e6,ev:'dispatched'},{ts:Date.now()-1.8e6,ev:'artifact'},{ts:Date.now()-9e5,ev:'review'}]},
+    {id:'task-mptr2edy',title:'Daily Loop',status:'pending',agent:'deepseek',risk:'low',created:Date.now()-6e5,log:[{ts:Date.now()-6e5,ev:'created'}]}
+  ],
+  pm2:[{name:'wecom-adapter',status:'online',cpu:'2%',mem:'64MB',uptime:'13m',restarts:47},{name:'web-console',status:'online',cpu:'0%',mem:'16MB',uptime:'10m',restarts:0},{name:'ads-worker',status:'online',cpu:'0%',mem:'58MB',uptime:'4d',restarts:0},{name:'openclaw-ai-host',status:'online',cpu:'0%',mem:'59MB',uptime:'4d',restarts:0},{name:'node-a-worker',status:'online',cpu:'0%',mem:'57MB',uptime:'44h',restarts:0}],
+  system:{cpu:[22,25,23,28,24,20,23],mem:[1.1,1.3,1.2,1.4,1.2,1.1,1.2],disk:[20,20,21,21,21,21,21]},
+  approvals:[
+    {id:'a1',type:'deploy',title:'v1 Beta→生产',by:'WorkBuddy',risk:'high',status:'pending',ts:Date.now()-3e5,reason:'灰度通过'},
+    {id:'a2',type:'budget',title:'投流+20%',by:'DeepSeek',risk:'medium',status:'pending',ts:Date.now()-6e5,reason:'ROI≥180'},
+    {id:'a3',type:'config',title:'GMV阈值',by:'Codex',risk:'low',status:'pending',ts:Date.now()-1.8e6,reason:'优化'},
+    {id:'a4',type:'campaign',title:'618报名',by:'WorkBuddy',risk:'medium',status:'pending',ts:Date.now()-3.6e6,reason:'效益预估'},
+    {id:'a5',type:'publish',title:'发布视频',by:'Codex',risk:'high',status:'pending',ts:Date.now()-7.2e6,reason:'审核OK'},
+    {id:'a6',type:'price',title:'SKU-004调价',by:'DeepSeek',risk:'medium',status:'pending',ts:Date.now()-9e6,reason:'库存低'},
+    {id:'a7',type:'config',title:'nginx timeout',by:'WorkBuddy',risk:'medium',status:'pending',ts:Date.now()-1.08e7,reason:'优化'},
+    {id:'a8',type:'deploy',title:'hotfix v0.9.1',by:'Codex',risk:'high',status:'pending',ts:Date.now()-1.44e7,reason:'bug'},
+    {id:'a9',type:'inventory',title:'SKU-005补货',by:'WorkBuddy',risk:'high',status:'pending',ts:Date.now()-2.16e7,reason:'库存=8'},
+    {id:'a10',type:'campaign',title:'618二波',by:'DeepSeek',risk:'low',status:'pending',ts:Date.now()-2.88e7,reason:'追加'}
+  ],
+  history:[
+    {id:'h1',type:'deploy',title:'v0.9 hotfix',by:'Codex',status:'approved',ts:Date.now()-8.64e7,approver:'Admin',reason:'security'},
+    {id:'h2',type:'campaign',title:'五一活动',by:'WorkBuddy',status:'approved',ts:Date.now()-1.728e8,approver:'Admin',reason:'ROI+30%'},
+    {id:'h3',type:'budget',title:'预算+15%',by:'DeepSeek',status:'rejected',ts:Date.now()-2.592e8,approver:'Admin',reason:'ROI未达标'},
+    {id:'h4',type:'config',title:'告警调整',by:'Codex',status:'approved',ts:Date.now()-3.456e8,approver:'Admin',reason:'合理'}
+  ],
+  // P43.1-P45.1 Deployment Center data
+  branches:[
+    {name:'main',commit:'abc1234',updated:Date.now()-120000,prStatus:'Merged',prNumber:'#137',author:'WorkBuddy'},
+    {name:'develop',commit:'def5678',updated:Date.now()-3600000,prStatus:'Open',prNumber:'#140',author:'Codex'},
+    {name:'feature/p43-deployment-center-enhancement',commit:'g9h0i1j',updated:Date.now()-600000,prStatus:'Open',prNumber:'#141',author:'WorkBuddy'},
+    {name:'feature/p40-system-center',commit:'k2l3m4n',updated:Date.now()-7200000,prStatus:'Merged',prNumber:'#140',author:'Codex'},
+    {name:'feature/p42-runtime',commit:'o5p6q7r',updated:Date.now()-14400000,prStatus:'Merged',prNumber:'#139',author:'WorkBuddy'}
+  ],
+  prs:[
+    {number:'#141',title:'P43.1-P45.1 Deployment Center Enhancement',author:'WorkBuddy',status:'Open',branch:'feature/p43-deployment-center-enhancement',target:'develop',updated:Date.now()-600000},
+    {number:'#140',title:'P40-P42 System Center + Dispatch + Runtime',author:'Codex',status:'Merged',branch:'feature/p40-system-center',target:'develop',updated:Date.now()-7200000},
+    {number:'#139',title:'P42 Runtime Monitor',author:'WorkBuddy',status:'Merged',branch:'feature/p42-runtime',target:'develop',updated:Date.now()-14400000},
+    {number:'#138',title:'P41 Dispatch Center',author:'Codex',status:'Merged',branch:'feature/p41-dispatch',target:'develop',updated:Date.now()-21600000},
+    {number:'#137',title:'P17.1 Asset Foundation → main (Release Gate)',author:'WorkBuddy',status:'Merged',branch:'develop',target:'main',updated:Date.now()-86400000},
+    {number:'#136',title:'P16.9 Domain Gateway → develop',author:'Codex',status:'Merged',branch:'feature/p16-domain-gateway',target:'develop',updated:Date.now()-90000000},
+    {number:'#135',title:'P15.1 Dashboard Runtime → develop',author:'WorkBuddy',status:'Merged',branch:'feature/p15-dashboard',target:'develop',updated:Date.now()-93600000},
+    {number:'#134',title:'P15 OSS Radar → develop',author:'Codex',status:'Merged',branch:'feature/p15-oss-radar',target:'develop',updated:Date.now()-97200000},
+    {number:'#133',title:'P11-P17 Merge Train → develop',author:'WorkBuddy',status:'Closed',branch:'feature/p11-17-merge-train',target:'develop',updated:Date.now()-172800000}
+  ],
+  testSuites:[
+    {name:'Full Suite',passed:398,total:398,command:'npm test',duration:'12.4s',status:'pass',lastRun:Date.now()-60000},
+    {name:'Web Console Tests',passed:45,total:45,command:'npm run test:web',duration:'2.1s',status:'pass',lastRun:Date.now()-120000},
+    {name:'Deployment Tests',passed:22,total:22,command:'npm run test:deploy',duration:'1.8s',status:'pass',lastRun:Date.now()-180000}
+  ],
+  testRuns:[
+    {id:'run-008',suite:'Full Suite',result:'398/398 PASS',duration:'12.4s',timestamp:Date.now()-60000,status:'pass'},
+    {id:'run-007',suite:'Web Console Tests',result:'45/45 PASS',duration:'2.1s',timestamp:Date.now()-120000,status:'pass'},
+    {id:'run-006',suite:'Deployment Tests',result:'22/22 PASS',duration:'1.8s',timestamp:Date.now()-180000,status:'pass'},
+    {id:'run-005',suite:'Full Suite',result:'398/398 PASS',duration:'11.9s',timestamp:Date.now()-900000,status:'pass'},
+    {id:'run-004',suite:'Full Suite',result:'397/398 PASS',duration:'14.2s',timestamp:Date.now()-3600000,status:'fail'},
+    {id:'run-003',suite:'Full Suite',result:'398/398 PASS',duration:'12.1s',timestamp:Date.now()-7200000,status:'pass'},
+    {id:'run-002',suite:'Full Suite',result:'396/398 PASS',duration:'13.5s',timestamp:Date.now()-10800000,status:'fail'},
+    {id:'run-001',suite:'Full Suite',result:'398/398 PASS',duration:'12.3s',timestamp:Date.now()-14400000,status:'pass'}
+  ],
+  deploymentPlans:[
+    {id:'dp-001',title:'P40-P42 System Center Release',targetBranch:'main',targetNode:'主服务器',status:'dispatched',created:Date.now()-14400000,approvedBy:'Admin',approvedAt:Date.now()-10800000},
+    {id:'dp-002',title:'P17.1 Asset Foundation Release',targetBranch:'main',targetNode:'主服务器',status:'approved',created:Date.now()-86400000,approvedBy:'Admin',approvedAt:Date.now()-43200000},
+    {id:'dp-003',title:'P15 OSS Radar Hotfix',targetBranch:'develop',targetNode:'主服务器',status:'pending',created:Date.now()-3600000},
+    {id:'dp-004',title:'Node A Worker Update',targetBranch:'main',targetNode:'Node A',status:'pending',created:Date.now()-1800000},
+    {id:'dp-005',title:'Japan Proxy Rebuild',targetBranch:'develop',targetNode:'日本节点',status:'draft',created:Date.now()-600000}
+  ],
+  rollbacks:[
+    {id:'deploy-010',title:'P40-P42 System Center Release',branch:'main',node:'主服务器',status:'success',deployedAt:Date.now()-14400000,artifact:'v0.4.0-abc1234',rollbackPoint:'v0.3.0-xyz7890'},
+    {id:'deploy-009',title:'P17.1 Asset Foundation',branch:'main',node:'主服务器',status:'success',deployedAt:Date.now()-86400000,artifact:'v0.3.0-xyz7890',rollbackPoint:'v0.2.0-pqr3456'},
+    {id:'deploy-008',title:'Web Console v1.0',branch:'main',node:'主服务器',status:'success',deployedAt:Date.now()-172800000,artifact:'v0.2.0-pqr3456',rollbackPoint:'v0.1.0-mno1234'},
+    {id:'deploy-007',title:'P11-P17 Merge Train',branch:'main',node:'主服务器',status:'success',deployedAt:Date.now()-259200000,artifact:'v0.1.0-mno1234',rollbackPoint:'v0.0.9-ghi7890'},
+    {id:'deploy-006',title:'P16 Dispatch → Node A',branch:'main',node:'Node A',status:'success',deployedAt:Date.now()-345600000,artifact:'v0.0.9-ghi7890',rollbackPoint:'v0.0.8-def4567'},
+    {id:'deploy-005',title:'P15.1 Dashboard Hotfix',branch:'develop',node:'主服务器',status:'failed',deployedAt:Date.now()-432000000,artifact:'v0.0.8-def4567',rollbackPoint:'v0.0.7-abc1234'},
+    {id:'deploy-004',title:'P12 WeChat Adapter v1',branch:'main',node:'主服务器',status:'success',deployedAt:Date.now()-518400000,artifact:'v0.0.7-abc1234',rollbackPoint:'v0.0.6-old0001'},
+    {id:'deploy-003',title:'Worker Lock Fix (P0)',branch:'main',node:'主服务器',status:'success',deployedAt:Date.now()-604800000,artifact:'v0.0.6-old0001',rollbackPoint:'v0.0.5-old0002'},
+    {id:'deploy-002',title:'Rate Limit Release Patch',branch:'main',node:'Node A',status:'success',deployedAt:Date.now()-691200000,artifact:'v0.0.5-old0002',rollbackPoint:'v0.0.4-old0003'},
+    {id:'deploy-001',title:'Initial OSS Radar v0.1',branch:'main',node:'主服务器',status:'success',deployedAt:Date.now()-777600000,artifact:'v0.0.4-old0003',rollbackPoint:null}
+  ],
+  deployApprovals:[
+    {id:'da-001',type:'deploy',planId:'dp-001',title:'P40-P42 System Center → 主服务器',status:'dispatched',created:Date.now()-14400000,approvedBy:'Admin',approvedAt:Date.now()-10800000,risk:'low'},
+    {id:'da-002',type:'deploy',planId:'dp-002',title:'P17.1 Asset Foundation → 主服务器',status:'approved',created:Date.now()-86400000,approvedBy:'Admin',approvedAt:Date.now()-43200000,risk:'medium'},
+    {id:'da-003',type:'deploy',planId:'dp-003',title:'P15 OSS Radar Hotfix → develop',status:'pending',created:Date.now()-3600000,risk:'medium'},
+    {id:'da-004',type:'deploy',planId:'dp-004',title:'Node A Worker Update → Node A',status:'pending',created:Date.now()-1800000,risk:'low'},
+    {id:'da-005',type:'rollback',planId:null,title:'Rollback deploy-005 (P15.1 Hotfix)',status:'pending',created:Date.now()-600000,risk:'high',reason:'deploy-005 failed, rollback to v0.0.7-abc1234'},
+    {id:'da-006',type:'rollback',planId:null,title:'Rollback deploy-009 (Asset Foundation)',status:'pending',created:Date.now()-300000,risk:'high',reason:'Asset dedup regression detected'}
+  ],
+  // P48 Audit data
+  auditLogins:[
+    {event_id:'audit-001',event_type:'login_success',user_id:'haoji',status:'success',risk_level:'INFO',timestamp:Date.now()-60000},
+    {event_id:'audit-002',event_type:'login_failed',user_id:'codex',status:'failed',risk_level:'WARN',timestamp:Date.now()-120000},
+    {event_id:'audit-003',event_type:'locked',user_id:'workbuddy',status:'locked',risk_level:'WARN',timestamp:Date.now()-180000},
+    {event_id:'audit-004',event_type:'logout',user_id:'haoji',status:'success',risk_level:'INFO',timestamp:Date.now()-300000},
+    {event_id:'audit-005',event_type:'login_success',user_id:'deepseek',status:'success',risk_level:'INFO',timestamp:Date.now()-600000},
+    {event_id:'audit-006',event_type:'code_requested',user_id:'admin',status:'info',risk_level:'INFO',timestamp:Date.now()-900000}
+  ],
+  auditDeployments:[
+    {event_id:'audit-101',event_type:'deployment_plan',resource:'P40-P42 Release',user_id:'workbuddy',status:'planned',risk_level:'INFO',timestamp:Date.now()-14400000},
+    {event_id:'audit-102',event_type:'deployment_approved',resource:'P40-P42 Release',user_id:'Admin',status:'approved',risk_level:'INFO',timestamp:Date.now()-10800000},
+    {event_id:'audit-103',event_type:'deployment_dispatched',resource:'P40-P42 Release',user_id:'workbuddy',status:'dispatched',risk_level:'INFO',timestamp:Date.now()-7200000},
+    {event_id:'audit-104',event_type:'deployment_completed',resource:'Web Console v1',user_id:'codex',status:'completed',risk_level:'INFO',timestamp:Date.now()-172800000},
+    {event_id:'audit-105',event_type:'deployment_failed',resource:'P15.1 Hotfix',user_id:'codex',status:'failed',risk_level:'HIGH',timestamp:Date.now()-432000000}
+  ],
+  auditDispatches:[
+    {event_id:'audit-201',event_type:'dispatch_created',task_id:'task-mptg89ev',source_node:'主服务器',target_node:'Node A',status:'created',timestamp:Date.now()-600000},
+    {event_id:'audit-202',event_type:'dispatch_executed',task_id:'task-mptcn6vg',source_node:'主服务器',target_node:'主服务器',status:'executed',timestamp:Date.now()-1200000},
+    {event_id:'audit-203',event_type:'dispatch_created',task_id:'task-mpt7pfox',source_node:'主服务器',target_node:'日本节点',status:'created',timestamp:Date.now()-3600000},
+    {event_id:'audit-204',event_type:'dispatch_failed',task_id:'task-mptdc8em',source_node:'Node A',target_node:'日本节点',status:'failed',timestamp:Date.now()-7200000}
+  ],
+  auditWorkers:[
+    {event_id:'audit-301',event_type:'worker_received',task_id:'task-mptg89ev',status:'received',duration:'-',artifact_id:null,timestamp:Date.now()-120000},
+    {event_id:'audit-302',event_type:'worker_started',task_id:'task-mptg89ev',status:'started',duration:'-',artifact_id:null,timestamp:Date.now()-60000},
+    {event_id:'audit-303',event_type:'worker_completed',task_id:'task-mptg89ev',status:'completed',duration:'12.4s',artifact_id:'art-oss-v1',timestamp:Date.now()},
+    {event_id:'audit-304',event_type:'worker_failed',task_id:'task-mptdc8em',status:'failed',duration:'3.2s',artifact_id:null,timestamp:Date.now()-86400000}
+  ],
+  auditDangerous:[
+    {event_id:'audit-401',event_type:'dangerous_action_blocked',action:'deploy',user_id:'workbuddy',status:'blocked_pending_approval',risk_level:'CRITICAL',approval_id:'da-001',timestamp:Date.now()-3600000},
+    {event_id:'audit-402',event_type:'dangerous_action_blocked',action:'rollback',user_id:'codex',status:'blocked_pending_approval',risk_level:'CRITICAL',approval_id:'da-005',timestamp:Date.now()-1800000},
+    {event_id:'audit-403',event_type:'dangerous_action_blocked',action:'price_update',user_id:'workbuddy',status:'blocked_pending_approval',risk_level:'HIGH',approval_id:null,timestamp:Date.now()-600000},
+    {event_id:'audit-404',event_type:'dangerous_action_rejected',action:'merge',user_id:'codex',status:'rejected',risk_level:'CRITICAL',approval_id:'da-003',timestamp:Date.now()-300000},
+    {event_id:'audit-405',event_type:'dangerous_action_blocked',action:'env_modify',user_id:'deepseek',status:'blocked_pending_approval',risk_level:'CRITICAL',approval_id:null,timestamp:Date.now()-900000},
+    {event_id:'audit-406',event_type:'dangerous_action_blocked',action:'ads_execute',user_id:'workbuddy',status:'blocked_pending_approval',risk_level:'HIGH',approval_id:null,timestamp:Date.now()-1500000},
+    {event_id:'audit-407',event_type:'dangerous_action_blocked',action:'product_publish',user_id:'workbuddy',status:'blocked_pending_approval',risk_level:'HIGH',approval_id:null,timestamp:Date.now()-7200000}
+  ]
+};
+
+setInterval(function(){
+  document.getElementById('clock2').textContent=new Date().toLocaleTimeString('zh-CN');
+  if(document.getElementById('dashboard').classList.contains('active')){D.gmv[6]+=Math.round(Math.random()*2);renderDashboard()}
+},5000);
+
+// ═══ Dashboard ═══
+function renderDashboard(){
+  var d=D;
+  document.getElementById('dc').innerHTML=[
+    ct('📈 GMV','¥'+d.gmv[6].toLocaleString(),tr(d.gmv[6],d.gmv[5])+' · 周均 ¥'+Math.round(d.gmv.reduce(function(a,b){return a+b})/7).toLocaleString(),'g'),
+    ct('📦 订单',d.orders[6],tr(d.orders[6],d.orders[5]),''),ct('💰 利润','¥'+(d.profit[6]*1000).toLocaleString(),tr(d.profit[6],d.profit[5]),'g'),
+    ct('🎯 ROAS',d.roi[6]/100+'x',tr(d.roi[6],d.roi[5]),'g'),ct('🖱️ CTR',d.ctr[6]+'%',tr(d.ctr[6],d.ctr[5]),''),ct('🔄 CVR',d.cvr[6]+'%',tr(d.cvr[6],d.cvr[5]),'bl')
+  ].join('');
+  var mx=Math.max.apply(null,d.gmv);
+  document.getElementById('kpiChart').innerHTML=d.gmv.map(function(v,i){return'<div style="height:'+(v/mx*85)+'%;background:var(--bl)"><span>D'+(i+1)+'</span></div>'}).join('');
+  // ROI/CTR/CVR mini chart
+  var mr=Math.max.apply(null,d.roi);
+  document.getElementById('roiChart').innerHTML='<div style="display:flex;gap:4px;flex:1">'+d.roi.map(function(v,i){return'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="flex:1;width:100%;background:var(--g);border-radius:3px 3px 0 0;height:'+(v/mr*60)+'px"></div><span style="font-size:7px;color:var(--m);writing-mode:vertical-lr">D'+(i+1)+'</span></div>'}).join('')+'</div>';
+}
+
+// ═══ Commerce ═══
+function renderCommerce(){renderDashboard();
+  document.getElementById('skuBody').innerHTML=D.sku.map(function(s,i){return'<tr id="sku'+i+'" class="'+(s.risk==='high'?'ai':'')+'" onclick="tgl('+i+')" style="cursor:pointer"><td>'+s.id+'</td><td>'+s.name+'</td><td>¥'+s.gmv.toLocaleString()+'</td><td>'+s.orders+'</td><td>'+s.roi+'%</td><td class="'+(s.stock<20?'r':'g')+'">'+s.stock+'</td><td>'+b(s.risk)+'</td></tr><tr id="sd'+i+'" style="display:none"><td colspan="7" style="background:rgba(59,130,246,.04);font-size:10px;padding:6px 14px">📊 <b>'+s.name+'</b>: GMV ¥'+s.gmv.toLocaleString()+' | 订单 '+s.orders+' | CTR '+s.ctr+'% | ROI '+s.roi+'% | '+(s.stock<20?'<span class="r">⚠️ 库存='+s.stock+' 需补货</span>':'✅ 正常')+'</td></tr>'}).join('');
+  document.getElementById('campHist').innerHTML='<table><tr><th>活动</th><th>GMV</th><th>ROI</th><th>天数</th><th>状态</th></tr>'+D.campaigns.map(function(c){return'<tr><td>'+c.name+'</td><td>¥'+c.gmv.toLocaleString()+'</td><td>'+c.roi+'%</td><td>'+c.days+'d</td><td>'+b(c.status)+'</td></tr>'}).join('')+'</table>';
+  document.getElementById('vidStat').innerHTML=D.tasks.filter(function(t){return t.title.indexOf('Video')>=0||t.title.indexOf('视频')>=0}).map(function(t){return'<div class="card"><div class="meta">VIDEO</div><div class="title">'+t.title+'</div>'+b(t.status)+' · '+t.agent+'</div>'}).join('')||'<div class="card">暂无视频任务</div>';
+}
+function tgl(i){var e=document.getElementById('sd'+i);e.style.display=e.style.display==='none'?'':'none'}
+
+// ═══ Agents ═══
+var nextTaskId=10;
+function createTask(){
+  var ti=document.getElementById('taskCreateInput'),ta=document.getElementById('taskAgent');
+  var title=ti.value.trim();if(!title)return alert('请输入任务标题');
+  var task={id:'task-new-'+nextTaskId,title:title,status:'pending',agent:ta.value,risk:'low',created:Date.now(),log:[{ts:Date.now(),ev:'created→'+ta.value}]};
+  D.tasks.unshift(task);nextTaskId++;ti.value='';
+  alert('✅ 任务创建请求已生成\n\nID: '+task.id+'\n标题: '+title+'\nAgent: '+ta.value+'\n\nREVIEW_ONLY — 需人工审批后执行\n已进入审批队列');
+  D.approvals.push({id:'a-task-'+nextTaskId,type:'task_create',title:'创建任务: '+title,by:'User',risk:'low',status:'pending',ts:Date.now(),reason:'用户手动创建'});
+  renderAgents();
+}
+function renderAgents(){
+  renderTasks();
+  var cr=D.tasks.reduce(function(s,t){return s+t.log.filter(function(l){return l.ev.indexOf('created')>=0}).length},0);
+  var dp=D.tasks.reduce(function(s,t){return s+t.log.filter(function(l){return l.ev.indexOf('dispatched')>=0}).length},0);
+  var rv=D.tasks.reduce(function(s,t){return s+t.log.filter(function(l){return l.ev.indexOf('review')>=0||l.ev.indexOf('approved')>=0}).length},0);
+  var er=D.tasks.reduce(function(s,t){return s+t.log.filter(function(l){return l.ev.indexOf('cancelled')>=0||l.ev.indexOf('error')>=0}).length},0);
+  var mc=Math.max(cr,dp,rv,er,1);
+  document.getElementById('logChart').innerHTML='<div style="height:'+(cr/mc*75)+'%;background:var(--bl);flex:1;min-width:40px;border-radius:3px 3px 0 0" title="created:'+cr+'"></div><div style="height:'+(dp/mc*75)+'%;background:var(--g);flex:1;min-width:40px;border-radius:3px 3px 0 0" title="dispatched:'+dp+'"></div><div style="height:'+(rv/mc*75)+'%;background:var(--p);flex:1;min-width:40px;border-radius:3px 3px 0 0" title="review:'+rv+'"></div><div style="height:'+(er/mc*75)+'%;background:var(--r);flex:1;min-width:40px;border-radius:3px 3px 0 0" title="error:'+er+'"></div>';
+  document.getElementById('logDetail').innerHTML=D.tasks.map(function(t){return t.log.map(function(l){return'<div class="log-line"><span class="ts">'+new Date(l.ts).toLocaleTimeString()+'</span>'+b(l.ev.replace(/→.*/,''))+'<span>'+t.id.substring(0,16)+' '+l.ev+'</span></div>'}).join('')}).join('');
+}
+function renderTasks(){
+  var f=document.getElementById('tf').value,s=document.getElementById('ts').value,ts=D.tasks.slice();
+  if(f!=='all') ts=ts.filter(function(t){return t.status===f});
+  if(s==='risk'){var o={high:0,medium:1,low:2};ts.sort(function(a,b){return(o[a.risk]||9)-(o[b.risk]||9)})}else if(s==='status'){var o2={pending:0,dispatched:1,review:2,approved:3,cancelled:4};ts.sort(function(a,b){return(o2[a.status]||9)-(o2[b.status]||9)})}
+  document.getElementById('tt').innerHTML='<table><tr><th>ID</th><th>标题</th><th>状态</th><th>Agent</th><th>风险</th></tr>'+ts.map(function(t){return'<tr><td>'+t.id+'</td><td>'+t.title+'</td><td>'+b(t.status)+'</td><td>'+t.agent+'</td><td>'+b(t.risk)+'</td></tr>'}).join('')+'</table>';
+}
+
+// ═══ Assets (P50.1 Enhanced) ═══
+var currentAssetTab = 'browse';
+
+function switchAssetTab(tab) {
+  currentAssetTab = tab;
+  ['browse','harvester','tasks','sync','audit'].forEach(function(t){
+    document.getElementById('tab-content-'+t).style.display = t === tab ? 'block' : 'none';
+    var btn = document.getElementById('tab-'+t);
+    if (btn) btn.style.cssText = 'font-size:11px;' + (t === tab ? 'background:var(--bl);color:#fff;border-color:var(--bl)' : '');
+  });
+  if (tab === 'browse') renderAssets();
+  if (tab === 'harvester') renderHarvester();
+  if (tab === 'tasks') renderHarvesterTasks();
+  if (tab === 'sync') renderSync();
+  if (tab === 'audit') renderAssetAudit();
+}
+
+function renderAssets(){
+  var q=(document.getElementById('assetSearch').value||'').toLowerCase();
+  var tf=document.getElementById('assetTypeFilter').value;
+  var pf=document.getElementById('assetPlatformFilter').value;
+  var rf=document.getElementById('assetRiskFilter').value;
+  var sf=parseInt(document.getElementById('assetScoreFilter').value)||0;
+  var as=D.assets.slice();
+
+  // Map old data to new P50.1 fields
+  as=as.map(function(a){return{
+    asset_id:a.id,type:a.type,title:a.name,platform:a.platform||'unknown',
+    source_url:a.source_url||'',hash:a.hash||'',tags:a.tags||[],
+    score:a.score||0,risk_level:a.risk_level||'low',
+    copyright_status:a.copyright_status||'clean',review_status:a.review_status||'approved',
+    size_bytes:a.size_bytes||0,updated:a.updated,created:a.created||a.updated
+  }});
+
+  if(q) as=as.filter(function(a){return a.title.toLowerCase().indexOf(q)>=0||a.asset_id.indexOf(q)>=0||a.tags.some(function(t){return t.indexOf(q)>=0})});
+  if(tf!=='all') as=as.filter(function(a){return a.type===tf});
+  if(pf!=='all') as=as.filter(function(a){return a.platform===pf});
+  if(rf!=='all') as=as.filter(function(a){return a.risk_level===rf});
+  if(sf>0) as=as.filter(function(a){return a.score>=sf});
+
+  document.getElementById('assetCountLabel').textContent='('+as.length+'/'+D.assets.length+' 项)';
+  var icon={text:'📄',image:'🖼️',audio:'🎵',video:'🎬',json:'📄'};
+
+  document.getElementById('assetList').innerHTML=as.map(function(a){
+    return'<tr><td style="font-family:monospace;font-size:9px">'+a.asset_id+'</td>'+
+      '<td><b>'+a.title+'</b></td>'+
+      '<td>'+(icon[a.type]||'📦')+' '+a.type+'</td>'+
+      '<td>'+a.platform+'</td>'+
+      '<td>'+a.tags.map(function(t){return'<span class="b bp">'+t+'</span>'}).join(' ')+'</td>'+
+      '<td><b class="'+(a.score>=80?'g':a.score>=60?'y':'r')+'">'+a.score+'</b></td>'+
+      '<td>'+b(a.risk_level)+'</td>'+
+      '<td>'+b(a.copyright_status==='clean'?'completed':a.copyright_status==='pending'?'pending':'rejected')+'</td>'+
+      '<td><span class="btn brd" onclick="requestAssetDelete(\''+a.asset_id+'\',\''+a.title.replace(/'/g,"\\'")+'\')" style="font-size:9px;padding:1px 4px">🗑</span></td></tr>';
+  }).join('');
+
+  // Stats grid
+  var bt={},bp={};
+  D.assets.forEach(function(a){bt[a.type]=(bt[a.type]||0)+1;bp[a.platform||'unknown']=(bp[a.platform||'unknown']||0)+1});
+  document.getElementById('assetStatsGrid').innerHTML=[
+    ct('📦 总计',D.assets.length,'assets',''),
+    ct('📄 Text',bt.text||0,'type',''),ct('🖼️ Image',bt.image||0,'type',''),
+    ct('🎬 Video',bt.video||0,'type',''),ct('🎵 Audio',bt.audio||0,'type',''),
+    ct('🔴 高风险',D.assets.filter(function(a){return a.risk_level==='high'}).length,'risk','r')
+  ].join('');
+
+  // Tags cloud
+  var tc={};
+  D.assets.forEach(function(a){(a.tags||[]).forEach(function(t){tc[t]=(tc[t]||0)+1})});
+  var tags=Object.keys(tc).sort(function(a,b){return tc[b]-tc[a]});
+  document.getElementById('assetTagCloud').innerHTML=tags.map(function(t){return'<span class="b bp" style="cursor:pointer;font-size:10px" onclick="document.getElementById(\'assetSearch\').value=\''+t+'\';renderAssets()">'+t+' ('+tc[t]+')</span>'}).join(' ');
+
+  // Audit records
+  renderAssetAudit();
+}
+
+function renderAssetAudit(){
+  var logs=[
+    {audit_id:'aa-001',asset_id:'ast-003',action:'import',user_id:'workbuddy',risk_level:'INFO',timestamp:Date.now()-259200000},
+    {audit_id:'aa-002',asset_id:'ast-005',action:'import',user_id:'codex',risk_level:'INFO',timestamp:Date.now()-432000000},
+    {audit_id:'aa-003',asset_id:'ast-006',action:'import',user_id:'workbuddy',risk_level:'INFO',timestamp:Date.now()-518400000},
+    {audit_id:'aa-004',asset_id:'ast-002',action:'process',user_id:'deepseek',risk_level:'INFO',timestamp:Date.now()-86400000},
+    {audit_id:'aa-005',asset_id:'ast-001',action:'export',user_id:'haoji',risk_level:'INFO',timestamp:Date.now()-3600000}
+  ];
+  document.getElementById('assetAuditBody').innerHTML=logs.map(function(l){
+    return'<tr><td style="font-family:monospace;font-size:9px">'+l.audit_id+'</td>'+
+      '<td style="font-family:monospace;font-size:9px">'+l.asset_id+'</td>'+
+      '<td>'+l.action+'</td><td>👤 '+l.user_id+'</td><td>'+b(l.risk_level.toLowerCase())+'</td>'+
+      '<td style="font-size:10px">'+new Date(l.timestamp).toLocaleString('zh-CN')+'</td></tr>';
+  }).join('');
+}
+
+function showImportDialog(){
+  document.getElementById('importDialog').style.display='block';
+  document.getElementById('importTitle').focus();
+}
+
+function doImportAsset(){
+  var title=document.getElementById('importTitle').value.trim();
+  if(!title)return alert('请输入标题');
+  var type=document.getElementById('importType').value;
+  var platform=document.getElementById('importPlatform').value;
+  var tagsStr=document.getElementById('importTags').value;
+  var tags=tagsStr?tagsStr.split(',').map(function(t){return t.trim()}).filter(function(t){return t}):[];
+  var asset={id:'ast-'+Date.now().toString(36),name:title,type:type,platform:platform,tags:tags,score:50,risk_level:'low',copyright_status:'unknown',review_status:'pending',size_bytes:0,updated:new Date().toLocaleDateString('zh-CN')};
+  D.assets.unshift(asset);
+  document.getElementById('importDialog').style.display='none';
+  document.getElementById('importTitle').value='';document.getElementById('importTags').value='';
+  renderAssets();
+  alert('✅ 素材已导入\n\n标题: '+title+'\n类型: '+type+'\n平台: '+platform+'\n状态: pending (需审批)\n\nREVIEW_ONLY · 已进入审批队列');
+}
+
+function requestAssetDelete(assetId,title){
+  alert('🗑 删除请求已生成\n\nAsset: '+assetId+' ('+title+')\n\n⛔ P48 DANGEROUS ACTION — delete_asset 需要审批\n⚠️ 已提交到审批队列，等待审核\n\nREVIEW_ONLY=true · 禁止直接删除');
+}
+
+// ═══ P50.2-P50.5 Harvester Functions ═══
+function renderHarvester(){
+  document.getElementById('collectorCards').innerHTML=[
+    ct('🔍 采集器状态','REVIEW_ONLY','Browser Collector','r'),
+    ct('📄 Text','模拟','合法公开页面','g'),
+    ct('🖼️ Image','模拟','合法公开页面','g'),
+    ct('🎬 Video','模拟','合法公开页面','g'),
+    ct('🛡️ 安全策略','ACTIVE','不绕过验证码/风控/付费墙','y')
+  ].join('');
+}
+
+function createHarvesterTask(){
+  var title=document.getElementById('harvestTitle').value.trim()||document.getElementById('harvestUrl').value.trim()||'Untitled Harvest';
+  var platform=document.getElementById('harvestPlatform').value;
+  var task={
+    task_id:'hvt-'+Date.now().toString(36),
+    title:title,type:'manual',platform:platform,
+    status:'pending',progress:{collected:0,total:20,failed:0},
+    rules:{
+      collect_text:document.getElementById('harvestText').checked,
+      collect_image:document.getElementById('harvestImage').checked,
+      collect_audio:document.getElementById('harvestAudio').checked,
+      collect_video:document.getElementById('harvestVideo').checked,
+      max_items:20
+    },
+    created_by:'WorkBuddy',created_at:new Date().toISOString()
+  };
+  D.harvesterTasks=D.harvesterTasks||[];D.harvesterTasks.unshift(task);
+  document.getElementById('harvestUrl').value='';document.getElementById('harvestTitle').value='';
+  switchAssetTab('tasks');
+  alert('✅ 采集任务已创建\n\nID: '+task.task_id+'\n标题: '+title+'\n平台: '+platform+'\n状态: pending approval\n\n⚠️ 需审批后才能执行 · REVIEW_ONLY=true');
+}
+
+function renderHarvesterTasks(){
+  var f=document.getElementById('taskStatusFilter').value;
+  var tasks=(D.harvesterTasks||[]).slice();
+  if(f!=='all') tasks=tasks.filter(function(t){return t.status===f});
+  document.getElementById('harvesterTaskBody').innerHTML=tasks.map(function(t){
+    var p=t.progress;
+    return'<tr><td style="font-family:monospace;font-size:9px">'+t.task_id+'</td>'+
+      '<td>'+t.title+'</td><td>'+t.platform+'</td><td>'+b(t.status)+'</td>'+
+      '<td><div class="progress-bar" style="width:80px"><div style="width:'+(p.total>0?Math.round(p.collected/p.total*100):0)+'%"></div></div><span style="font-size:9px">'+p.collected+'/'+p.total+'</span></td>'+
+      '<td>'+t.type+'</td>'+
+      '<td style="font-size:10px">'+new Date(t.created_at).toLocaleString('zh-CN')+'</td></tr>';
+  }).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--m)">暂无采集任务</td></tr>';
+}
+
+function renderSync(){
+  document.getElementById('syncCards').innerHTML=[
+    ct('🖥️ NAS','DISABLED','默认关闭 · 本地为主','m'),
+    ct('📑 Notion','DISABLED','默认关闭 · 本地为主','m'),
+    ct('💾 本地存储','ACTIVE','/opt/openclaw-assets','g'),
+    ct('🔒 同步审批','REQUIRED','P48 Audit Gate','y')
+  ].join('');
+  document.getElementById('syncBody').innerHTML=[
+    {target:'NAS 上传',status:'disabled',lastSync:'—',action:'需审批'},
+    {target:'Notion 索引',status:'disabled',lastSync:'—',action:'需审批'},
+    {target:'本地存储',status:'active',lastSync:'实时',action:'—'}
+  ].map(function(s){
+    return'<tr><td>'+s.target+'</td><td>'+b(s.status==='active'?'completed':s.status==='disabled'?'cancelled':'pending')+'</td><td>'+s.lastSync+'</td><td><span class="btn" style="font-size:9px">'+s.action+'</span></td></tr>';
+  }).join('');
+}
+
+// Initialize harvester data if not present
+D.harvesterTasks=D.harvesterTasks||[
+  {task_id:'hvt-001',title:'Douyin Product Images',platform:'douyin',status:'done',progress:{collected:12,total:12,failed:0},type:'manual',created_at:new Date(Date.now()-86400000).toISOString()},
+  {task_id:'hvt-002',title:'Taobao Banner Ads',platform:'taobao',status:'pending',progress:{collected:0,total:15,failed:0},type:'manual',created_at:new Date(Date.now()-3600000).toISOString()},
+  {task_id:'hvt-003',title:'JD Product Reviews',platform:'jd',status:'approved',progress:{collected:0,total:30,failed:0},type:'scheduled',created_at:new Date(Date.now()-7200000).toISOString()},
+  {task_id:'hvt-004',title:'Kuaishou Live Clips',platform:'kuaishou',status:'failed',progress:{collected:2,total:10,failed:8},type:'manual',error:'Network timeout',created_at:new Date(Date.now()-14400000).toISOString()},
+  {task_id:'hvt-005',title:'Xiaohongshu Notes',platform:'xiaohongshu',status:'running',progress:{collected:5,total:25,failed:0},type:'manual',created_at:new Date(Date.now()-600000).toISOString()}
+];
+
+// ═══ Deployment Center (P43.1-P45.1) ═══
+function renderDeploy(){
+  renderBranches();
+  renderPRs();
+  renderTestCenter();
+  renderDeploymentPlans();
+  renderRollbackRegistry();
+  renderSmokeTestGate();
+  renderDeployApprovals();
+}
+
+// 1. Branch Monitor
+function renderBranches(){
+  document.getElementById('branchBody').innerHTML=D.branches.map(function(br){
+    var t=new Date(br.updated);
+    var timeStr=t.toLocaleTimeString('zh-CN')+' · '+t.toLocaleDateString('zh-CN');
+    return'<tr><td><b>'+(br.name==='main'?'🔒 ':'')+(br.name==='develop'?'🛠️ ':'')+br.name+'</b></td>'+
+      '<td style="font-family:monospace;font-size:10px">'+br.commit+'</td>'+
+      '<td style="font-size:10px">'+timeStr+'</td>'+
+      '<td>'+b(br.prStatus)+'</td>'+
+      '<td><span class="b bb">'+br.prNumber+'</span></td>'+
+      '<td>👤 '+br.author+'</td></tr>';
+  }).join('');
+}
+
+// 2. PR Monitor
+function renderPRs(){
+  var f=document.getElementById('prFilter').value;
+  var prs=D.prs.slice();
+  if(f!=='all') prs=prs.filter(function(p){return p.status===f});
+  document.getElementById('prBody').innerHTML=prs.map(function(pr){
+    return'<tr><td><span class="b bb">'+pr.number+'</span></td>'+
+      '<td>'+pr.title+'</td>'+
+      '<td>👤 '+pr.author+'</td>'+
+      '<td>'+b(pr.status)+'</td>'+
+      '<td style="font-family:monospace;font-size:10px">'+pr.branch+'</td>'+
+      '<td style="font-family:monospace;font-size:10px">→ '+pr.target+'</td>'+
+      '<td style="font-size:10px">'+new Date(pr.updated).toLocaleString('zh-CN')+'</td></tr>';
+  }).join('');
+}
+
+// 3. Test Center
+function renderTestCenter(){
+  document.getElementById('testCards').innerHTML=D.testSuites.map(function(ts){
+    var color=ts.status==='pass'?'g':'r';
+    return ct('🧪 '+ts.name,ts.passed+'/'+ts.total,ts.command+' · '+ts.duration+' · '+
+      (ts.status==='pass'?'✅ PASS':'❌ FAIL'),color);
+  }).join('');
+  document.getElementById('testBody').innerHTML=D.testRuns.map(function(tr){
+    return'<tr><td style="font-family:monospace;font-size:10px">'+tr.id+'</td>'+
+      '<td>'+tr.suite+'</td><td>'+tr.result+'</td><td>'+tr.duration+'</td>'+
+      '<td>'+b(tr.status==='pass'?'completed':'cancelled')+'</td></tr>';
+  }).join('');
+}
+
+// 4. Deployment Plan
+function renderDeploymentPlans(){
+  document.getElementById('dpBody').innerHTML=D.deploymentPlans.map(function(plan){
+    return'<tr><td style="font-family:monospace;font-size:10px">'+plan.id+'</td>'+
+      '<td>'+plan.title+'</td>'+
+      '<td style="font-family:monospace;font-size:10px">'+plan.targetBranch+'</td>'+
+      '<td>🖥️ '+plan.targetNode+'</td><td>'+b(plan.status)+'</td>'+
+      '<td>'+(plan.approvedBy||'—')+'</td>'+
+      '<td style="font-size:10px">'+new Date(plan.created).toLocaleString('zh-CN')+'</td></tr>';
+  }).join('');
+}
+
+function createDeploymentPlan(){
+  var title=document.getElementById('dpTitle').value.trim();
+  if(!title)return alert('请输入部署计划标题');
+  var branch=document.getElementById('dpBranch').value;
+  var node=document.getElementById('dpNode').value;
+  var plan={id:'dp-'+Date.now().toString(36),title:title,targetBranch:branch,targetNode:node,status:'pending',created:Date.now()};
+  D.deploymentPlans.unshift(plan);
+  // Create corresponding approval
+  D.deployApprovals.unshift({id:'da-'+Date.now().toString(36),type:'deploy',planId:plan.id,title:title+' → '+node,status:'pending',created:Date.now(),risk:'medium'});
+  document.getElementById('dpTitle').value='';
+  renderDeploymentPlans();renderDeployApprovals();
+  alert('✅ 部署计划已创建\n\nID: '+plan.id+'\n标题: '+title+'\n分支: '+branch+' · 节点: '+node+'\n状态: pending\n\n⚠️ REVIEW_ONLY — 需审批后才能调度执行\n已自动加入审批队列');
+}
+
+// 5. Rollback Registry
+function renderRollbackRegistry(){
+  var reg=D.rollbacks.slice(0,10);
+  document.getElementById('rollbackBody').innerHTML=reg.map(function(r){
+    var rp=r.rollbackPoint||'<span style="color:var(--m)">无</span>';
+    var action=r.rollbackPoint
+      ?'<span class="btn brd" onclick="requestRollback(\''+r.id+'\',\''+r.title.replace(/'/g,"\\'")+'\',\''+r.rollbackPoint+'\')">📝 回滚审批</span>'
+      :'<span style="font-size:9px;color:var(--m)">无可回滚点</span>';
+    var statusIcon={success:'<span class="status-dot" style="background:var(--g)"></span>',failed:'<span class="status-dot" style="background:var(--r)"></span>',rolling:'<span class="status-dot pulse" style="background:var(--y)"></span>'};
+    return'<tr><td style="font-family:monospace;font-size:10px">'+r.id+'</td>'+
+      '<td>'+(r.status==='failed'?'<b style="color:var(--r)">❌ '+r.title+'</b>':r.title)+'</td>'+
+      '<td style="font-family:monospace;font-size:10px">'+r.branch+'</td>'+
+      '<td>🖥️ '+r.node+'</td>'+
+      '<td>'+(statusIcon[r.status]||'')+b(r.status==='success'?'completed':r.status==='failed'?'rejected':'dispatched')+'</td>'+
+      '<td style="font-family:monospace;font-size:9px">'+r.artifact+'</td>'+
+      '<td style="font-family:monospace;font-size:9px">'+rp+'</td>'+
+      '<td style="font-size:10px">'+new Date(r.deployedAt).toLocaleString('zh-CN')+'</td>'+
+      '<td>'+action+'</td></tr>';
+  }).join('');
+}
+
+function requestRollback(id,title,rollbackPoint){
+  var approval={id:'da-'+Date.now().toString(36),type:'rollback',planId:null,title:'Rollback '+id+' ('+title.substring(0,30)+'...)',status:'pending',created:Date.now(),risk:'high',reason:'User requested rollback to '+rollbackPoint};
+  D.deployApprovals.unshift(approval);renderDeployApprovals();
+  alert('📝 回滚审批请求已创建\n\n部署: '+id+' ('+title+')\n回滚点: '+rollbackPoint+'\n审批ID: '+approval.id+'\n\n🔒 禁止直接回滚 · 需审批通过后方可执行\nREVIEW_ONLY=true');
+}
+
+// 6. Approval Queue
+function renderDeployApprovals(){
+  document.getElementById('deployApprBody').innerHTML=D.deployApprovals.map(function(da){
+    return'<tr><td style="font-family:monospace;font-size:10px">'+da.id+'</td>'+
+      '<td><span class="b '+(da.type==='rollback'?'bd':'bb')+'">'+da.type+'</span></td>'+
+      '<td>'+da.title+'</td><td>'+b(da.status)+'</td>'+
+      '<td>'+b(da.risk)+'</td><td>'+(da.approvedBy||'—')+'</td>'+
+      '<td style="font-size:10px">'+new Date(da.created).toLocaleString('zh-CN')+'</td></tr>';
+  }).join('');
+}
+
+// 7. Smoke Test Gate (HOTFIX-003)
+function renderSmokeTestGate(){
+  fetch('/api/smoke-test/status').then(function(r){return r.json()}).then(function(s){
+    // Status dot + label
+    var dot=document.getElementById('smokeGateStatus');
+    var label=document.getElementById('smokeGateLabel');
+    var detail=document.getElementById('smokeGateDetail');
+    if(s.status==='pass'){
+      dot.style.background='var(--g)'; label.textContent='ALL GATES PASSED';
+      detail.textContent=s.lastRun?'Last: '+new Date(s.lastRun).toLocaleString('zh-CN'):'';
+    } else if(s.status==='blocked'){
+      dot.style.background='var(--r)'; label.textContent='GATE FAILED — deploy blocked';
+      detail.textContent=s.checksFailed+'/'+s.checksTotal+' checks failed';
+    } else {
+      dot.style.background='var(--y)'; label.textContent='No data — run smoke test';
+      detail.textContent='bash scripts/wecom-smoke-test.sh';
+    }
+    // Gate cards
+    var cards=document.getElementById('smokeGateCards');
+    if(s.gates&&s.gates.length>0){
+      cards.innerHTML=s.gates.map(function(g){
+        var icon=g.status==='pass'?'✅':g.status==='fail'?'❌':'⬜';
+        return'<div class="card"><div style="font-size:18px">'+icon+'</div><div style="font-size:10px;color:var(--t)">'+g.name+'</div></div>';
+      }).join('');
+    } else {
+      cards.innerHTML='<div class="card" style="grid-column:1/-1;text-align:center;color:var(--m);font-size:11px">No smoke test data. Run <code style="background:var(--b);padding:2px 6px;border-radius:3px">bash scripts/wecom-smoke-test.sh</code> on server.</div>';
+    }
+  }).catch(function(){
+    document.getElementById('smokeGateStatus').style.background='var(--m)';
+    document.getElementById('smokeGateLabel').textContent='API unavailable';
+  });
+}
+
+// ═══ Audit Center (P48) ═══
+function renderAudit(){
+  renderLoginAudit();
+  renderDeployAudit();
+  renderDispatchAudit();
+  renderWorkerAudit();
+  renderDangerAudit();
+}
+
+function renderLoginAudit(){
+  var f=document.getElementById('loginAuditFilter').value;
+  var a=D.auditLogins.slice();
+  if(f!=='all') a=a.filter(function(e){return e.event_type===f});
+  document.getElementById('loginAuditBody').innerHTML=a.map(function(e){
+    return'<tr><td style="font-family:monospace;font-size:9px">'+e.event_id+'</td>'+
+      '<td>'+e.event_type+'</td><td>👤 '+e.user_id+'</td><td>'+b(e.status)+'</td>'+
+      '<td>'+b(e.risk_level.toLowerCase())+'</td>'+
+      '<td style="font-size:10px">'+new Date(e.timestamp).toLocaleString('zh-CN')+'</td></tr>';
+  }).join('');
+}
+
+function renderDeployAudit(){
+  document.getElementById('deployAuditBody').innerHTML=D.auditDeployments.map(function(e){
+    return'<tr><td style="font-family:monospace;font-size:9px">'+e.event_id+'</td>'+
+      '<td>'+e.event_type+'</td><td>'+e.resource+'</td><td>👤 '+e.user_id+'</td>'+
+      '<td>'+b(e.status)+'</td><td>'+b(e.risk_level.toLowerCase())+'</td>'+
+      '<td style="font-size:10px">'+new Date(e.timestamp).toLocaleString('zh-CN')+'</td></tr>';
+  }).join('');
+}
+
+function renderDispatchAudit(){
+  document.getElementById('dispatchAuditBody').innerHTML=D.auditDispatches.map(function(e){
+    return'<tr><td style="font-family:monospace;font-size:9px">'+e.event_id+'</td>'+
+      '<td style="font-family:monospace;font-size:10px">'+e.task_id+'</td>'+
+      '<td>🖥️ '+e.source_node+'</td><td>→ '+e.target_node+'</td>'+
+      '<td>'+b(e.status)+'</td>'+
+      '<td style="font-size:10px">'+new Date(e.timestamp).toLocaleString('zh-CN')+'</td></tr>';
+  }).join('');
+}
+
+function renderWorkerAudit(){
+  document.getElementById('workerAuditBody').innerHTML=D.auditWorkers.map(function(e){
+    var art=e.artifact_id?'<span style="font-family:monospace;font-size:9px">'+e.artifact_id+'</span>':'—';
+    return'<tr><td style="font-family:monospace;font-size:9px">'+e.event_id+'</td>'+
+      '<td style="font-family:monospace;font-size:10px">'+e.task_id+'</td>'+
+      '<td>'+b(e.status==='completed'?'completed':e.status==='failed'?'cancelled':'pending')+'</td>'+
+      '<td>'+e.duration+'</td><td>'+art+'</td>'+
+      '<td style="font-size:10px">'+new Date(e.timestamp).toLocaleString('zh-CN')+'</td></tr>';
+  }).join('');
+}
+
+function renderDangerAudit(){
+  document.getElementById('dangerAuditBody').innerHTML=D.auditDangerous.map(function(e){
+    var rl={CRITICAL:'high',HIGH:'medium',WARN:'medium',INFO:'low'};
+    return'<tr style="'+(e.risk_level==='CRITICAL'?'background:rgba(239,68,68,.04)':'')+'">'+
+      '<td style="font-family:monospace;font-size:9px">'+e.event_id+'</td>'+
+      '<td><b class="r">⛔ '+e.action+'</b></td>'+
+      '<td>👤 '+e.user_id+'</td>'+
+      '<td>'+b(e.status.replace('blocked_pending_approval','pending'))+'</td>'+
+      '<td>'+b(rl[e.risk_level]||'low')+'</td>'+
+      '<td>'+(e.approval_id||'—')+'</td>'+
+      '<td style="font-size:10px">'+new Date(e.timestamp).toLocaleString('zh-CN')+'</td></tr>';
+  }).join('');
+}
+
+function searchAudit(){
+  var kw=(document.getElementById('auditKeyword').value||'').toLowerCase();
+  var uid=document.getElementById('auditUser').value;
+  var nd=document.getElementById('auditNode').value;
+  var all=[].concat(
+    D.auditLogins.map(function(e){e._cat='登录';return e}),
+    D.auditDeployments.map(function(e){e._cat='部署';return e}),
+    D.auditDispatches.map(function(e){e._cat='派发';return e}),
+    D.auditWorkers.map(function(e){e._cat='Worker';return e}),
+    D.auditDangerous.map(function(e){e._cat='危险动作';return e})
+  );
+  if(kw) all=all.filter(function(e){return JSON.stringify(e).toLowerCase().indexOf(kw)>=0});
+  if(uid) all=all.filter(function(e){return e.user_id===uid});
+  if(nd) all=all.filter(function(e){return e.source_node===nd||e.target_node===nd||e.node_id===nd});
+
+  document.getElementById('auditSearchResults').innerHTML='<h4>搜索结果: '+all.length+' 条</h4><table><tr><th>分类</th><th>Event ID</th><th>类型</th><th>用户</th><th>状态</th><th>时间</th></tr>'+
+    all.map(function(e){
+      return'<tr><td>'+e._cat+'</td><td style="font-family:monospace;font-size:9px">'+e.event_id+'</td>'+
+        '<td>'+(e.event_type||e.action||'')+'</td><td>'+(e.user_id||'—')+'</td>'+
+        '<td>'+b(e.status||'info')+'</td>'+
+        '<td style="font-size:10px">'+new Date(e.timestamp).toLocaleString('zh-CN')+'</td></tr>';
+    }).join('')+'</table>';
+}
+
+function exportAudit(fmt){
+  var all=[].concat(D.auditLogins,D.auditDeployments,D.auditDispatches,D.auditWorkers,D.auditDangerous);
+  if(fmt==='csv'){
+    var csv='event_id,event_type,user_id,status,risk_level,timestamp\n'+
+      all.map(function(e){return[e.event_id,e.event_type||'',e.user_id||'',e.status||'',e.risk_level||'',new Date(e.timestamp).toISOString()].join(',')}).join('\n');
+    var blob=new Blob([csv],{type:'text/csv'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='audit-export.csv';a.click();
+    alert('📊 CSV 已导出: '+all.length+' 条记录');
+  }else{
+    var text=JSON.stringify(all,null,2);
+    var blob=new Blob([text],{type:'application/json'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='audit-export.json';a.click();
+    alert('📥 JSON 已导出: '+all.length+' 条记录');
+  }
+}
+
+// ═══ Approvals ═══
+var sel=[],apprPage=1,PP=6;
+function toggleSel(id){var i=sel.indexOf(id);if(i>=0)sel.splice(i,1);else sel.push(id);document.getElementById('sc2').textContent=sel.length}
+function batchAct(a){alert((a==='approve'?'✅ 批准':'❌ 拒绝')+' 请求已生成: '+sel.length+' 项\nREVIEW_ONLY · 需人工确认');sel=[];document.getElementById('sc2').textContent='0';renderApprovals(1)}
+function renderApprovals(pg){apprPage=pg||1;var q=(document.getElementById('apprSearch')||{}).value||'';var apps=D.approvals.slice();if(q)apps=apps.filter(function(a){return a.title.indexOf(q)>=0||a.id.indexOf(q)>=0});var tp=Math.ceil(apps.length/PP),p=apps.slice((apprPage-1)*PP,apprPage*PP);
+  document.getElementById('al').innerHTML=p.map(function(a){return'<div class="approval-item"><input type="checkbox" onchange="toggleSel(\''+a.id+'\')"><span class="meta">'+a.type.toUpperCase()+' · '+a.id+'</span><div class="title">'+a.title+'</div><div class="meta">👤 '+a.by+' · Risk: '+b(a.risk)+' · '+b(a.status)+' · 📅 '+new Date(a.ts).toLocaleString()+' · 📝 '+a.reason+'</div></div>'}).join('');
+  var h='';for(var i=1;i<=tp;i++)h+='<span class="'+(i===apprPage?'active':'')+'" onclick="renderApprovals('+i+')">'+i+'</span>';document.getElementById('apg').innerHTML=h;
+  document.getElementById('ah').innerHTML='<table><tr><th>ID</th><th>类型</th><th>标题</th><th>审批人</th><th>状态</th><th>理由</th><th>时间</th></tr>'+D.history.map(function(h){return'<tr><td>'+h.id+'</td><td>'+h.type+'</td><td>'+h.title+'</td><td>'+h.approver+'</td><td>'+b(h.status)+'</td><td>'+h.reason+'</td><td>'+new Date(h.ts).toLocaleDateString()+'</td></tr>'}).join('')+'</table>';
+}
+
+// ═══ 7 Days ═══
+function renderWeek7(){
+  document.getElementById('w7c').innerHTML=D.gmv.map(function(v,i){return ct('D'+(i+1),'¥'+v.toLocaleString(),'订单:'+D.orders[i]+' · ROI:'+D.roi[i]+'%',D.roi[i]>=180?'g':'')}).join('');
+  var mx=Math.max.apply(null,D.gmv);
+  document.getElementById('w7chart').innerHTML=D.gmv.map(function(v,i){return'<div style="height:'+(v/mx*80)+'%;background:var(--bl)" title="GMV:'+v+'k"><span>D'+(i+1)+'</span></div>'}).join('');
+  document.getElementById('w7summary').innerHTML='<table><tr><th>日期</th><th>GMV(k¥)</th><th>订单</th><th>ROI%</th><th>CTR%</th><th>CVR%</th><th>利润(k¥)</th><th>趋势</th></tr>'+D.gmv.map(function(v,i){return'<tr><td>D'+(i+1)+'</td><td>'+v+'</td><td>'+D.orders[i]+'</td><td>'+D.roi[i]+'</td><td>'+D.ctr[i]+'</td><td>'+D.cvr[i]+'</td><td>'+D.profit[i]+'</td><td>'+(i>0?tr(v,D.gmv[i-1]):'—')+'</td></tr>'}).join('')+'</table>';
+}
+
+// ═══ Autonomous ═══
+function renderAutonomous(){
+  var h=new Date().getHours();
+  var phase=h<6?'Collect':h<9?'Schedule':h<22?'Execute':'Review';
+  var phases=[{n:'Collect',s:phase==='Collect'?'active':'wait'},{n:'Schedule',s:phase==='Schedule'?'active':phase==='Collect'?'completed':'wait'},{n:'Execute',s:phase==='Execute'?'active':phase==='Schedule'?'completed':'wait'},{n:'Review',s:phase==='Review'?'active':phase==='Execute'?'completed':'wait'}];
+  document.getElementById('autoCards').innerHTML=[ct('⚡ 当前阶段',phase,['Collect→Schedule→Execute→Review'][['Collect','Schedule','Execute','Review'].indexOf(phase)]||'','bl'),ct('📊 数据源','P50+P51+P52+P53','4 modules integrated','g'),ct('📋 今日任务','6','8:00-22:00','y'),ct('⛔ 自主执行','DISABLED','所有执行需审批','r'),ct('🛡️ REVIEW_ONLY','true','计划+建议 only','r'),ct('🔗 DAG','00:00-23:00','6阶段日循环','')].join('');
+  document.getElementById('loopFlow').innerHTML=phases.map(function(p,i){return(i>0?'<span class="flow-arrow">→</span>':'')+'<span class="flow-step '+p.s+'">Phase '+(i+1)+'<br>'+p.n+'</span>'}).join('');
+  document.getElementById('autoPlanBody').innerHTML=[{id:'op-1',title:'查看罗盘数据',type:'analysis',pri:'high'},{id:'op-2',title:'评估活动利润',type:'analysis',pri:'high'},{id:'op-3',title:'检查风险告警',type:'risk',pri:'high'},{id:'op-4',title:'审核素材库',type:'asset',pri:'medium'},{id:'op-5',title:'生成投流建议',type:'ads',pri:'medium'},{id:'op-6',title:'晚间复盘准备',type:'review',pri:'low'}].map(function(t){return'<tr><td style="font-family:monospace;font-size:9px">'+t.id+'</td><td>'+t.title+'</td><td>'+t.type+'</td><td>'+b(t.pri==='high'?'high':t.pri==='medium'?'medium':'low')+'</td><td>'+b('pending')+'</td></tr>'}).join('');
+  document.getElementById('autoRiskBody').innerHTML=[{level:'medium',msg:'SKU-004 库存12件',action:'补货'},{level:'medium',msg:'618 15%折扣',action:'审核'},{level:'low',msg:'2项素材未审核',action:'审核'},{level:'low',msg:'登录态即将过期',action:'更新'}].map(function(r){return'<div class="card"><b>'+b(r.level)+'</b> '+r.msg+'<br><span class="btn" style="font-size:9px">'+r.action+'</span></div>'}).join('');
+  document.getElementById('autoApprovalBody').innerHTML=[{id:'at-001',type:'ads_execute',title:'618千川 ¥8000',risk:'HIGH'},{id:'at-002',type:'activity_enroll',title:'报名618',risk:'HIGH'},{id:'at-003',type:'product_publish',title:'上架新品',risk:'HIGH'},{id:'at-004',type:'price_update',title:'SKU-004调价',risk:'HIGH'}].map(function(a){return'<div class="card"><span class="b br">'+a.type+'</span> '+a.title+'<br>'+b(a.risk.toLowerCase())}</div>'}).join('');
+  document.getElementById('autoRecBody').innerHTML='<div class="card"><b>🎬 视频</b><br>夏季T恤展示 ¥3000<br>防晒霜测评 ¥2000</div><div class="card"><b>📊 投流</b><br>618千川 ¥8000 ROI 2.0<br>防晒霜定向 ¥4000</div><div class="card"><b>🎯 活动</b><br>618报名 ¥22500利润<br>平台补贴 ¥15500</div>';
+  document.getElementById('autoTomorrowBody').innerHTML=[{task:'审批千川投流',pri:'critical'},{task:'执行素材采集',pri:'high'},{task:'确认618报名',pri:'high'},{task:'复查库存风险',pri:'medium'}].map(function(t){return'<div class="card">'+b(t.pri==='critical'?'high':t.pri)+' '+t.task+'</div>'}).join('');
+  document.getElementById('autoReviewBody').innerHTML='<div class="card"><b>📊 今日复盘</b><br>GMV: ¥158,000 · 订单: 320 · ROI: 1.8x<br>利润: ¥25,500 · 风险: 4<br><br>✅ 达标 | ⚠️ 库存风险 | 📝 待审批: 4项<br><span class="b br">REVIEW_ONLY</span></div>';
+  document.getElementById('autoAuditBody').innerHTML='<tr><td>autonomous_loop_started</td><td>Execute</td><td style="font-size:10px">'+new Date(Date.now()-3600000).toLocaleString('zh-CN')+'</td></tr><tr><td>autonomous_plan_generated</td><td>Schedule</td><td style="font-size:10px">'+new Date(Date.now()-14400000).toLocaleString('zh-CN')+'</td></tr>';
+}
+
+// ═══ P55 KPI ═══
+function renderKpi(){
+  document.getElementById('kpiCards').innerHTML=[ct('📈 GMV','¥158,000','+2.5% on_track','g'),ct('💰 利润','¥25,500','+3.1% on_track','g'),ct('🎯 ROI','1.8x','stable','g'),ct('🖱️ CTR','4.0%','stable',''),ct('🔄 CVR','8.9%','improving','g'),ct('⚠️ 库存风险','2项','SKU-004/005','r'),ct('🎉 活动收益','¥45,000','tracking','g'),ct('⭐ 素材评分','78','improving',''),ct('🔄 退款率','3.2%','-0.5% improving','g')].join('');
+  document.getElementById('kpiTrendBody').innerHTML=[35,38,36,40,39,41,40].map(function(v,i){return'<div style="height:'+(v/50*80)+'%;background:var(--'+(v>38?'bl':'g')+')"><span>D'+(i+1)+'</span></div>'}).join('');
+  document.getElementById('kpiAnomalyBody').innerHTML='<tr><td>stockRisk</td><td>SKU-004/005 库存&lt;15件</td><td>'+b('medium')+'</td></tr>';
+}
+
+// ═══ P56 Goals ═══
+var goalsData=[{id:'goal-001',title:'6月GMV目标 ¥160k',target:160,unit:'k¥',deadline:'2026-06-30',status:'active',ts:Date.now()-86400000}];
+function renderGoals(){
+  document.getElementById('goalCards').innerHTML=[ct('🎯 活跃目标',goalsData.length,'','g'),ct('📊 KPI 对齐','GMV/ROI/退款率','3 KPIs',''),ct('✅ 追踪中',goalsData.filter(function(g){return g.status==='active'}).length,'on track','bl'),ct('📅 截止','2026-06-30','月度','y')].join('');
+  document.getElementById('goalBody').innerHTML=goalsData.map(function(g){return'<tr><td style="font-family:monospace;font-size:9px">'+g.id+'</td><td>'+g.title+'</td><td>GMV</td><td>'+g.deadline+'</td><td>'+b(g.status)+'</td></tr>'}).join('');
+  document.getElementById('goalPlanBody').innerHTML=[{g:'6月GMV',t:'提升GMV',k:'gmv',v:160},{g:'6月GMV',t:'降低退款率',k:'refundRate',v:2.5},{g:'6月GMV',t:'优化ROI',k:'roi',v:2.0}].map(function(p){return'<tr><td>'+p.g+'</td><td>'+p.t+'</td><td>'+p.k+'</td><td>'+p.v+(p.k==='gmv'?'k¥':p.k==='roi'?'x':'%')+'</td></tr>'}).join('');
+}
+function doCreateGoal(){var t=document.getElementById('goalInput').value.trim(),v=parseFloat(document.getElementById('goalTarget').value)||0;if(!t)return alert('请输入目标标题');goalsData.unshift({id:'goal-'+Date.now().toString(36),title:t,target:v,deadline:'2026-06-30',status:'active',ts:Date.now()});renderGoals();document.getElementById('goalInput').value='';document.getElementById('goalTarget').value='';alert('✅ 目标已创建: '+t);}
+
+// ═══ P57 Board ═══
+function renderBoard(){
+  document.getElementById('boardCards').innerHTML=[ct('💰 收入','¥158,000','+2.5%','g'),ct('📈 利润','¥25,500','16.1% margin','g'),ct('🎯 ROI','1.8x','stable','g'),ct('⚠️ 风险','medium','4 alerts','y'),ct('💵 预算','¥50,000','已用: ¥32,000',''),ct('📊 现金流','+¥25,500','流入¥158k 流出¥132.5k','g')].join('');
+  document.getElementById('cashflowCards').innerHTML=[ct('📥 流入','¥158,000','GMV + 活动','g'),ct('📤 流出','¥132,500','成本 + 投流 + 运营','r'),ct('💰 净收入','¥25,500','net positive','g')].join('');
+}
+
+// ═══ P58 Memory ═══
+var memData=[{id:'mem-001',type:'kpi',title:'GMV Snapshot 06-01',ts:Date.now()-3600000},{id:'mem-002',type:'activity',title:'618 利润分析',ts:Date.now()-7200000},{id:'mem-003',type:'asset',title:'夏季素材导入',ts:Date.now()-10800000}];
+function renderMemory(){
+  var q=(document.getElementById('memSearch').value||'').toLowerCase();
+  var ms=memData.slice();
+  if(q) ms=ms.filter(function(m){return JSON.stringify(m).toLowerCase().indexOf(q)>=0});
+  document.getElementById('memCards').innerHTML=[ct('🧠 记忆条目',ms.length,'total','g'),ct('📊 KPI',memData.filter(function(m){return m.type==='kpi'}).length,'snapshots',''),ct('🎯 活动',memData.filter(function(m){return m.type==='activity'}).length,'analyses',''),ct('📦 素材',memData.filter(function(m){return m.type==='asset'}).length,'records','')].join('');
+  document.getElementById('memBody').innerHTML=ms.map(function(m){return'<tr><td style="font-family:monospace;font-size:9px">'+m.id+'</td><td>'+m.type+'</td><td>'+m.title+'</td><td style="font-size:10px">'+new Date(m.ts).toLocaleString('zh-CN')+'</td></tr>'}).join('');
+}
+
+// ═══ P59 Brain ═══
+function renderBrain(){
+  document.getElementById('brainCards').innerHTML=[ct('💡 建议数','6','','bl'),ct('⚠️ 风险预警','2','high+medium','r'),ct('📅 明日计划','3','critical+high','y'),ct('🛡️ REVIEW_ONLY','true','所有执行需审批','r')].join('');
+  document.getElementById('brainRecBody').innerHTML=[{c:'kpi',t:'GMV 达标',a:'maintain',p:'low'},{c:'risk',t:'SKU-004 补货',a:'restock',p:'high'},{c:'ads',t:'启动618千川',a:'approve',p:'high'},{c:'activity',t:'报名618大促',a:'approve',p:'high'},{c:'asset',t:'导入夏季素材',a:'import',p:'medium'},{c:'goals',t:'GMV目标追踪',a:'track',p:'medium'}].map(function(r){return'<tr><td>'+r.c+'</td><td>'+r.t+'</td><td>'+b(r.p==='high'?'high':r.p==='medium'?'medium':'low')+'</td><td>'+b(r.p==='high'?'high':r.p==='medium'?'medium':'low')+'</td></tr>'}).join('');
+  document.getElementById('brainRiskBody').innerHTML='<div class="card r"><b>🔴 HIGH</b> SKU-004 库存仅12件</div><div class="card y"><b>🟡 MEDIUM</b> 618 15%折扣可能压缩利润</div>';
+  document.getElementById('brainTomorrowBody').innerHTML='<div class="card"><b>🔴 critical</b> 审批千川投流</div><div class="card"><b>🟠 high</b> 确认618报名</div><div class="card"><b>🟠 high</b> 补货 SKU-004</div>';
+  document.getElementById('brainSummary').textContent='💡 今日运营正常。GMV达标、ROI稳定。主要风险: SKU库存+618折扣。建议优先审批投流和活动报名。';
+}
+
+function renderActivities(){
+  var acts=[
+    {id:'act-001',name:'618大促',type:'promo',discount:0.15,subsidy:5000,start:'2026-06-15',end:'2026-06-19',status:'upcoming',skus:['SKU-001','SKU-003']},
+    {id:'act-002',name:'平台补贴',type:'subsidy',discount:0.1,subsidy:3000,start:'2026-06-10',end:'2026-06-12',status:'upcoming',skus:['SKU-002']},
+    {id:'act-003',name:'商品卡活动',type:'product_card',discount:0.08,subsidy:2000,start:'2026-06-05',end:'2026-06-09',status:'running',skus:['SKU-001','SKU-005']},
+    {id:'act-004',name:'节盟计划',type:'festival',discount:0.12,subsidy:4000,start:'2026-06-20',end:'2026-06-22',status:'upcoming',skus:['SKU-003','SKU-004']},
+    {id:'act-005',name:'五一活动',type:'promo',discount:0.1,subsidy:6000,start:'2026-05-01',end:'2026-05-05',status:'done',skus:['SKU-002','SKU-003']}
+  ];
+  document.getElementById('actCards').innerHTML=[ct('📋 活动总数',acts.length,'','g'),ct('⏳ 即将开始',acts.filter(function(a){return a.status==='upcoming'}).length,'upcoming','y'),ct('⚡ 进行中',acts.filter(function(a){return a.status==='running'}).length,'running','bl'),ct('✅ 已完成',acts.filter(function(a){return a.status==='done'}).length,'done',''),ct('🛡️ 自动报名','DISABLED','需P48审批','r'),ct('🔒 REVIEW_ONLY','true','所有报名需审批','r')].join('');
+  document.getElementById('actBody').innerHTML=acts.map(function(a){return'<tr><td style="font-family:monospace;font-size:9px">'+a.id+'</td><td><b>'+a.name+'</b></td><td>'+a.type+'</td><td>'+(a.discount*100)+'%</td><td>¥'+(a.subsidy||0)+'</td><td>'+a.start+'~'+a.end+'</td><td>'+b(a.status)+'</td><td>'+a.skus.join(', ')+'</td></tr>'}).join('');
+  var profits=acts.map(function(a){var gmv=a.skus.length*15000;var dc=Math.round(gmv*a.discount);var np=Math.round(gmv-dc+a.subsidy);return{name:a.name,gmv:gmv,dc:dc,sub:a.subsidy,np:np,rec:np>0?'✅ profitable':'⚠️ lossRisk'};});
+  document.getElementById('actProfitBody').innerHTML=profits.map(function(p){return'<tr><td>'+p.name+'</td><td>¥'+p.gmv+'</td><td>¥'+p.dc+'</td><td>¥'+p.sub+'</td><td class="'+(p.np>0?'g':'r')+'"><b>¥'+p.np+'</b></td><td>'+p.rec+'</td></tr>'}).join('');
+  document.getElementById('actRiskBody').innerHTML=acts.map(function(a){var s=a.discount>0.15?60:a.discount>0.1?40:20;return'<tr><td>'+a.name+'</td><td>'+s+'</td><td>'+b(s>=60?'high':s>=30?'medium':'low')+'</td></tr>'}).join('');
+  document.getElementById('actRecBody').innerHTML=[{name:'618大促',score:85,enroll:true,cta:'报名'},{name:'平台补贴',score:70,enroll:true,cta:'报名'},{name:'节盟计划',score:65,enroll:true,cta:'报名'},{name:'商品卡活动',score:45,enroll:false,cta:'关注'}].map(function(r){return'<tr><td>'+r.name+'</td><td class="'+(r.score>=70?'g':'y')+'"><b>'+r.score+'</b></td><td>'+b(r.enroll?'approved':'pending')+'</td><td><span class="btn '+(r.enroll?'bg':'')+'" style="font-size:9px">'+r.cta+'</span></td></tr>'}).join('');
+  document.getElementById('actAuditBody').innerHTML='<tr><td>activity_enrollment_planned</td><td>618大促</td><td>'+b('pending')+'</td><td style="font-size:10px">'+new Date(Date.now()-3600000).toLocaleString('zh-CN')+'</td></tr>';
+}
+function doActEnroll(){alert('📝 报名计划已生成\n\n活动: 618大促\nSKU: SKU-001, SKU-003\n状态: pending_approval\n\n⚠️ 禁止自动报名 · 需 P48 审批\nREVIEW_ONLY=true');}
+
+var consoleLoggedIn=false,consolePlans=[],consoleScreenshots=[];
+function renderConsole(){
+  document.getElementById('consoleCards').innerHTML=[ct('🔑 登录状态',consoleLoggedIn?'已登录':'未登录',consoleLoggedIn?'模拟会话':'未连接','g'),ct('📸 截图能力','ACTIVE','REVIEW_ONLY simulated','g'),ct('📋 计划数',consolePlans.length,'pending approval','y'),ct('⛔ 直接执行','BLOCKED','需P48审批','r'),ct('🛡️ 安全策略','REVIEW_ONLY','product_publish/price_update/shipment/ads blocked','r'),ct('🔗 千川','预览模式','仅计划生成','y')].join('');
+  document.getElementById('plannerCards').innerHTML=[
+    ct('🛍️ 商品上架','PREVIEW','product_publish · HIGH','r'),
+    ct('💰 商品改价','PREVIEW','price_update · HIGH','r'),
+    ct('📦 订单发货','PREVIEW','shipment_execute · HIGH','r'),
+    ct('📊 千川投流','PREVIEW','ads_execute · HIGH','r')
+  ].join('');
+  document.getElementById('consolePlanBody').innerHTML=consolePlans.length?consolePlans.map(function(p){return'<tr><td style="font-family:monospace;font-size:9px">'+p.planId+'</td><td>'+p.type+'</td><td>'+b('pending')+'</td><td><span class="b bp">pending_approval</span></td><td>'+b('high')+'</td><td>'+new Date(p.ts||Date.now()).toLocaleString('zh-CN')+'</td></tr>'}).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--m)">暂无操作计划</td></tr>';
+  document.getElementById('screenshotCards').innerHTML=consoleScreenshots.map(function(s){return ct('📸 '+s.page,'REVIEW_ONLY','模拟截图 '+new Date(s.ts).toLocaleTimeString('zh-CN'),'bl')}).join('')||ct('📸 截图','0','点击截图按钮生成','m');
+  document.getElementById('consoleAuditBody').innerHTML=[{et:'doudian_plan_created',action:'product_publish',uid:'workbuddy',st:'blocked',ts:Date.now()-3600000},{et:'doudian_login',action:'login',uid:'admin',st:'success',ts:Date.now()-7200000},{et:'doudian_screenshot',action:'screenshot',uid:'workbuddy',st:'success',ts:Date.now()-600000}].map(function(a){return'<tr><td>'+a.et+'</td><td>'+a.action+'</td><td>'+a.uid+'</td><td>'+b(a.st)+'</td><td style="font-size:10px">'+new Date(a.ts).toLocaleString('zh-CN')+'</td></tr>'}).join('');
+}
+function doConsoleLogin(){consoleLoggedIn=true;alert('🔑 模拟登录成功\n\n账号: doudian-merchant\nREVIEW_ONLY · 无真实浏览器会话\n\n功能: 截图/计划预览已可用');renderConsole();}
+function doConsoleScreenshot(){var s={page:'Dashboard',ts:Date.now()};consoleScreenshots.unshift(s);alert('📸 截图已生成\n\n页面: '+s.page+'\nREVIEW_ONLY · 模拟截图');renderConsole();}
+
+function renderCompass(){
+  var types=[{type:'overview',name:'核心概览',fieldCount:8},{type:'transaction',name:'成交分析',fieldCount:7},{type:'products',name:'商品明细',fieldCount:15},{type:'videos',name:'短视频明细',fieldCount:12},{type:'live',name:'直播明细',fieldCount:10},{type:'audience',name:'人群画像',fieldCount:8},{type:'service',name:'售后客服',fieldCount:7},{type:'product_card',name:'商品卡',fieldCount:6}];
+  document.getElementById('compassCards').innerHTML=[ct('🚀 导入状态','ACTIVE','COMPASS_IMPORT_ENABLED','g'),ct('📋 DAG Stage1','ready','最新导入已就绪','g'),ct('🔒 浏览器导出','DISABLED','COMPASS_BROWSER_EXPORT=false','m'),ct('📊 数据类型','8类','overview/products/videos/...',''),ct('🛡️ 审批','REQUIRED','所有导入需 P48 审批','y'),ct('🔒 Mapping Edit','DISABLED','COMPASS_MAPPING_EDIT=false','m')].join('');
+  document.getElementById('compassTypeBody').innerHTML=types.map(function(t){return'<tr><td style="font-family:monospace;font-size:10px">'+t.type+'</td><td>'+t.name+'</td><td>'+t.fieldCount+'</td><td>'+(t.type==='overview'?'30 rows · 05-30':t.type==='products'?'145 rows · 05-31':t.type==='live'?'12 rows · pending':'—')+'</td><td><span class="btn" style="font-size:9px" onclick="alert(\'📊 字段映射: '+t.name+'\\n字段数: '+t.fieldCount+'\\n\\nCOMPASS_MAPPING_EDIT=false\\n映射编辑需审批\')">查看映射</span></td></tr>';}).join('');
+  document.getElementById('compassHistoryBody').innerHTML=[{id:'cmp-001',importId:'cmp-import-001',type:'核心概览',rows:30,source:'compass-2026-05-30.xlsx',status:'success',userId:'workbuddy',ts:Date.now()-86400000},{id:'cmp-002',importId:'cmp-import-002',type:'商品明细',rows:145,source:'compass-products-0531.csv',status:'success',userId:'codex',ts:Date.now()-43200000},{id:'cmp-003',importId:'cmp-import-003',type:'短视频明细',rows:28,source:'videos-detail.csv',status:'failed',userId:'deepseek',ts:Date.now()-3600000},{id:'cmp-004',importId:'cmp-import-004',type:'直播明细',rows:12,source:'live-0601.xlsx',status:'pending',userId:'workbuddy',ts:Date.now()-600000}].map(function(h){return'<tr><td style="font-family:monospace;font-size:9px">'+h.id+'</td><td style="font-family:monospace;font-size:9px">'+h.importId+'</td><td>'+h.type+'</td><td>'+h.rows+'</td><td>'+h.source+'</td><td>'+b(h.status)+'</td><td>'+h.userId+'</td><td style="font-size:10px">'+new Date(h.ts).toLocaleString('zh-CN')+'</td></tr>';}).join('');
+  var auditLogs=[{et:'compass_import_done',impId:'cmp-import-001',type:'overview',uid:'workbuddy',st:'success',ts:Date.now()-86400000},{et:'compass_import_done',impId:'cmp-import-002',type:'products',uid:'codex',st:'success',ts:Date.now()-43200000},{et:'compass_import_failed',impId:'cmp-import-003',type:'videos',uid:'deepseek',st:'failed',ts:Date.now()-3600000},{et:'compass_validate_done',impId:'cmp-import-004',type:'live',uid:'workbuddy',st:'pending',ts:Date.now()-600000}];
+  document.getElementById('compassAuditBody').innerHTML=auditLogs.map(function(a){return'<tr><td><span class="b '+(a.st==='success'?'br':'bp')+'">'+a.et+'</span></td><td style="font-family:monospace;font-size:9px">'+a.impId+'</td><td>'+a.type+'</td><td>'+a.uid+'</td><td>'+b(a.st)+'</td><td style="font-size:10px">'+new Date(a.ts).toLocaleString('zh-CN')+'</td></tr>';}).join('');
+  document.getElementById('compassDagCards').innerHTML=[ct('⚙️ DAG Stage1','READY','compass-import-ready.json','g'),ct('📂 输出目录','logs/doudian/imported/','8 x _latest.json',''),ct('🔗 数据源','compass-auto-import','DAG pipeline触发','bl')].join('');
+}
+
+function doCompassImport(){
+  var type=document.getElementById('compassType').value;
+  var typeNames={overview:'核心概览',products:'商品明细',videos:'短视频明细',live:'直播明细',audience:'人群画像',service:'售后客服',product_card:'商品卡',transaction:'成交分析'};
+  alert('🚀 导入请求已生成\n\n类型: '+(typeNames[type]||type)+'\n\n⚠️ 导入需要通过 P48 审批\n⏳ 审批流程: import→approval→audit→execute\n📂 输出: logs/doudian/imported/compass-'+type+'_latest.json\n\nREVIEW_ONLY=true · COMPASS_IMPORT_ENABLED=true');
+}
+
+// ═══ Global Search ═══
+function globalSearch(){var q=(document.getElementById('gs').value||'').toLowerCase();if(!q)return;
+  if(D.tasks.find(function(t){return t.id.indexOf(q)>=0||t.title.toLowerCase().indexOf(q)>=0})){show('agents');return}
+  if(D.sku.find(function(s){return s.id.toLowerCase().indexOf(q)>=0||s.name.indexOf(q)>=0})){show('commerce');return}
+  if(D.assets.find(function(a){return a.id.indexOf(q)>=0||a.name.toLowerCase().indexOf(q)>=0})){show('assets');return}
+  if(D.approvals.find(function(a){return a.id.indexOf(q)>=0||a.title.toLowerCase().indexOf(q)>=0})){show('approvals');return}
+}
+
+function renderEnterprise(){
+  var nt = Date.now();
+  document.getElementById('ceoClock').textContent = new Date().toLocaleString('zh-CN');
+  document.getElementById('ceoTop').innerHTML=[
+    ct('💰 累计营收','¥158,000','GMV today','g'),ct('📈 净利润','¥25,500','16.1% margin','g'),ct('🎯 ROI','1.8x','stable','g'),
+    ct('📊 GMV','¥158k','on track','bl'),ct('⚠️ 风险','MEDIUM','4 alerts','y'),ct('✋ 待审批','4','pending','r'),
+    ct('🖥️ 节点','3','online','g'),ct('📦 素材','12','score:78',''),ct('🔒 REVIEW','ACTIVE','P48','r')
+  ].join('');
+  document.getElementById('ceoBoard').innerHTML=[ct('💰 Revenue','¥158,000','+2.5%','g'),ct('📈 Profit','¥25,500','16.1%','g'),ct('💵 Budget','¥50,000','剩¥18k',''),ct('📊 Cashflow','+¥25,500','net','g')].join('');
+  document.getElementById('ceoCashflow').innerHTML='<div style="display:flex;gap:4px;font-size:10px"><span style="flex:1;background:var(--g);color:#fff;padding:6px;text-align:center;border-radius:4px">📥 ¥158k</span><span style="flex:1;background:var(--r);color:#fff;padding:6px;text-align:center;border-radius:4px">📤 ¥132.5k</span><span style="flex:1;background:var(--bl);color:#fff;padding:6px;text-align:center;border-radius:4px">💰 +¥25.5k</span></div>';
+  document.getElementById('ceoBrain').innerHTML=[{t:'GMV达标',p:'low'},{t:'SKU-004补货',p:'high'},{t:'618千川',p:'high'},{t:'报名618',p:'high'},{t:'夏季素材',p:'medium'}].map(function(r){return'<div class="card" style="padding:4px 8px"><b style="color:var(--'+(r.p==='high'?'r':'bl')+')">'+r.t+'</b> '+b(r.p)+'</div>'}).join('');
+  document.getElementById('ceoRisk').innerHTML='<div class="card ai"><b>🔴 SKU-004 库存12件</b></div><div class="card" style="border-color:var(--y)"><b>🟡 618 15%折扣</b></div>';
+  document.getElementById('ceoKpiTrend').innerHTML=[35,38,36,40,39,41,40].map(function(v,i){return'<div style="height:'+(v/50*70)+'%;background:var(--'+(v>38?'bl':'g')+')"><span>D'+(i+1)+'</span></div>'}).join('');
+  document.getElementById('ceoKpiBody').innerHTML=[{k:'GMV',v:'¥158,000',s:'on_track'},{k:'ROI',v:'1.8x',s:'stable'},{k:'CTR',v:'4.0%',s:'stable'},{k:'CVR',v:'8.9%',s:'improving'},{k:'退款率',v:'3.2%',s:'improving'},{k:'素材评分',v:'78',s:'improving'}].map(function(k){return'<tr><td>'+k.k+'</td><td>'+k.v+'</td><td>'+b(k.s==='on_track'?'completed':k.s==='improving'?'approved':'online')+'</td></tr>'}).join('');
+  document.getElementById('ceoGoalsBody').innerHTML=[{g:'6月GMV ¥160k',a:'618大促 ¥22.5k'},{g:'降低退款率',a:'平台补贴 ¥15.5k'},{g:'ROI≥2.0',a:'商品卡 ¥8k'}].map(function(r){return'<tr><td>'+r.g+'</td><td>'+b('active')+'</td><td>'+r.a+'</td><td class="g">active</td></tr>'}).join('');
+  document.getElementById('ceoActivity').innerHTML='<div class="card"><b>5 activities</b> · 3upcoming · 1running<br><span class="b br">REVIEW_ONLY</span></div>';
+  document.getElementById('ceoApprovals').innerHTML=[{t:'618千川 ¥8000'},{t:'报名618'},{t:'上架新品'},{t:'SKU-004调价'}].map(function(a){return'<div class="card" style="padding:4px 8px;border-left:3px solid var(--r)"><b>'+a.t+'</b> '+b('high')+'<br><span style="font-size:9px">pending</span></div>'}).join('');
+  document.getElementById('ceoRuntime').innerHTML=[ct('🖥️ Main','online','CPU2%','g'),ct('🖥️ Node A','online','CPU0%','g'),ct('🖥️ Japan','online','CPU0%','g'),ct('⚙️ Workers','4','active','g')].join('');
+  document.getElementById('ceoMemory').innerHTML='<div class="card"><b>3 entries</b><br>KPI snapshot · 618分析 · 素材导入</div>';
+  document.getElementById('ceoSystem').innerHTML=[ct('🔒 Audit','ACTIVE','P48','g'),ct('🛡️ REVIEW','true','protected','r'),ct('📊 Modules','95+','P43-P59','bl'),ct('✅ Tests','600+','passing','g')].join('');
+}
+
+renderEnterprise();
+
+// ═══ Phase D Cluster ═══
+function renderCluster(){
+  document.getElementById('clCards').innerHTML=[
+    ct('🖥️ Nodes','3','all online','g'),ct('⚙️ Workers','6','4 idle 1 busy','g'),
+    ct('📋 Queue','3','1p 1r 1c',''),ct('🔄 Failover','Ready','3/3 online','g'),
+    ct('💓 Heartbeat','15s','12ms avg','g'),ct('🔒 REVIEW_ONLY','true','P48 enforced','r')
+  ].join('');
+  document.getElementById('clNodeBody').innerHTML=[
+    {n:'main',h:'49.232.24.120',r:'primary',c:23,m:42,s:'online'},
+    {n:'node-a',h:'node-a.internal',r:'worker',c:8,m:28,s:'online'},
+    {n:'japan',h:'jp-node.internal',r:'worker',c:4,m:16,s:'online'}
+  ].map(function(x){return'<tr><td><b>'+x.n+'</b></td><td>'+x.h+'</td><td>'+x.r+'</td><td>'+x.c+'%</td><td>'+x.m+'MB</td><td>'+b(x.s)+'</td><td style="font-size:9px">'+new Date().toLocaleTimeString('zh-CN')+'</td></tr>'}).join('');
+  document.getElementById('clWorkerBody').innerHTML=[
+    {w:'planner',t:'planning',n:'main',s:'idle',tk:0},{w:'analysis',t:'analysis',n:'node-a',s:'idle',tk:0},
+    {w:'content',t:'content',n:'node-a',s:'idle',tk:0},{w:'risk',t:'risk',n:'node-a',s:'busy',tk:2},
+    {w:'memory',t:'memory',n:'japan',s:'idle',tk:0},{w:'review',t:'review',n:'japan',s:'idle',tk:0}
+  ].map(function(x){return'<tr><td>'+x.w+'</td><td>'+x.t+'</td><td>'+x.n+'</td><td>'+b(x.s==='idle'?'completed':'pending')+'</td><td>'+x.tk+'</td></tr>'}).join('');
+  document.getElementById('clQueueBody').innerHTML=[
+    {id:'t-001',t:'analysis',s:'running',n:'node-a'},{id:'t-002',t:'content',s:'pending',n:'node-a'},{id:'t-003',t:'review',s:'completed',n:'japan'}
+  ].map(function(x){return'<tr><td style="font-family:monospace;font-size:9px">'+x.id+'</td><td>'+x.t+'</td><td>'+b(x.s)+'</td><td>'+x.n+'</td></tr>'}).join('');
+  document.getElementById('clFailover').innerHTML='<div class="card"><b>🔄 Failover: Ready</b><br>All 3 nodes online. Auto-failover configured.<br>Node A offline → Main server takes over.<br><span class="b br">REVIEW_ONLY</span></div>';
+  document.getElementById('clHeartbeat').innerHTML='<div class="card"><b>💓 main:</b> 12ms online | <b>node-a:</b> 28ms online | <b>japan:</b> 45ms online<br><span style="font-size:9px">Interval: 15s · All nodes healthy</span></div>';
+  document.getElementById('clAuditBody').innerHTML=[
+    {e:'node_online',n:'main',ts:Date.now()-3600000},{e:'task_dispatched',n:'node-a',ts:Date.now()-60000},{e:'task_completed',n:'japan',ts:Date.now()-300000}
+  ].map(function(a){return'<tr><td>'+a.e+'</td><td>'+a.n+'</td><td style="font-size:10px">'+new Date(a.ts).toLocaleString('zh-CN')+'</td></tr>'}).join('');
+}
+renderDashboard();renderApprovals(1);
+
+// ═══ P46 Auth — Session check & Logout ═══
+fetch('/api/auth/me').then(function(r){return r.json()}).then(function(d){
+  if(d.authenticated) document.getElementById('userInfo').textContent='👤 '+d.userId;
+}).catch(function(){});
+
+function doLogout(){
+  fetch('/api/auth/logout',{method:'POST'}).then(function(r){return r.json()}).then(function(){
+    window.location.href='/login';
+  }).catch(function(){window.location.href='/login'});
+}
+</script>
+</body>
+</html>

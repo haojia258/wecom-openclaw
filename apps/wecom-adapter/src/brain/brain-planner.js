@@ -1,0 +1,4 @@
+function plan() {
+  return { recommendations: [{ category: 'kpi', title: 'GMV 达标(+2.5%)', action: 'maintain', priority: 'low' }, { category: 'risk', title: 'SKU-004 补货', action: 'restock', priority: 'high' }, { category: 'ads', title: '启动618千川', action: 'approve_then_execute', priority: 'high' }, { category: 'activity', title: '报名618大促', action: 'approve_then_enroll', priority: 'high' }, { category: 'asset', title: '导入夏季素材', action: 'import', priority: 'medium' }, { category: 'goals', title: '本周GMV目标: ¥160k', action: 'track', priority: 'medium' }], riskAlerts: [{ alert: 'SKU-004 库存仅12件', severity: 'high' }, { alert: '618 15%折扣可能压缩利润', severity: 'medium' }], tomorrow: [{ task: '审批千川投流', pri: 'critical' }, { task: '确认618报名', pri: 'high' }, { task: '补货 SKU-004', pri: 'high' }], summary: '今日运营正常。GMV达标、ROI稳定。主要风险: SKU库存+618折扣。建议优先审批投流和活动报名。', reviewOnly: true };
+}
+module.exports = { plan: plan };

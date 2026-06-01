@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenClaw Enterprise OS · Login</title>
+<style>
+:root{--bg:#faf6f0;--card:#fffefb;--b:#e8e0d5;--t:#3d3529;--m:#8c7b6b;--g:#10b981;--r:#ef4444;--y:#f59e0b;--bl:#3b82f6;--p:#8b5cf6}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:14px/1.6 -apple-system,sans-serif;background:var(--bg);color:var(--t);display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-box{background:var(--card);border:1px solid var(--b);border-radius:12px;padding:40px;width:420px;box-shadow:0 4px 24px rgba(0,0,0,.06)}
+.login-box .logo{text-align:center;font-size:32px;margin-bottom:4px}
+.login-box .title{text-align:center;font-weight:700;font-size:20px;margin-bottom:4px;color:var(--bl)}
+.login-box .sub{text-align:center;font-size:12px;color:var(--m);margin-bottom:24px}
+.login-box label{display:block;font-size:12px;color:var(--m);margin-bottom:4px}
+.login-box input[type=text]{width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--b);color:var(--t);border-radius:8px;font-size:16px;margin-bottom:4px;width:340px}
+.login-box input[type=text]:focus{border-color:var(--bl);outline:none;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.login-box .hint{font-size:10px;color:var(--m);margin-bottom:16px}
+.login-box .btn{width:100%;padding:12px;border-radius:8px;border:none;cursor:pointer;font-size:15px;font-weight:600;transition:all .2s;margin-bottom:8px}
+.btn-primary{background:var(--bl);color:#fff}.btn-primary:hover{background:#2563eb}.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:transparent;border:1px solid var(--b);color:var(--m)}.btn-ghost:hover{background:var(--b)}
+.code-group{display:flex;gap:8px}.code-group input{flex:1;letter-spacing:8px;text-align:center;font-size:24px!important;font-family:monospace;width:auto!important}
+.code-group .timer{display:flex;align-items:center;font-size:11px;color:var(--m);white-space:nowrap;min-width:70px}
+.msg{text-align:center;font-size:12px;margin:8px 0;padding:8px;border-radius:6px;display:none}
+.msg.error{background:rgba(239,68,68,.08);color:var(--r);display:block}
+.msg.info{background:rgba(59,130,246,.08);color:var(--bl);display:block}
+.msg.success{background:rgba(16,185,129,.08);color:var(--g);display:block}
+.remember{display:flex;align-items:center;gap:6px;margin:8px 0 12px;font-size:12px;color:var(--m)}.remember input{cursor:pointer}
+.step{display:none}.step.active{display:block}
+.footer{text-align:center;font-size:10px;color:var(--m);margin-top:16px}
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="logo">⚡</div>
+  <div class="title">OpenClaw Enterprise OS</div>
+  <div class="sub">企业微信验证码登录 · WeCom Auth</div>
+
+  <div id="msg" class="msg"></div>
+
+  <!-- Step 1: Enter User ID -->
+  <div id="step1" class="step active">
+    <label for="userId">企业微信用户ID</label>
+    <input type="text" id="userId" placeholder="输入 WeCom User ID" autocomplete="wecom-user">
+    <div class="hint">输入你的企业微信账号（如 haoji / codex / workbuddy）</div>
+    <button class="btn btn-primary" onclick="requestCode()" id="btnRequest">📩 发送验证码</button>
+  </div>
+
+  <!-- Step 2: Enter Code -->
+  <div id="step2" class="step">
+    <label for="codeInput">验证码已发送至你的企业微信</label>
+    <div class="code-group">
+      <input type="text" id="codeInput" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*">
+      <div class="timer" id="timer">4:59</div>
+    </div>
+    <div class="hint">6位数字验证码 · 5分钟内有效</div>
+    <div class="remember">
+      <input type="checkbox" id="rememberMe"> <label for="rememberMe" style="display:inline;font-size:12px;margin:0">Remember Me (7天免登录)</label>
+    </div>
+    <button class="btn btn-primary" onclick="verifyCode()" id="btnVerify">✅ 验证登录</button>
+    <button class="btn btn-ghost" onclick="goBack()">↩ 返回修改用户ID</button>
+  </div>
+
+  <div class="footer">REVIEW_ONLY · AuthGate · Session 12h</div>
+</div>
+
+<script>
+var userId = '';
+var codeExpiry = 0;
+var timerInterval = null;
+
+function msg(text, type) {
+  var m = document.getElementById('msg');
+  m.textContent = text; m.className = 'msg ' + type;
+}
+
+function requestCode() {
+  userId = document.getElementById('userId').value.trim();
+  if (!userId) return msg('请输入企业微信用户ID', 'error');
+
+  document.getElementById('btnRequest').disabled = true;
+  document.getElementById('btnRequest').textContent = '发送中...';
+  msg('正在发送验证码...', 'info');
+
+  fetch('/api/auth/request-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: userId })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    document.getElementById('btnRequest').disabled = false;
+    document.getElementById('btnRequest').textContent = '📩 发送验证码';
+
+    if (data.error) {
+      return msg(data.error, 'error');
+    }
+    if (data.error) {
+      return msg(data.message || 'Account locked', 'error');
+    }
+
+    codeExpiry = Date.now() + 5 * 60 * 1000;
+    document.getElementById('step1').classList.remove('active');
+    document.getElementById('step2').classList.add('active');
+    document.getElementById('codeInput').focus();
+    msg('验证码已发送 · ' + (data.code ? '(开发模式: ' + data.code + ')' : data.message), 'success');
+    startTimer();
+  })
+  .catch(function(e) {
+    document.getElementById('btnRequest').disabled = false;
+    document.getElementById('btnRequest').textContent = '📩 发送验证码';
+    msg('网络错误，请重试', 'error');
+  });
+}
+
+function verifyCode() {
+  var code = document.getElementById('codeInput').value.trim();
+  if (!code || code.length !== 6) return msg('请输入6位验证码', 'error');
+
+  document.getElementById('btnVerify').disabled = true;
+  document.getElementById('btnVerify').textContent = '验证中...';
+
+  var rememberMe = document.getElementById('rememberMe').checked;
+
+  fetch('/api/auth/verify-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: userId, code: code, rememberMe: rememberMe })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.verified) {
+      msg('登录成功！正在跳转...', 'success');
+      clearInterval(timerInterval);
+      setTimeout(function() {
+        var redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
+        window.location.href = redirect;
+      }, 800);
+    } else {
+      document.getElementById('btnVerify').disabled = false;
+      document.getElementById('btnVerify').textContent = '✅ 验证登录';
+      document.getElementById('codeInput').value = '';
+      document.getElementById('codeInput').focus();
+      msg(data.message || '验证失败', 'error');
+    }
+  })
+  .catch(function(e) {
+    document.getElementById('btnVerify').disabled = false;
+    document.getElementById('btnVerify').textContent = '✅ 验证登录';
+    msg('网络错误，请重试', 'error');
+  });
+}
+
+function goBack() {
+  clearInterval(timerInterval);
+  document.getElementById('step2').classList.remove('active');
+  document.getElementById('step1').classList.add('active');
+  document.getElementById('codeInput').value = '';
+  msg('', '');
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  updateTimer();
+  timerInterval = setInterval(updateTimer, 1000);
+}
+
+function updateTimer() {
+  var remaining = Math.max(0, Math.round((codeExpiry - Date.now()) / 1000));
+  var min = Math.floor(remaining / 60);
+  var sec = remaining % 60;
+  document.getElementById('timer').textContent = min + ':' + String(sec).padStart(2, '0');
+  if (remaining <= 0) {
+    clearInterval(timerInterval);
+    document.getElementById('timer').textContent = '已过期';
+    document.getElementById('timer').style.color = 'var(--r)';
+    msg('验证码已过期，请重新获取', 'error');
+  }
+}
+
+// Enter key support
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    if (document.getElementById('step1').classList.contains('active')) requestCode();
+    else if (document.getElementById('step2').classList.contains('active')) verifyCode();
+  }
+});
+
+// Auto-focus
+document.getElementById('userId').focus();
+</script>
+</body>
+</html>

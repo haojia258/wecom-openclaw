@@ -1,0 +1,3 @@
+var path=require('path');var gate=null;try{gate=require(path.join(__dirname,'..','governance','full-audit-gate'))}catch(e){}
+function log(e,d){var r={event_type:e,user_id:d&&d.userId||'system',status:d&&d.status||'info',metadata:d||{}};if(gate)gate.audit(r);return r}
+module.exports={logNodeOnline:function(d){return log('node_online',d)},logNodeOffline:function(d){return log('node_offline',d)},logTaskDispatched:function(d){return log('task_dispatched',d)},logTaskCompleted:function(d){return log('task_completed',d)},logTaskFailed:function(d){return log('task_failed',d)},logTaskRetried:function(d){return log('task_retried',d)},logFailover:function(d){return log('failover_triggered',d)}};

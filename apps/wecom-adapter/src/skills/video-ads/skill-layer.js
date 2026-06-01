@@ -1,0 +1,1 @@
+"use strict";function SkillResult(skill,data,meta){return{skill:skill,status:data&&data.error?"error":"success",data:data||{},meta:Object.assign({timestamp:new Date().toISOString(),reviewOnly:true},meta||{}),error:data&&data.error?data.error:null}}module.exports={SkillResult};

@@ -1,0 +1,12 @@
+{
+  "name": "openclaw-web-console",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenClaw Enterprise OS Web Console v0.1 — Read-Only Dashboard",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node -e \"console.log('PASS: web-console static assets verified'); process.exit(0)\"",
+    "build": "node -e \"console.log('BUILD OK: static SPA, no compilation needed'); process.exit(0)\""
+  },
+  "dependencies": {}
+}

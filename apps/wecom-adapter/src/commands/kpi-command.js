@@ -1,32 +1,49 @@
-'use strict';
+"use strict";
+/** P90 KPI Domain — /kpi 命令 */
+var agg=null;try{agg=require("../kpi/kpi-aggregator")}catch(e){}
+var strat=null;try{strat=require("../kpi/kpi-strategy-engine")}catch(e){}
+var ec=null;try{ec=require("../kpi/kpi-execution-center")}catch(e){}
+var agent=null;try{agent=require("../agents/kpi-planner-agent")}catch(e){}
+var learn=null;try{learn=require("../memory/kpi-learning-hook")}catch(e){}
 
-/**
- * kpi-command.js — P13.1 KPI Engine 命令处理器
- *
- * /KPI   → 今日 KPI 仪表板
- * /周报  → 本周趋势报告
- * /月报  → 月度汇总报告
- */
+async function execute(ctx,args){
+  args=(args||"").trim();
 
-var { generateDailyReport } = require('../skills/kpi-engine/kpi-engine');
-var { formatWeeklyReport, formatMonthlyReport } = require('../skills/kpi-engine/trend-analyzer');
-var { formatBoardReport } = require('../skills/kpi-engine/board-report');
-
-var desc = 'KPI 运营仪表板 /KPI | /周报 | /月报';
-
-async function execute(ctx, args) {
-  var cmd = (ctx && ctx.cmd) || '';
-
-  if (cmd === '/周报') {
-    return formatWeeklyReport();
+  if(args.indexOf("明细 ")==0){
+    return agg?JSON.stringify(agg.detail(args.replace("明细 ","").trim()),null,2):"⚠️";
   }
-
-  if (cmd === '/月报') {
-    return formatMonthlyReport();
+  if(args.indexOf("趋势 ")==0){
+    return agg?JSON.stringify(agg.trend(args.replace("趋势 ","").trim()),null,2):"⚠️";
   }
-
-  // Default: /KPI → board report
-  return formatBoardReport();
+  if(args==="策略建议"||args.indexOf("策略")>=0){
+    return strat?JSON.stringify(strat.recommend(),null,2):"⚠️";
+  }
+  if(args==="agent"||args.indexOf("agent")>=0||args.indexOf("建议")>=0){
+    return agent?agent.advise(args):"⚠️";
+  }
+  if(args==="学习记录"||args.indexOf("学习记录")>=0){
+    if(learn)learn.sync();return learn?learn.recentList(20):"⚠️";
+  }
+  if(args==="学习总结"||args.indexOf("学习总结")>=0){
+    if(learn)learn.sync();return learn?learn.summary():"⚠️";
+  }
+  if(args==="memory"||args.indexOf("记忆")>=0){
+    if(learn)learn.sync();return learn?learn.memStatus():"⚠️";
+  }
+  if(args==="执行中心"||args.indexOf("执行中心")>=0){
+    return ec?ec.dashboard():"⚠️";
+  }
+  if(args==="历史"||args.indexOf("历史")>=0){
+    return ec?ec.history():"⚠️";
+  }
+  if(args==="状态"||!args){
+    return agg?JSON.stringify(agg.aggregate(),null,2):"⚠️";
+  }
+  if(args==="总览"||args.indexOf("总览")>=0){
+    var m=agg?agg.aggregate().metrics:{};var s=strat?strat.score():{finalStrategyScore:0};
+    return "📊 KPI 总览\n\n"+["GMV: ¥"+(m.gmv||0).toLocaleString(),"利润: ¥"+(m.profit||0).toLocaleString(),"ROI: "+(m.roi||0)+"x","CTR: "+(m.ctr||0)+"% | CVR: "+(m.cvr||0)+"%","活动: "+(m.activityCount||0),"素材: "+(m.assetCount||0),"视频: "+(m.videoPlanCount||0),"广告: "+(m.adsPlanCount||0),"策略分: "+s.finalStrategyScore+"/100"].join("\n")+"\n\n/kpi agent | /kpi 执行中心 | /kpi 趋势 gmv";
+  }
+  return "📊 /kpi 命令:\n总览 | 状态 | 明细 <date> | 趋势 <metric> | 策略建议 | agent <指令> | 学习记录 | 学习总结 | memory | 执行中心 | 历史";
 }
-
-module.exports = { execute: execute, desc: desc };
+var desc="KPI Domain: GMV/ROI/CTR/CVR 跨域汇总 (REVIEW_ONLY)";
+module.exports={execute,desc};
