@@ -71,6 +71,8 @@ const REGISTRY = {
   '/自治公司':   { file: '../commands/autonomous-command', aliases: ['/autonomous', '/闭环'] },
 '/开源雷达': { file: '../commands/oss-radar', aliases: ['/oss-radar', '/oss', '/开源'] },
 '/worker分发': { file: '../commands/worker-dispatch', aliases: ['/dispatch', '/多节点调度', '/workers'] },
+  '/素材状态': { file: '../commands/asset-foundation', aliases: ['/素材统计', '/素材搜索'] },
+  '/视频素材': { file: '../commands/video-material-command', aliases: ['/video-material', '/素材匹配', '/视频计划'] },
   '/版本':       { file: '../commands/version-command', aliases: ['/version', '/ver'] },
   '/状态':       { file: '../commands/version-command', aliases: ['/status', '/health'] },
 };

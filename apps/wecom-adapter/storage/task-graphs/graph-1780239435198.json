@@ -1,0 +1,37 @@
+{
+  "id": "graph-1780239435198",
+  "title": "P11 Test Graph",
+  "owner": "dev",
+  "goal": "Verify task graph engine",
+  "tasks": {
+    "task-1780239435199": {
+      "title": "Task1 - Design",
+      "role": "developer",
+      "reviewRequired": true,
+      "taskId": "task-1780239435199",
+      "status": "done",
+      "dependsOn": [],
+      "artifacts": [
+        "artifact-design-v1.md",
+        "artifact-review-v1.md"
+      ],
+      "createdAt": "2026-05-31T14:57:15.199Z",
+      "updatedAt": "2026-05-31T14:57:15.202Z"
+    },
+    "task-1780239435200": {
+      "title": "Task2 - Implement",
+      "role": "developer",
+      "taskId": "task-1780239435200",
+      "status": "done",
+      "dependsOn": [
+        "task-1780239435199"
+      ],
+      "artifacts": [],
+      "reviewRequired": false,
+      "createdAt": "2026-05-31T14:57:15.200Z",
+      "updatedAt": "2026-05-31T14:57:15.203Z"
+    }
+  },
+  "createdAt": "2026-05-31T14:57:15.198Z",
+  "updatedAt": "2026-05-31T14:57:15.203Z"
+}

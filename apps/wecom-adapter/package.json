@@ -1,7 +1,7 @@
 {
   "name": "wecom-adapter",
   "version": "1.0.0",
-  "description": "企业微信消息适配器 - 接收消息并转发到 OpenClaw",
+  "description": "\u4f01\u4e1a\u5fae\u4fe1\u6d88\u606f\u9002\u914d\u5668 - \u63a5\u6536\u6d88\u606f\u5e76\u8f6c\u53d1\u5230 OpenClaw",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -11,7 +11,7 @@
     "test:mission-manager": "node src/skills/dashboard/test-mission-manager.cjs",
     "test:asset-sync": "node src/skills/dashboard/test-asset-sync-agent.cjs",
     "test:cost-activity": "node src/skills/dashboard/test-cost-activity.cjs",
-    "test:product-asset": "node src/skills/dashboard/test-product-asset.cjs",
+    "test:product-asset": "node src/product-asset/test-product-asset.cjs",
     "test:skills:index": "node src/skills/test-skills-index.js",
     "test:agents": "node src/agents/test-agent.js",
     "test:ops-summary": "node src/commands/test-ops-summary.js",
@@ -46,7 +46,19 @@
     "test:task-graph-engine": "node tests/test-task-graph-engine.cjs",
     "test:agent-heartbeat": "node tests/test-agent-heartbeat.cjs",
     "test:integrated-runtime-validation": "node tests/test-integrated-runtime-validation.cjs",
-    "test:autonomous-execution-loop": "node tests/test-autonomous-execution-loop.cjs"
+    "test:autonomous-execution-loop": "node tests/test-autonomous-execution-loop.cjs",
+    "test:task-graph": "node src/agent-runtime/test-task-graph.cjs",
+    "test:agent-registry": "node src/agent-runtime/test-agent-capability-registry.cjs",
+    "test:video-material-engine": "node src/video-material/test-video-material-engine.cjs",
+    "test:video-script-generator": "node src/video-material/test-video-script-generator.cjs",
+    "test:video-material-command": "node src/video-material/test-video-material-command.cjs",
+    "test:marketing-decision-engine": "node src/marketing/test-marketing-decision-engine.cjs",
+    "test:budget-engine": "node src/marketing/test-budget-engine.cjs",
+    "test:marketing-command": "node src/marketing/test-marketing-command.cjs",
+    "test:domain-registry": "node src/domain-gateway/test-domain-registry.cjs",
+    "test:domain-gateway-command": "node src/domain-gateway/test-domain-gateway-command.cjs",
+    "test:domain-status": "node src/domain-gateway/test-domain-status.cjs",
+    "test:autonomous-loop": "node src/autonomous-loop/test-autonomous-loop.cjs"
   },
   "dependencies": {
     "axios": "^1.6.2",

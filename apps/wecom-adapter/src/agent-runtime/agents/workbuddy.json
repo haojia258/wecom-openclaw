@@ -1,0 +1,32 @@
+{
+  "agentId": "workbuddy",
+  "name": "WorkBuddy Runtime Executor",
+  "role": "executor",
+  "provider": "workbuddy",
+  "model": "claude-sonnet-4",
+  "capabilities": [
+    "server_execution",
+    "github_operation",
+    "validation",
+    "audit",
+    "artifact_collection"
+  ],
+  "allowedTaskTypes": [
+    "validation",
+    "audit",
+    "execution_review",
+    "github_pr",
+    "server_check"
+  ],
+  "forbiddenActions": [
+    "modify_env",
+    "modify_nginx",
+    "destructive_command",
+    "production_write_without_approval"
+  ],
+  "requiresHumanApproval": true,
+  "reviewOnly": true,
+  "maxConcurrentTasks": 1,
+  "priority": 8,
+  "enabled": true
+}

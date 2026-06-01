@@ -1,0 +1,24 @@
+{
+  "id": "asset-mptxe83d-8wev",
+  "name": "Ad Creative Banner",
+  "type": "image",
+  "category": "ad_creative",
+  "tags": [
+    "banner",
+    "promo"
+  ],
+  "taskType": "marketing",
+  "data": {
+    "width": 1200,
+    "height": 628
+  },
+  "metadata": {
+    "size": 0,
+    "format": "",
+    "createdAt": "2026-05-31T15:19:38.617Z",
+    "updatedAt": "2026-05-31T15:19:38.617Z",
+    "version": 1
+  },
+  "reviewOnly": true,
+  "requiresHumanApproval": true
+}
