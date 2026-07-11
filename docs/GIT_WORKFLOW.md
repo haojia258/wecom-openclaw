@@ -9,10 +9,11 @@
 
 | 分支 | 用途 | 谁能推 | 合入规则 |
 |------|------|--------|----------|
-| `main` | 稳定生产版本 | 仅人工操作 | 只接受经过验收的 PR，禁止 AI 直接推送 |
-| `develop` | AI 协同集成分支 | WorkBuddy / Codex | feature/* 先合入 develop，验证后再合入 main |
+| `main` | 稳定生产版本 | 仅人工操作 | 只接受经过 staging 验证的 PR，禁止 AI 直接推送 |
+| `develop` | AI 协同集成分支 | WorkBuddy / Codex | feature/* 先合入 develop，staging 验证后再 PR 到 main |
 | `feature/*` | 单个功能独立分支 | 对应 AI | 小步提交，完成后 PR 到 develop |
 | `hotfix/*` | 线上紧急修复 | 人工 + WorkBuddy | 从 main 拉出，修完同时合入 main 和 develop |
+| `staging` | 预发布验证环境 | staging deploy 脚本 | 对应日本服务器 `develop` 分支部署，详见 staging-architecture.md |
 
 ### main 分支规则
 - 只存放稳定生产版本
@@ -74,24 +75,30 @@
 
 ```
 feature/*
-    ↓  PR
-develop（集成验证）
-    ↓  服务器灰度测试
-    ↓  人工确认
-    ↓  PR
+    ↓  PR + Code Review
+develop（集成）
+    ↓  Staging Deploy → 日本服务器 staging 环境
+    ↓  Staging Verify → 企微测试应用验证
+    ↓  PR（附 staging 验证记录）+ Human 批准
 main
-    ↓  打 tag
-生产部署
+    ↓  Tag
+    ↓  Production Deploy → 北京服务器生产环境
 ```
 
 ### 详细步骤
 1. 从 develop 创建 feature 分支: `git checkout develop && git checkout -b feature/workbuddy-xxx-v1`
 2. 在 feature 分支上开发和提交
 3. 推送并创建 PR 到 develop
-4. 合入 develop 后在服务器灰度验证
-5. 验证通过后创建 PR 从 develop 到 main
-6. 合入 main 后打 tag: `git tag v1.x.0`
-7. 部署到生产环境
+4. Code Review 通过后合入 develop
+5. **Staging Deploy**: 部署到日本服务器 staging 环境（`/opt/wecom-openclaw-staging/`）
+6. **Staging Verify**: 通过企微测试应用验证命令（`/帮助` `/状态` 等）
+7. 验证通过后创建 PR 从 develop 到 main（附 staging 验证记录）
+8. Human 批准后合入 main
+9. 打 tag: `git tag v1.x.0`
+10. Production Deploy: 部署到北京服务器生产环境
+11. Production Verify: 正式企微应用验证
+
+> 详细 staging 流程见 `docs/deploy/staging-architecture.md` 和 `docs/workflows/staging-release-flow.md`
 
 ---
 
